@@ -1,0 +1,21 @@
+{
+  "name": "mapvibe",
+  "version": "0.0.1",
+  "private": true,
+  "description": "MapVibe — AI-driven map discovery platform",
+  "workspaces": [
+    "apps/admin",
+    "services/api",
+    "infra/cdk"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "npm run format --workspaces --if-present",
+    "format:check": "npm run format:check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
