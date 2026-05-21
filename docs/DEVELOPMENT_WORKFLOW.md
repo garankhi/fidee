@@ -33,21 +33,20 @@ git checkout develop
 git pull origin develop
 
 # Tạo branch mới
-git checkout -b feature/ten-ngan-gon
+git checkout -b MAP-002-cdk-dev-prod
 
 # Ví dụ:
-git checkout -b feature/search-api
-git checkout -b feature/admin-places-page
-git checkout -b fix/login-token-expired
+git checkout -b MAP-002-cdk-dev-prod
+git checkout -b MAP-004-cognito-auth
+git checkout -b MAP-007-nearby-place-scan
 ```
 
 ### Quy ước đặt tên branch
 
-| Loại | Format | Ví dụ |
-|------|--------|-------|
-| Tính năng mới | `feature/<tên>` | `feature/search-api` |
-| Sửa bug | `fix/<tên>` | `fix/upload-crash` |
-| Hotfix production | `hotfix/<tên>` | `hotfix/cors-header` |
+- Format: `<JIRAKEY>-<mo-ta-ngan>`, ví dụ `MAP-002-cdk-dev-prod`.
+- Không dùng prefix `feature/`, `fix/`, `hotfix/`.
+- Mỗi Jira issue tạo một branch và một PR vào `develop`.
+- Jira issue không cần bắt buộc component/folder; acceptance criteria quan trọng hơn.
 
 ---
 
@@ -241,7 +240,7 @@ git commit -m "feat(api): add get-place endpoint
 ## Bước 6 — Push và tạo Pull Request
 
 ```bash
-git push origin feature/ten-branch
+git push origin MAP-002-cdk-dev-prod
 ```
 
 ### Nội dung PR cần có
@@ -283,7 +282,7 @@ Thêm endpoint GET /places/:id trả về chi tiết một place.
 # Merge vào develop (trên GitHub/GitLab UI)
 # Hoặc dùng lệnh:
 git checkout develop
-git merge feature/ten-branch
+git merge MAP-002-cdk-dev-prod
 git push origin develop
 ```
 
@@ -294,22 +293,35 @@ git push origin develop
 ### Deploy lên dev (sau khi merge vào develop)
 
 ```bash
-# Build API trước
-npm run build -w services/api
-
-# Deploy
-cd infra/cdk
-npx cdk diff --context stage=dev      # Xem thay đổi trước
-npx cdk deploy --context stage=dev    # Deploy
+npm run cdk:synth      # Sinh CloudFormation template cho dev
+npm run cdk:diff       # Xem thay đổi dev trước deploy
+npm run cdk:deploy:dev # Deploy dev
 ```
 
-### Deploy lên staging (trước khi release)
+### Kiểm tra prod trước release
 
 ```bash
-npm run build -w services/api
-cd infra/cdk
-npx cdk deploy --context stage=staging
+npm run cdk:diff:prod  # Xem diff prod, không deploy
 ```
+
+`synth` render CDK TypeScript thành CloudFormation. `diff` so template mới với stack đang có trên AWS. `deploy` apply thay đổi thật lên AWS.
+
+`cdk:diff`, `cdk:deploy:dev`, và `cdk:diff:prod` cần AWS credentials từ `aws configure` hoặc AWS profile. `cdk:synth` có thể chạy local không cần credentials.
+
+Stack chính chạy ở `ap-southeast-1`. Riêng WAF gắn CloudFront media chạy ở `us-east-1` vì AWS bắt buộc WebACL scope `CLOUDFRONT` ở region này.
+
+### Release prod
+
+```bash
+# Sau khi dev ổn, tạo PR develop -> main.
+# Sau khi merge main:
+git checkout main
+git pull origin main
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+Prod deploy chạy từ tag release sau khi đã kiểm tra `npm run cdk:diff:prod`.
 
 ### Kiểm tra sau deploy
 
@@ -327,11 +339,11 @@ curl -X POST https://<api-url>/dev/search \
 
 ```
 ✅ Branch tạo từ develop mới nhất
+✅ Branch và PR title bắt đầu bằng Jira key
 ✅ Code theo đúng cấu trúc folder
 ✅ Có test cho code mới
 ✅ npm run format   — pass
 ✅ npm run lint     — pass
 ✅ npm run test     — pass
-✅ Commit message đúng convention
 ✅ PR có mô tả đầy đủ
 ```

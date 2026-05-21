@@ -54,6 +54,10 @@ npm run lint          # Lint all workspaces
 npm run format        # Format all workspaces
 npm run test          # Test all workspaces
 npm run build         # Build all workspaces
+npm run cdk:synth     # Build API/CDK and synth dev CloudFormation templates
+npm run cdk:diff      # Show pending dev infrastructure changes
+npm run cdk:deploy:dev # Deploy dev infrastructure
+npm run cdk:diff:prod # Show prod infrastructure changes before release
 ```
 
 ### Flutter (apps/mobile)
@@ -86,7 +90,6 @@ npm run build -w infra/cdk       # Build CDK only
 > | Stage       | AWS Account / Profile | Purpose                        |
 > |-------------|----------------------|--------------------------------|
 > | `dev`       | `mapvibe-dev`        | Daily development & debugging  |
-> | `staging`   | `mapvibe-staging`    | Pre-production validation      |
 > | `prod`      | `mapvibe-prod`       | Production (deploy via CI/CD)  |
 >
 > **Rationale:** LocalStack introduces behavioral differences that mask real
@@ -94,13 +97,30 @@ npm run build -w infra/cdk       # Build CDK only
 > catching issues early on real AWS (with aggressive caching and on-demand
 > pricing) is more cost-effective than debugging LocalStack discrepancies.
 
-### Deploying to a Stage
+### CDK Commands
 
 ```bash
-cd infra/cdk
-npx cdk deploy --context stage=dev      # Deploy to dev
-npx cdk deploy --context stage=staging  # Deploy to staging
+npm run cdk:synth      # Generate CloudFormation templates for dev
+npm run cdk:diff       # Compare dev templates with deployed AWS stacks
+npm run cdk:deploy:dev # Deploy dev stacks
+npm run cdk:diff:prod  # Compare prod templates before release
 ```
+
+`synth` renders CDK TypeScript into CloudFormation. `diff` shows what AWS would add, change, or delete. `deploy` applies the change to AWS.
+
+`cdk:diff`, `cdk:deploy:dev`, and `cdk:diff:prod` require AWS credentials from `aws configure` or an AWS profile. `cdk:synth` can run locally without AWS credentials.
+
+Main application stacks run in `ap-southeast-1`. The CloudFront media WAF runs in `us-east-1` because AWS requires `CLOUDFRONT` WebACLs there.
+
+### GitHub Flow
+
+```text
+MAP-002-cdk-dev-prod -> PR into develop -> deploy dev -> PR develop into main -> tag release -> deploy prod
+```
+
+Task branches start with the Jira key, for example `MAP-002-cdk-dev-prod`. PR titles also start with the Jira key. Individual commits do not need Jira keys; squash merge keeps the Jira key in the final commit.
+
+Jira issues do not need a required component or folder field; use acceptance criteria and the Jira key for traceability.
 
 ---
 

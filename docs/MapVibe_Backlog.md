@@ -32,7 +32,7 @@ Khác backlog cũ, MVP này không lấy AI search làm lõi. Lõi sản phẩm 
 - **Promotion:** Score + admin queue.
 - **External social signals:** Không nằm trong MVP.
 - **AI search, AI summary, gamification:** Phase 2.
-- **LocalStack:** Không dùng. Dev/test dùng AWS dev/staging.
+- **LocalStack:** Không dùng. Dev/test dùng AWS dev.
 - **Budget:** PRD giữ ngân sách AWS <$200/8 tuần. Google Maps/Places và SMS OTP theo quota/cost guardrail riêng.
 
 ### 1.2 Non-goals của MVP
@@ -57,7 +57,9 @@ Khác backlog cũ, MVP này không lấy AI search làm lõi. Lõi sản phẩm 
 - **Bug:** Lỗi phát sinh sau implementation.
 - **Spike:** Nghiên cứu ngắn, có output rõ.
 
-### 2.2 Components
+### 2.2 Optional labels
+
+Jira issue không bắt buộc phải gắn component/folder. Dùng label chỉ khi giúp lọc backlog:
 
 - `Mobile`: Flutter Android app, camera, map, UI flows.
 - `Backend`: Lambda APIs, business logic, validation.
@@ -155,7 +157,7 @@ Một ticket chỉ được coi là Done khi:
 ## EPIC 1: Foundation, Infra & Cost Guardrails
 
 **Mã Epic:** `MAP-EPIC-01`  
-**Mục tiêu:** Tạo nền repo, CDK, AWS dev/staging, auth base, cost/security guardrails.  
+**Mục tiêu:** Tạo nền repo, CDK, AWS dev/prod, auth base, cost/security guardrails.  
 **MVP Critical:** Có.
 
 ### [MAP-001] Setup Monorepo for Mobile, Backend, Admin, Infra
@@ -173,25 +175,25 @@ Một ticket chỉ được coi là Done khi:
   - [ ] Admin web project tối thiểu được tạo.
   - [ ] CDK TypeScript app được tạo.
   - [ ] Cấu hình lint/format/test cơ bản cho từng workspace.
-  - [ ] README ghi rõ không dùng LocalStack; dev/test dùng AWS dev/staging.
+    - [ ] README ghi rõ không dùng LocalStack; dev/test dùng AWS dev.
 - **Technical Notes:** Tránh tạo abstraction sớm. Ưu tiên cấu trúc dễ split ticket và deploy theo stage.
 
-### [MAP-002] Provision AWS Dev/Staging with CDK TypeScript
+### [MAP-002] Provision AWS Dev/Prod with CDK TypeScript
 
 - **Issue Type:** Task
 - **Priority:** P0
 - **Story Points:** 5
 - **Component:** `Infra`
 - **Blocked By:** MAP-001
-- **Description:** Thiết lập AWS CDK stacks cho dev/staging thay thế LocalStack.
+- **Description:** Thiết lập AWS CDK stacks cho dev/prod thay thế LocalStack.
 - **Acceptance Criteria:**
-  - [ ] CDK support stage: `dev`, `staging`, `prod`.
+  - [ ] CDK support stage: `dev`, `prod`; stage khác fail fast.
   - [ ] CDK tạo API Gateway, Lambda, DynamoDB, S3 media bucket, CloudFront media distribution, Cognito, WAF.
   - [ ] Tài nguyên non-prod có naming convention rõ: `mapvibe-{stage}-{resource}`.
-  - [ ] Có script deploy/synth/diff: `cdk:synth`, `cdk:diff`, `cdk:deploy:dev`.
+  - [ ] Có script deploy/synth/diff: `cdk:synth`, `cdk:diff`, `cdk:deploy:dev`, `cdk:diff:prod`.
   - [ ] Non-prod có TTL/tagging để dễ cleanup cost.
   - [ ] Không có `docker-compose.localstack.yml`, `APP_ENV=local`, endpoint `localhost:4566`.
-- **Technical Notes:** CDK phải dùng least-privilege IAM. Không wildcard IAM nếu không có lý do rõ.
+- **Technical Notes:** Stack chính chạy `ap-southeast-1`; WAF CloudFront media chạy `us-east-1`. CDK phải dùng least-privilege IAM. Không wildcard IAM nếu không có lý do rõ.
 
 ### [MAP-003] Configure Cost, Quota, Security and Observability Guardrails
 
@@ -574,7 +576,7 @@ Một ticket chỉ được coi là Done khi:
   - [ ] Test public search chỉ trả approved Place.
   - [ ] Test rate limit cho create custom place và OTP.
   - [ ] Mobile smoke test trên Android device/emulator.
-- **Technical Notes:** Integration tests chạy trên AWS dev/staging, không LocalStack.
+- **Technical Notes:** Integration tests chạy trên AWS dev, không LocalStack.
 
 ### [MAP-022] Android Internal Release and Operational Runbook
 

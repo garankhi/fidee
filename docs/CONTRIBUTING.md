@@ -239,23 +239,22 @@ void main() {
 | Stage | Mục đích | Ai deploy? |
 |-------|----------|-----------|
 | `dev` | Phát triển hàng ngày, debug | Developer |
-| `staging` | Kiểm tra trước production | Tech Lead / CI |
 | `prod` | Production | CI/CD only |
+
+Stack chính chạy ở `ap-southeast-1`. Riêng WAF gắn CloudFront media chạy ở `us-east-1` vì AWS bắt buộc WebACL scope `CLOUDFRONT` ở region này.
 
 ### Lệnh deploy
 
 ```bash
-cd infra/cdk
-
-# Deploy lên dev
-npx cdk deploy --context stage=dev
-
-# Deploy lên staging
-npx cdk deploy --context stage=staging
-
-# Xem diff trước khi deploy
-npx cdk diff --context stage=dev
+npm run cdk:synth      # Sinh CloudFormation template cho dev
+npm run cdk:diff       # Xem diff dev trước deploy
+npm run cdk:deploy:dev # Deploy dev
+npm run cdk:diff:prod  # Xem diff prod trước release
 ```
+
+`synth` render CDK TypeScript thành CloudFormation. `diff` so template mới với stack đang có trên AWS. `deploy` apply thay đổi thật lên AWS.
+
+`cdk:diff`, `cdk:deploy:dev`, và `cdk:diff:prod` cần AWS credentials từ `aws configure` hoặc AWS profile. `cdk:synth` có thể chạy local không cần credentials.
 
 ### Build API trước khi deploy
 
@@ -263,7 +262,7 @@ npx cdk diff --context stage=dev
 # CDK lấy code Lambda từ services/api/dist/
 # Nên PHẢI build API trước khi deploy CDK
 npm run build -w services/api
-cd infra/cdk && npx cdk deploy --context stage=dev
+npm run cdk:deploy:dev
 ```
 
 ---
@@ -272,7 +271,7 @@ cd infra/cdk && npx cdk deploy --context stage=dev
 
 ### ⛔ KHÔNG dùng LocalStack
 
-> **Tất cả development và testing PHẢI chạy trên AWS thật (dev/staging account).**
+> **Tất cả development và testing PHẢI chạy trên AWS thật (dev account).**
 >
 > LocalStack tạo ra sự khác biệt về hành vi so với AWS thật, gây ra bug khó debug.
 > Với chiến lược aggressive caching và on-demand pricing, chi phí AWS dev rất thấp.
@@ -311,16 +310,20 @@ Nếu cả 4 bước trên đều pass → tạo PR.
 ```
 main              ← production, chỉ merge qua PR
 ├── develop       ← branch phát triển chính
-│   ├── feature/search-api
-│   ├── feature/admin-dashboard
-│   └── fix/login-bug
+│   ├── MAP-002-cdk-dev-prod
+│   ├── MAP-004-cognito-auth
+│   └── MAP-007-nearby-place-scan
 ```
 
 ### Convention
 
-- Feature: `feature/<tên-ngắn>`
-- Bugfix: `fix/<tên-ngắn>`
-- Hotfix: `hotfix/<tên-ngắn>`
+- Task branch bắt đầu bằng Jira key: `MAP-002-cdk-dev-prod`.
+- Không dùng prefix `feature/`, `fix/`, `hotfix/`.
+- Mỗi Jira issue → một branch → một PR vào `develop`.
+- Jira issue không cần bắt buộc component/folder.
+- PR title bắt đầu bằng Jira key: `MAP-002 Add dev/prod CDK stacks`.
+- Commit thường không cần Jira key; squash merge giữ Jira key trong final commit.
+- Release prod: PR `develop` vào `main`, tag SemVer trên `main` như `v0.1.0`, deploy prod từ tag.
 
 ---
 

@@ -13,7 +13,11 @@
     "format": "npm run format --workspaces --if-present",
     "format:check": "npm run format:check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "cdk:synth": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- synth MapVibe-dev-MediaWaf MapVibe-dev --context stage=dev",
+    "cdk:diff": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- diff MapVibe-dev-MediaWaf MapVibe-dev --context stage=dev",
+    "cdk:deploy:dev": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- deploy MapVibe-dev-MediaWaf MapVibe-dev --context stage=dev",
+    "cdk:diff:prod": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- diff MapVibe-prod-MediaWaf MapVibe-prod --context stage=prod"
   },
   "engines": {
     "node": ">=20.0.0"
