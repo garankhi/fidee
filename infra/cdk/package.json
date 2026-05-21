@@ -10,6 +10,7 @@
     "lint:fix": "eslint 'lib/**/*.ts' 'bin/**/*.ts' --fix",
     "format": "prettier --write 'lib/**/*.ts' 'bin/**/*.ts'",
     "format:check": "prettier --check 'lib/**/*.ts' 'bin/**/*.ts'",
+    "pretest": "node -e \"require('fs').mkdirSync('../../services/api/dist',{recursive:true})\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "cdk": "cdk"
@@ -21,6 +22,8 @@
     "aws-cdk": "^2.180.0",
     "eslint": "^9.0.0",
     "prettier": "^3.4.0",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.9.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
