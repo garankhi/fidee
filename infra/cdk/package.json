@@ -10,7 +10,7 @@
     "lint:fix": "eslint 'lib/**/*.ts' 'bin/**/*.ts' --fix",
     "format": "prettier --write 'lib/**/*.ts' 'bin/**/*.ts'",
     "format:check": "prettier --check 'lib/**/*.ts' 'bin/**/*.ts'",
-    "pretest": "node -e \"require('fs').mkdirSync('../../services/api/dist',{recursive:true})\"",
+    "pretest": "npx tsc --project ../../services/api/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "cdk": "cdk"
