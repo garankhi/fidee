@@ -192,7 +192,7 @@ Một ticket chỉ được coi là Done khi:
   - [ ] Tài nguyên non-prod có naming convention rõ: `mapvibe-{stage}-{resource}`.
   - [ ] Có script deploy/synth/diff: `cdk:synth`, `cdk:diff`, `cdk:deploy:dev`, `cdk:diff:prod`.
   - [ ] Non-prod có TTL/tagging để dễ cleanup cost.
-  - [ ] Không có `docker-compose.localstack.yml`, `APP_ENV=local`, endpoint `localhost:4566`.
+  - [ ] Không có file compose LocalStack, local AWS app env, hoặc endpoint AWS emulator local.
 - **Technical Notes:** Stack chính chạy `ap-southeast-1`; WAF CloudFront media chạy `us-east-1`. CDK phải dùng least-privilege IAM. Không wildcard IAM nếu không có lý do rõ.
 
 ### [MAP-003] Configure Cost, Quota, Security and Observability Guardrails

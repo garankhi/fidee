@@ -245,6 +245,14 @@ Stack chính chạy ở `ap-southeast-1`. Riêng WAF gắn CloudFront media ch�
 
 ### Lệnh deploy
 
+Bootstrap lần đầu cho mỗi AWS account:
+
+```bash
+npx cdk bootstrap aws://<account-id>/ap-southeast-1 aws://<account-id>/us-east-1
+```
+
+Cần bootstrap cả hai region vì stack chính chạy ở `ap-southeast-1`, còn WAF CloudFront media chạy ở `us-east-1`.
+
 ```bash
 npm run cdk:synth      # Sinh CloudFormation template cho dev
 npm run cdk:diff       # Xem diff dev trước deploy

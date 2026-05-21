@@ -29,6 +29,44 @@ const createDevTemplates = () => {
   };
 };
 
+type CfnValue = string | Record<string, unknown>;
+type CfnPolicyStatement = {
+  Action?: CfnValue | CfnValue[];
+  Resource?: CfnValue | CfnValue[];
+};
+type CfnInlinePolicy = {
+  PolicyDocument?: {
+    Statement?: CfnPolicyStatement | CfnPolicyStatement[];
+  };
+};
+type CfnResource = {
+  Properties?: {
+    PolicyDocument?: {
+      Statement?: CfnPolicyStatement | CfnPolicyStatement[];
+    };
+    Policies?: CfnInlinePolicy[];
+  };
+};
+
+const asArray = <T>(value: T | T[] | undefined): T[] => {
+  if (value === undefined) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+};
+
+const policyStatementsFromResources = (resources: Record<string, unknown>): CfnPolicyStatement[] =>
+  Object.values(resources).flatMap((resource) => {
+    const properties = (resource as CfnResource).Properties;
+    const resourcePolicyStatements = asArray(properties?.PolicyDocument?.Statement);
+    const roleInlinePolicyStatements = asArray(properties?.Policies).flatMap((policy) =>
+      asArray(policy.PolicyDocument?.Statement),
+    );
+
+    return [...resourcePolicyStatements, ...roleInlinePolicyStatements];
+  });
+
 describe('MapVibe stage validation', () => {
   it('allows dev and prod only', () => {
     expect(assertMapVibeStage('dev')).toBe('dev');
@@ -161,13 +199,15 @@ describe('MapVibeStack', () => {
     });
   });
 
-  it('does not write wildcard IAM actions', () => {
-    const policies = template.findResources('AWS::IAM::Policy');
-    const actions = Object.values(policies).flatMap((policy) => {
-      const statements = policy.Properties.PolicyDocument.Statement;
-      return statements.flatMap((statement: { Action: string | string[] }) => statement.Action);
-    });
+  it('does not write wildcard IAM actions or resources', () => {
+    const statements = [
+      ...policyStatementsFromResources(template.findResources('AWS::IAM::Policy')),
+      ...policyStatementsFromResources(template.findResources('AWS::IAM::Role')),
+    ];
+    const actions = statements.flatMap((statement) => asArray(statement.Action));
+    const resources = statements.flatMap((statement) => asArray(statement.Resource));
 
     expect(actions).not.toContain('*');
+    expect(resources).not.toContain('*');
   });
 });

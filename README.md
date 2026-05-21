@@ -99,6 +99,14 @@ npm run build -w infra/cdk       # Build CDK only
 
 ### CDK Commands
 
+First-time bootstrap per AWS account:
+
+```bash
+npx cdk bootstrap aws://<account-id>/ap-southeast-1 aws://<account-id>/us-east-1
+```
+
+Bootstrap is required in both regions because the main application stack runs in `ap-southeast-1`, while the CloudFront media WAF stack runs in `us-east-1`.
+
 ```bash
 npm run cdk:synth      # Generate CloudFormation templates for dev
 npm run cdk:diff       # Compare dev templates with deployed AWS stacks
