@@ -138,22 +138,98 @@ export class MapVibeStack extends cdk.Stack {
 
     const removalPolicy = isProd(stage) ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
 
+    // ─── Auth Trigger Lambdas (Custom Auth OTP Flow) ────────────
+    const authTriggerDefaults: Omit<lambda.FunctionProps, 'handler' | 'functionName'> = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      code: lambda.Code.fromAsset('../../services/api/dist'),
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(10),
+    };
+
+    const defineAuthChallengeFn = new lambda.Function(this, 'DefineAuthChallengeFn', {
+      ...authTriggerDefaults,
+      functionName: resourceName(stage, 'define-auth'),
+      handler: 'triggers/define-auth-challenge.handler',
+    });
+
+    const createAuthChallengeFn = new lambda.Function(this, 'CreateAuthChallengeFn', {
+      ...authTriggerDefaults,
+      functionName: resourceName(stage, 'create-auth'),
+      handler: 'triggers/create-auth-challenge.handler',
+      environment: {
+        SES_SENDER_EMAIL: `noreply@mapvibe.com`,
+      },
+    });
+
+    // Grant SNS publish for SMS and SES send for email (least-privilege)
+    createAuthChallengeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['sns:Publish'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: { 'sns:Protocol': 'sms' },
+        },
+      }),
+    );
+    createAuthChallengeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ses:SendEmail'],
+        resources: [`arn:aws:ses:${MAIN_REGION}:${cdk.Aws.ACCOUNT_ID}:identity/*`],
+      }),
+    );
+
+    const verifyAuthChallengeFn = new lambda.Function(this, 'VerifyAuthChallengeFn', {
+      ...authTriggerDefaults,
+      functionName: resourceName(stage, 'verify-auth'),
+      handler: 'triggers/verify-auth-challenge.handler',
+    });
+
+    const preSignUpFn = new lambda.Function(this, 'PreSignUpFn', {
+      ...authTriggerDefaults,
+      functionName: resourceName(stage, 'pre-sign-up'),
+      handler: 'triggers/pre-sign-up.handler',
+    });
+
+    // ─── Cognito User Pool ───────────────────────────────────────
     const userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: resourceName(stage, 'users'),
       selfSignUpEnabled: true,
-      signInAliases: { email: true },
-      autoVerify: { email: true },
+      signInAliases: { email: true, phone: true },
+      autoVerify: { email: true, phone: true },
       passwordPolicy: {
         minLength: 8,
         requireUppercase: true,
         requireDigits: true,
         requireSymbols: false,
       },
+      lambdaTriggers: {
+        defineAuthChallenge: defineAuthChallengeFn,
+        createAuthChallenge: createAuthChallengeFn,
+        verifyAuthChallengeResponse: verifyAuthChallengeFn,
+        preSignUp: preSignUpFn,
+      },
       removalPolicy,
     });
 
+    // ─── Cognito Groups (RBAC) ───────────────────────────────────
+    new cognito.CfnUserPoolGroup(this, 'UsersGroup', {
+      groupName: 'Users',
+      userPoolId: userPool.userPoolId,
+      description: 'Default registered users',
+    });
+    new cognito.CfnUserPoolGroup(this, 'ModeratorsGroup', {
+      groupName: 'Moderators',
+      userPoolId: userPool.userPoolId,
+      description: 'Content moderators',
+    });
+    new cognito.CfnUserPoolGroup(this, 'AdminsGroup', {
+      groupName: 'Admins',
+      userPoolId: userPool.userPoolId,
+      description: 'Platform administrators',
+    });
+
     const userPoolClient = userPool.addClient('WebClient', {
-      authFlows: { userSrp: true },
+      authFlows: { userSrp: true, custom: true },
     });
 
     const placesTable = new dynamodb.Table(this, 'PlacesTable', {
@@ -250,8 +326,31 @@ export class MapVibeStack extends cdk.Stack {
       },
     });
 
+    // ─── Cognito JWT Authorizer ─────────────────────────────────
+    const cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuth', {
+      cognitoUserPools: [userPool],
+      identitySource: 'method.request.header.Authorization',
+    });
+
     const searchResource = api.root.addResource('search');
     searchResource.addMethod('POST', new apigateway.LambdaIntegration(searchFn));
+
+    // ─── GET /profile (protected) ────────────────────────────────
+    const profileFn = new lambda.Function(this, 'GetProfileFunction', {
+      functionName: resourceName(stage, 'get-profile'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handlers/get-profile.handler',
+      code: lambda.Code.fromAsset('../../services/api/dist'),
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(10),
+      environment: { STAGE: stage },
+    });
+
+    const profileResource = api.root.addResource('profile');
+    profileResource.addMethod('GET', new apigateway.LambdaIntegration(profileFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     const apiWebAcl = new wafv2.CfnWebACL(this, 'ApiWebAcl', {
       name: resourceName(stage, 'api-waf'),

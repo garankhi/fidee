@@ -1,29 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../services/auth_service.dart';
+import '../../screens/otp_screen.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final AuthService authService;
+
+  const LoginPage({super.key, required this.authService});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController(
-    text: 'example@gmail.com',
-  );
-  final TextEditingController _passwordController = TextEditingController(
-    text: 'password123456',
-  );
-
-  bool _obscurePassword = true;
+  final TextEditingController _usernameController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _usernameController.dispose();
     super.dispose();
+  }
+
+  String _normalizeInput(String input) {
+    final trimmed = input.trim();
+    if (trimmed.contains('@')) return trimmed;
+    if (trimmed.startsWith('0')) return '+84${trimmed.substring(1)}';
+    return trimmed;
+  }
+
+  Future<void> _submit() async {
+    final input = _usernameController.text.trim();
+    if (input.isEmpty) {
+      setState(() => _errorMessage = 'Vui long nhap so dien thoai hoac email');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final username = _normalizeInput(input);
+    final result = await widget.authService.signIn(username);
+
+    if (!mounted) return;
+
+    if (result.success) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => OtpScreen(authService: widget.authService),
+        ),
+      );
+    } else {
+      setState(() => _errorMessage = result.errorMessage);
+    }
+
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -53,10 +88,10 @@ class _LoginPageState extends State<LoginPage> {
                     right: 24,
                     bottom: 0,
                     child: _LoginForm(
-                      emailController: _emailController,
-                      passwordController: _passwordController,
-                      obscurePassword: _obscurePassword,
-                      onTogglePassword: _togglePasswordVisibility,
+                      controller: _usernameController,
+                      isLoading: _isLoading,
+                      errorMessage: _errorMessage,
+                      onSubmit: _submit,
                     ),
                   ),
                 ],
@@ -66,12 +101,6 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
-  }
-
-  void _togglePasswordVisibility() {
-    setState(() {
-      _obscurePassword = !_obscurePassword;
-    });
   }
 }
 
@@ -125,16 +154,16 @@ class _LoginPanel extends StatelessWidget {
 
 class _LoginForm extends StatelessWidget {
   const _LoginForm({
-    required this.emailController,
-    required this.passwordController,
-    required this.obscurePassword,
-    required this.onTogglePassword,
+    required this.controller,
+    required this.isLoading,
+    this.errorMessage,
+    required this.onSubmit,
   });
 
-  final TextEditingController emailController;
-  final TextEditingController passwordController;
-  final bool obscurePassword;
-  final VoidCallback onTogglePassword;
+  final TextEditingController controller;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -154,45 +183,50 @@ class _LoginForm extends StatelessWidget {
           ),
           const SizedBox(height: 36),
           _AuthTextField(
-            controller: emailController,
+            controller: controller,
             label: 'Email or Phone Number',
             keyboardType: TextInputType.emailAddress,
           ),
-          const SizedBox(height: 22),
-          _AuthTextField(
-            controller: passwordController,
-            label: 'Password',
-            obscureText: obscurePassword,
-            suffixIcon: IconButton(
-              color: const Color(0xFFC7C7C7),
-              tooltip: obscurePassword ? 'Show password' : 'Hide password',
-              icon: Icon(
-                obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
+          if (errorMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              errorMessage!,
+              style: GoogleFonts.poppins(
+                color: const Color(0xFFE65363),
+                fontSize: 12,
               ),
-              onPressed: onTogglePassword,
             ),
-          ),
-          const SizedBox(height: 18),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFE65363),
-                minimumSize: Size.zero,
-                padding: EdgeInsets.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              onPressed: () {},
-              child: Text(
-                'Forgot Password?',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0,
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 52,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4050),
+                elevation: 0,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              onPressed: isLoading ? null : onSubmit,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'Continue with OTP',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 30),
@@ -213,12 +247,8 @@ class _LoginForm extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SvgPicture.asset(
-                    'assets/icons/gooogle.svg',
-                    width: 22, 
-                    height: 22,
-                  ),
-                  const SizedBox(width: 18),
+                  const Icon(Icons.g_mobiledata, size: 32, color: Colors.black54),
+                  const SizedBox(width: 8),
                   Text(
                     'Continue with Google',
                     style: GoogleFonts.poppins(
@@ -270,15 +300,11 @@ class _AuthTextField extends StatelessWidget {
     required this.controller,
     required this.label,
     this.keyboardType,
-    this.obscureText = false,
-    this.suffixIcon,
   });
 
   final TextEditingController controller;
   final String label;
   final TextInputType? keyboardType;
-  final bool obscureText;
-  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +312,6 @@ class _AuthTextField extends StatelessWidget {
       controller: controller,
       cursorColor: const Color(0xFFEF4050),
       keyboardType: keyboardType,
-      obscureText: obscureText,
       style: GoogleFonts.poppins(
         color: Colors.black,
         fontSize: 13,
@@ -309,7 +334,6 @@ class _AuthTextField extends StatelessWidget {
         focusedBorder: _inputBorder(const Color(0xFFEF4050)),
         filled: true,
         fillColor: Colors.white,
-        suffixIcon: suffixIcon,
       ),
     );
   }

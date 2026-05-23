@@ -96,6 +96,51 @@ describe('MapVibeStack', () => {
     template.resourceCountIs('AWS::WAFv2::WebACL', 1);
   });
 
+  it('creates Cognito groups for RBAC', () => {
+    template.resourceCountIs('AWS::Cognito::UserPoolGroup', 3);
+    template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+      GroupName: 'Users',
+    });
+    template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+      GroupName: 'Moderators',
+    });
+    template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+      GroupName: 'Admins',
+    });
+  });
+
+  it('configures Cognito with phone and email sign-in', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      UsernameAttributes: Match.arrayWith(['email', 'phone_number']),
+      AutoVerifiedAttributes: Match.arrayWith(['email', 'phone_number']),
+    });
+  });
+
+  it('creates auth trigger Lambda functions', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-define-auth',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-create-auth',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-verify-auth',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-pre-sign-up',
+    });
+  });
+
+  it('creates a protected GET /profile endpoint', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-get-profile',
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'GET',
+      AuthorizationType: 'COGNITO_USER_POOLS',
+    });
+  });
+
   it('names dev resources with mapvibe-dev prefix', () => {
     template.hasResourceProperties('AWS::Cognito::UserPool', {
       UserPoolName: 'mapvibe-dev-users',
@@ -199,13 +244,22 @@ describe('MapVibeStack', () => {
     });
   });
 
-  it('does not write wildcard IAM actions or resources', () => {
+  it('does not write wildcard IAM actions or resources (except SNS SMS)', () => {
     const statements = [
       ...policyStatementsFromResources(template.findResources('AWS::IAM::Policy')),
       ...policyStatementsFromResources(template.findResources('AWS::IAM::Role')),
     ];
     const actions = statements.flatMap((statement) => asArray(statement.Action));
-    const resources = statements.flatMap((statement) => asArray(statement.Resource));
+
+    // SNS Publish for SMS requires resources: ['*'] because targets are phone numbers,
+    // not ARN resources. This is an AWS limitation. Filter these out.
+    const nonSnsStatements = statements.filter((statement) => {
+      const statementActions = asArray(statement.Action);
+      return !statementActions.some(
+        (a) => typeof a === 'string' && a === 'sns:Publish',
+      );
+    });
+    const resources = nonSnsStatements.flatMap((statement) => asArray(statement.Resource));
 
     expect(actions).not.toContain('*');
     expect(resources).not.toContain('*');
