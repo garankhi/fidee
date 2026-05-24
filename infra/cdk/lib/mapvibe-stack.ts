@@ -161,14 +161,11 @@ export class MapVibeStack extends cdk.Stack {
       },
     });
 
-    // Grant SNS publish for SMS and SES send for email (least-privilege)
+    // Grant SNS publish for SMS (resource must be * for phone number targets)
     createAuthChallengeFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['sns:Publish'],
         resources: ['*'],
-        conditions: {
-          StringEquals: { 'sns:Protocol': 'sms' },
-        },
       }),
     );
     createAuthChallengeFn.addToRolePolicy(

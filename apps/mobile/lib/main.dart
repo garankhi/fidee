@@ -8,19 +8,22 @@ void main() {
 }
 
 class MapVibeApp extends StatefulWidget {
-  const MapVibeApp({super.key});
+  final AuthService? authService;
+  
+  const MapVibeApp({super.key, this.authService});
 
   @override
   State<MapVibeApp> createState() => _MapVibeAppState();
 }
 
 class _MapVibeAppState extends State<MapVibeApp> {
-  final _authService = AuthService();
+  late final AuthService _authService;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    _authService = widget.authService ?? AuthService();
     _initialize();
   }
 

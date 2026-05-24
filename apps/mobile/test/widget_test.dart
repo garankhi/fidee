@@ -8,10 +8,9 @@ import 'package:mapvibe_mobile/screens/home_screen.dart';
 
 void main() {
   group('MapVibeApp', () {
-    testWidgets('shows loading then login page', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(const MapVibeApp());
+    testWidgets('MapVibeApp shows loading then login page', (WidgetTester tester) async {
+      final authService = AuthService(isTestMode: true);
+      await tester.pumpWidget(MapVibeApp(authService: authService));
       // After initialization, should show phone input
       await tester.pumpAndSettle();
       expect(find.text('MAPVIBE'), findsOneWidget);
@@ -22,7 +21,7 @@ void main() {
     testWidgets('renders input field and button', (
       WidgetTester tester,
     ) async {
-      final authService = AuthService();
+      final authService = AuthService(isTestMode: true);
       await authService.initialize();
       await tester.pumpWidget(
         MaterialApp(
@@ -35,7 +34,7 @@ void main() {
     });
 
     testWidgets('validates empty input', (WidgetTester tester) async {
-      final authService = AuthService();
+      final authService = AuthService(isTestMode: true);
       await authService.initialize();
       await tester.pumpWidget(
         MaterialApp(
@@ -54,7 +53,7 @@ void main() {
 
   group('OtpScreen', () {
     testWidgets('renders 6 OTP input fields', (WidgetTester tester) async {
-      final authService = AuthService();
+      final authService = AuthService(isTestMode: true);
       await authService.initialize();
       await authService.signIn('+84912345678');
       await tester.pumpWidget(
@@ -68,7 +67,7 @@ void main() {
     });
 
     testWidgets('shows cooldown timer', (WidgetTester tester) async {
-      final authService = AuthService();
+      final authService = AuthService(isTestMode: true);
       await authService.initialize();
       await authService.signIn('+84912345678');
       await tester.pumpWidget(
@@ -85,7 +84,7 @@ void main() {
     testWidgets('renders welcome message and sign out button', (
       WidgetTester tester,
     ) async {
-      final authService = AuthService();
+      final authService = AuthService(isTestMode: true);
       await tester.pumpWidget(
         MaterialApp(
           home: HomeScreen(authService: authService),
@@ -99,18 +98,18 @@ void main() {
 
   group('AuthService', () {
     test('initial state is loading', () {
-      final service = AuthService();
+      final service = AuthService(isTestMode: true);
       expect(service.state, AuthState.loading);
     });
 
     test('state is unauthenticated after init', () async {
-      final service = AuthService();
+      final service = AuthService(isTestMode: true);
       await service.initialize();
       expect(service.state, AuthState.unauthenticated);
     });
 
     test('sign in changes state to otpSent', () async {
-      final service = AuthService();
+      final service = AuthService(isTestMode: true);
       await service.initialize();
       final result = await service.signIn('+84912345678');
       expect(result.success, true);
@@ -118,7 +117,7 @@ void main() {
     });
 
     test('resend blocked during cooldown', () async {
-      final service = AuthService();
+      final service = AuthService(isTestMode: true);
       await service.initialize();
       await service.signIn('+84912345678');
       final result = await service.resendOtp();
@@ -126,7 +125,7 @@ void main() {
     });
 
     test('sign out resets state', () async {
-      final service = AuthService();
+      final service = AuthService(isTestMode: true);
       await service.initialize();
       await service.signIn('+84912345678');
       await service.signOut();
