@@ -38,6 +38,10 @@ dependencies:
   flutter_svg: ^2.3.0
   amazon_cognito_identity_dart_2: ^4.0.0
   shared_preferences: ^2.5.5
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^14.0.0
+  permission_handler: ^12.0.0
 
 dev_dependencies:
   flutter_test:
