@@ -1,48 +1,77 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
 
-// ─── Persistent Cognito Storage ─────────────────────────────────
-/// Stores Cognito tokens (idToken, accessToken, refreshToken, LastAuthUser, etc.)
-/// in SharedPreferences so they survive app restarts.
-class SharedPrefsCognitoStorage extends CognitoStorage {
-  final SharedPreferences prefs;
+// Persistent Cognito storage.
+/// Stores Cognito tokens in platform secure storage so they survive app
+/// restarts without plaintext prefs.
+class SecureCognitoStorage extends CognitoStorage {
+  static const _cognitoKeyPrefix = 'CognitoIdentityServiceProvider.';
 
-  SharedPrefsCognitoStorage(this.prefs);
+  final Future<String?> Function(String key) _read;
+  final Future<Map<String, String>> Function() _readAll;
+  final Future<void> Function(String key, String value) _write;
+  final Future<void> Function(String key) _delete;
+
+  SecureCognitoStorage(FlutterSecureStorage storage)
+    : this.custom(
+        read: (key) => storage.read(key: key),
+        readAll: storage.readAll,
+        write: (key, value) => storage.write(key: key, value: value),
+        delete: (key) => storage.delete(key: key),
+      );
+
+  SecureCognitoStorage.custom({
+    required Future<String?> Function(String key) read,
+    required Future<Map<String, String>> Function() readAll,
+    required Future<void> Function(String key, String value) write,
+    required Future<void> Function(String key) delete,
+  }) : _read = read,
+       _readAll = readAll,
+       _write = write,
+       _delete = delete;
 
   @override
   Future<dynamic> getItem(String key) async {
-    final value = prefs.getString(key);
-    return value == null ? null : jsonDecode(value);
+    final value = await _read(key);
+    if (value == null) return null;
+
+    try {
+      return jsonDecode(value);
+    } on FormatException {
+      await _delete(key);
+      return null;
+    }
   }
 
   @override
   Future<dynamic> setItem(String key, value) async {
-    await prefs.setString(key, jsonEncode(value));
+    await _write(key, jsonEncode(value));
     return value;
   }
 
   @override
   Future<dynamic> removeItem(String key) async {
     final oldValue = await getItem(key);
-    await prefs.remove(key);
+    await _delete(key);
     return oldValue;
   }
 
   @override
   Future<void> clear() async {
-    final keys = prefs.getKeys().where(
-      (key) => key.startsWith('CognitoIdentityServiceProvider.'),
+    final values = await _readAll();
+    final cognitoKeys = values.keys.where(
+      (key) => key.startsWith(_cognitoKeyPrefix),
     );
-    for (final key in keys.toList()) {
-      await prefs.remove(key);
+    for (final key in cognitoKeys) {
+      await _delete(key);
     }
   }
 }
 
-// ─── Auth State & Result ────────────────────────────────────────
+// Auth state and result.
 enum AuthState { loading, unauthenticated, otpSent, authenticated }
 
 class AuthResult {
@@ -50,13 +79,17 @@ class AuthResult {
   final String? errorMessage;
   final String? destination;
 
-  const AuthResult({required this.success, this.errorMessage, this.destination});
+  const AuthResult({
+    required this.success,
+    this.errorMessage,
+    this.destination,
+  });
 }
 
-// ─── Auth Service ───────────────────────────────────────────────
+// Auth service.
 class AuthService {
   final bool isTestMode;
-  
+
   AuthState _state = AuthState.loading;
   String? _username;
   DateTime? _lastOtpSent;
@@ -89,9 +122,10 @@ class AuthService {
       return;
     }
 
+    SecureCognitoStorage? storage;
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final storage = SharedPrefsCognitoStorage(prefs);
+      storage = SecureCognitoStorage(const FlutterSecureStorage());
 
       _userPool = CognitoUserPool(
         Config.cognitoUserPoolId,
@@ -119,8 +153,12 @@ class AuthService {
         _state = AuthState.unauthenticated;
       }
     } catch (_) {
-      // Token invalid or network error — force re-login
+      // Token invalid or network error; force re-login.
+      await storage?.clear();
       _state = AuthState.unauthenticated;
+      _username = null;
+      _cognitoUser = null;
+      _destination = null;
     }
   }
 
@@ -151,7 +189,9 @@ class AuthService {
       _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
 
       try {
-        await _cognitoUser!.initiateAuth(AuthenticationDetails(username: username));
+        await _cognitoUser!.initiateAuth(
+          AuthenticationDetails(username: username),
+        );
       } on CognitoUserCustomChallengeException {
         // Expected exception indicating OTP is sent
       } on CognitoClientException catch (e) {
@@ -161,14 +201,20 @@ class AuthService {
             AttributeArg(
               name: isEmail ? 'email' : 'phone_number',
               value: username,
-            )
+            ),
           ];
-          await _userPool.signUp(username, 'MapVibeTempPwd123!', userAttributes: attributes);
-          
+          await _userPool.signUp(
+            username,
+            'MapVibeTempPwd123!',
+            userAttributes: attributes,
+          );
+
           _cognitoUser = CognitoUser(username, _userPool);
           _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
           try {
-            await _cognitoUser!.initiateAuth(AuthenticationDetails(username: username));
+            await _cognitoUser!.initiateAuth(
+              AuthenticationDetails(username: username),
+            );
           } on CognitoUserCustomChallengeException {
             // Expected
           }
@@ -181,13 +227,19 @@ class AuthService {
       _lastOtpSent = DateTime.now();
       return AuthResult(success: true, destination: _destination);
     } catch (e) {
-      return AuthResult(success: false, errorMessage: 'Loi ket noi hoac Sdt khong hop le.');
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Loi ket noi hoac Sdt khong hop le.',
+      );
     }
   }
 
   Future<AuthResult> verifyOtp(String code) async {
     if (_username == null) {
-      return const AuthResult(success: false, errorMessage: 'No sign-in in progress');
+      return const AuthResult(
+        success: false,
+        errorMessage: 'No sign-in in progress',
+      );
     }
 
     if (isTestMode) {
@@ -199,14 +251,19 @@ class AuthService {
       final session = await _cognitoUser!.sendCustomChallengeAnswer(code);
       if (session != null && session.isValid()) {
         _state = AuthState.authenticated;
-        // Tokens are automatically cached to SharedPreferences
-        // by the Cognito SDK via SharedPrefsCognitoStorage
+        // Tokens are automatically cached to secure storage by the Cognito SDK.
         return const AuthResult(success: true);
       } else {
-        return const AuthResult(success: false, errorMessage: 'Ma xac thuc sai');
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Ma xac thuc sai',
+        );
       }
     } catch (e) {
-      return AuthResult(success: false, errorMessage: 'Ma xac thuc sai hoac loi ket noi.');
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Ma xac thuc sai hoac loi ket noi.',
+      );
     }
   }
 
@@ -214,18 +271,22 @@ class AuthService {
     if (!canResendOtp) {
       return AuthResult(
         success: false,
-        errorMessage: 'Vui long cho $resendCooldownRemaining giay truoc khi gui lai.',
+        errorMessage:
+            'Vui long cho $resendCooldownRemaining giay truoc khi gui lai.',
       );
     }
     if (_username == null) {
-      return const AuthResult(success: false, errorMessage: 'No sign-in in progress');
+      return const AuthResult(
+        success: false,
+        errorMessage: 'No sign-in in progress',
+      );
     }
     return await signIn(_username!);
   }
 
   Future<void> signOut() async {
     if (!isTestMode && _cognitoUser != null) {
-      // This clears tokens from SharedPrefsCognitoStorage
+      // This clears tokens from SecureCognitoStorage
       await _cognitoUser!.signOut();
     }
     _state = AuthState.unauthenticated;
@@ -243,6 +304,7 @@ class AuthService {
       return '${local.substring(0, 2)}***@$domain';
     }
     if (input.length <= 7) return '***';
-    return '${input.substring(0, input.length - 6)}***${input.substring(input.length - 3)}';
+    return '${input.substring(0, input.length - 6)}***'
+        '${input.substring(input.length - 3)}';
   }
 }

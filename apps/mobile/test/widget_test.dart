@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mapvibe_mobile/main.dart';
-import 'package:mapvibe_mobile/services/auth_service.dart';
 import 'package:mapvibe_mobile/features/auth/login_page.dart';
-import 'package:mapvibe_mobile/screens/otp_screen.dart';
+import 'package:mapvibe_mobile/main.dart';
 import 'package:mapvibe_mobile/screens/home_screen.dart';
+import 'package:mapvibe_mobile/screens/otp_screen.dart';
+import 'package:mapvibe_mobile/services/auth_service.dart';
 
 void main() {
   group('MapVibeApp', () {
-    testWidgets('MapVibeApp shows loading then login page', (WidgetTester tester) async {
+    testWidgets('MapVibeApp shows loading then login page', (
+      WidgetTester tester,
+    ) async {
       final authService = AuthService(isTestMode: true);
       await tester.pumpWidget(MapVibeApp(authService: authService));
       // After initialization, should show phone input
@@ -18,15 +20,11 @@ void main() {
   });
 
   group('LoginPage', () {
-    testWidgets('renders input field and button', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('renders input field and button', (WidgetTester tester) async {
       final authService = AuthService(isTestMode: true);
       await authService.initialize();
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginPage(authService: authService),
-        ),
+        MaterialApp(home: LoginPage(authService: authService)),
       );
 
       expect(find.text('Continue with OTP'), findsOneWidget);
@@ -37,9 +35,7 @@ void main() {
       final authService = AuthService(isTestMode: true);
       await authService.initialize();
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginPage(authService: authService),
-        ),
+        MaterialApp(home: LoginPage(authService: authService)),
       );
 
       await tester.tap(find.text('Continue with OTP'));
@@ -57,9 +53,7 @@ void main() {
       await authService.initialize();
       await authService.signIn('+84912345678');
       await tester.pumpWidget(
-        MaterialApp(
-          home: OtpScreen(authService: authService),
-        ),
+        MaterialApp(home: OtpScreen(authService: authService)),
       );
 
       expect(find.byType(TextField), findsNWidgets(6));
@@ -71,9 +65,7 @@ void main() {
       await authService.initialize();
       await authService.signIn('+84912345678');
       await tester.pumpWidget(
-        MaterialApp(
-          home: OtpScreen(authService: authService),
-        ),
+        MaterialApp(home: OtpScreen(authService: authService)),
       );
 
       expect(find.textContaining('Gui lai ma sau'), findsOneWidget);
@@ -81,14 +73,10 @@ void main() {
   });
 
   group('HomeScreen', () {
-    testWidgets('renders map and UI elements', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('renders map and UI elements', (WidgetTester tester) async {
       final authService = AuthService(isTestMode: true);
       await tester.pumpWidget(
-        MaterialApp(
-          home: HomeScreen(authService: authService),
-        ),
+        MaterialApp(home: HomeScreen(authService: authService)),
       );
 
       // Pump multiple frames to get past loading
@@ -135,6 +123,67 @@ void main() {
       await service.signIn('+84912345678');
       await service.signOut();
       expect(service.state, AuthState.unauthenticated);
+    });
+  });
+
+  group('SecureCognitoStorage', () {
+    late Map<String, String> values;
+    late SecureCognitoStorage storage;
+
+    setUp(() {
+      values = <String, String>{};
+      storage = SecureCognitoStorage.custom(
+        read: (key) async => values[key],
+        readAll: () async => Map<String, String>.from(values),
+        write: (key, value) async {
+          values[key] = value;
+        },
+        delete: (key) async {
+          values.remove(key);
+        },
+      );
+    });
+
+    test('stores Cognito values as JSON in secure storage adapter', () async {
+      await storage.setItem(
+        'CognitoIdentityServiceProvider.client.user.refreshToken',
+        'refresh-token',
+      );
+
+      expect(
+        await storage.getItem(
+          'CognitoIdentityServiceProvider.client.user.refreshToken',
+        ),
+        'refresh-token',
+      );
+      expect(
+        values['CognitoIdentityServiceProvider.client.user.refreshToken'],
+        '"refresh-token"',
+      );
+    });
+
+    test('clears only Cognito keys on invalid session cleanup', () async {
+      values.addAll(<String, String>{
+        'CognitoIdentityServiceProvider.client.LastAuthUser': '"user"',
+        'CognitoIdentityServiceProvider.client.user.accessToken': '"jwt"',
+        'unrelated': '"keep"',
+      });
+
+      await storage.clear();
+
+      expect(values, <String, String>{'unrelated': '"keep"'});
+    });
+
+    test('removes malformed cached values instead of reusing them', () async {
+      values['CognitoIdentityServiceProvider.client.LastAuthUser'] = 'not-json';
+
+      expect(
+        await storage.getItem(
+          'CognitoIdentityServiceProvider.client.LastAuthUser',
+        ),
+        isNull,
+      );
+      expect(values, isEmpty);
     });
   });
 }

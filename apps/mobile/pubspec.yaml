@@ -37,6 +37,7 @@ dependencies:
   google_fonts: ^8.1.0
   flutter_svg: ^2.3.0
   amazon_cognito_identity_dart_2: ^4.0.0
+  flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.5.5
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
