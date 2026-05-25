@@ -53,15 +53,37 @@ class AuthService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
-      if (token != null && token.isNotEmpty) {
+      final savedUsername = prefs.getString('cognito_username');
+      
+      if (savedUsername == null || savedUsername.isEmpty) {
+        _state = AuthState.unauthenticated;
+        return;
+      }
+
+      // Restore Cognito user and try to get valid session
+      _cognitoUser = CognitoUser(savedUsername, _userPool);
+      final session = await _cognitoUser!.getSession();
+      
+      if (session != null && session.isValid()) {
+        _username = savedUsername;
         _state = AuthState.authenticated;
       } else {
+        // Session expired and couldn't refresh
+        await _clearSession();
         _state = AuthState.unauthenticated;
       }
     } catch (_) {
+      // Token invalid or network error — force re-login
+      await _clearSession();
       _state = AuthState.unauthenticated;
     }
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('cognito_username');
+    _cognitoUser = null;
+    _username = null;
   }
 
   Future<AuthResult> signIn(String rawUsername) async {
@@ -140,8 +162,9 @@ class AuthService {
       if (session != null && session.isValid()) {
         _state = AuthState.authenticated;
         
+        // Save username for session restoration on next app launch
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', session.getAccessToken().getJwtToken() ?? '');
+        await prefs.setString('cognito_username', _username!);
         
         return const AuthResult(success: true);
       } else {
@@ -168,14 +191,15 @@ class AuthService {
   Future<void> signOut() async {
     if (!isTestMode && _cognitoUser != null) {
       await _cognitoUser!.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('access_token');
+    }
+    if (!isTestMode) {
+      await _clearSession();
+    } else {
+      _cognitoUser = null;
+      _username = null;
     }
     _state = AuthState.unauthenticated;
-    _username = null;
-    _session = null;
     _destination = null;
-    _cognitoUser = null;
   }
 
   String _maskDestination(String input) {
@@ -190,6 +214,4 @@ class AuthService {
     return '${input.substring(0, input.length - 6)}***${input.substring(input.length - 3)}';
   }
   
-  // ignore: unused_field
-  String? _session;
 }
