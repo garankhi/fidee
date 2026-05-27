@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ModerationPage from './features/moderation/ModerationPage';
 
 const NAV_ITEMS = [
   { icon: '📊', label: 'Dashboard', id: 'dashboard' },
@@ -21,7 +22,6 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
           <span className="brand-icon">🗺️</span>
@@ -52,83 +52,83 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="main">
-        <header className="main-header">
-          <div>
-            <h2 className="page-title">Dashboard</h2>
-            <p className="page-subtitle">Welcome back, here's what's happening today.</p>
-          </div>
-          <div className="header-actions">
-            <div className="search-box" id="search-box">
-              <span className="search-icon">🔍</span>
-              <input type="text" placeholder="Search..." className="search-input" />
-            </div>
-          </div>
-        </header>
-
-        {/* Stats Grid */}
-        <section className="stats-grid">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="stat-card">
-              <div className="stat-header">
-                <span className="stat-label">{stat.label}</span>
-                <span
-                  className="stat-dot"
-                  style={{ backgroundColor: stat.color }}
-                />
+        {activeNav === 'moderation' ? (
+          <ModerationPage />
+        ) : (
+          <>
+            <header className="main-header">
+              <div>
+                <h2 className="page-title">Dashboard</h2>
+                <p className="page-subtitle">Welcome back, here's what's happening today.</p>
               </div>
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-change">
-                <span className={stat.change.startsWith('+') ? 'positive' : 'negative'}>
-                  {stat.change}
-                </span>
-                <span className="stat-period">vs last week</span>
+              <div className="header-actions">
+                <div className="search-box" id="search-box">
+                  <span className="search-icon">🔍</span>
+                  <input type="text" placeholder="Search..." className="search-input" />
+                </div>
               </div>
-            </div>
-          ))}
-        </section>
+            </header>
 
-        {/* Content Area */}
-        <section className="content-area">
-          <div className="card recent-activity">
-            <h3 className="card-title">Recent Activity</h3>
-            <div className="activity-list">
-              {[
-                { action: 'New place submitted', detail: 'Rooftop Bar Saigon', time: '2m ago', icon: '📍' },
-                { action: 'Review flagged', detail: 'Inappropriate content detected', time: '15m ago', icon: '🚩' },
-                { action: 'User registered', detail: 'user@example.com', time: '1h ago', icon: '👤' },
-                { action: 'AI summary refreshed', detail: 'Bánh Mì Huỳnh Hoa', time: '2h ago', icon: '🤖' },
-                { action: 'Badge awarded', detail: 'Gold Explorer — @foodie_sg', time: '3h ago', icon: '🏅' },
-              ].map((item, i) => (
-                <div key={i} className="activity-item">
-                  <span className="activity-icon">{item.icon}</span>
-                  <div className="activity-content">
-                    <span className="activity-action">{item.action}</span>
-                    <span className="activity-detail">{item.detail}</span>
+            <section className="stats-grid">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="stat-card">
+                  <div className="stat-header">
+                    <span className="stat-label">{stat.label}</span>
+                    <span className="stat-dot" style={{ backgroundColor: stat.color }} />
                   </div>
-                  <span className="activity-time">{item.time}</span>
+                  <div className="stat-value">{stat.value}</div>
+                  <div className="stat-change">
+                    <span className={stat.change.startsWith('+') ? 'positive' : 'negative'}>
+                      {stat.change}
+                    </span>
+                    <span className="stat-period">vs last week</span>
+                  </div>
                 </div>
               ))}
-            </div>
-          </div>
-          <div className="card quick-actions">
-            <h3 className="card-title">Quick Actions</h3>
-            <div className="actions-grid">
-              {[
-                { label: 'Add Place', icon: '➕', id: 'action-add-place' },
-                { label: 'View Reports', icon: '📋', id: 'action-reports' },
-                { label: 'Manage Badges', icon: '🏆', id: 'action-badges' },
-                { label: 'System Health', icon: '💚', id: 'action-health' },
-              ].map((action) => (
-                <button key={action.id} id={action.id} className="action-btn">
-                  <span className="action-icon">{action.icon}</span>
-                  <span className="action-label">{action.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
+            </section>
+
+            <section className="content-area">
+              <div className="card recent-activity">
+                <h3 className="card-title">Recent Activity</h3>
+                <div className="activity-list">
+                  {[
+                    { action: 'New place submitted', detail: 'Rooftop Bar Saigon', time: '2m ago', icon: '📍' },
+                    { action: 'Review flagged', detail: 'Inappropriate content detected', time: '15m ago', icon: '🚩' },
+                    { action: 'User registered', detail: 'user@example.com', time: '1h ago', icon: '👤' },
+                    { action: 'AI summary refreshed', detail: 'Bánh Mì Huỳnh Hoa', time: '2h ago', icon: '🤖' },
+                    { action: 'Badge awarded', detail: 'Gold Explorer — @foodie_sg', time: '3h ago', icon: '🏅' },
+                  ].map((item, index) => (
+                    <div key={index} className="activity-item">
+                      <span className="activity-icon">{item.icon}</span>
+                      <div className="activity-content">
+                        <span className="activity-action">{item.action}</span>
+                        <span className="activity-detail">{item.detail}</span>
+                      </div>
+                      <span className="activity-time">{item.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="card quick-actions">
+                <h3 className="card-title">Quick Actions</h3>
+                <div className="actions-grid">
+                  {[
+                    { label: 'Add Place', icon: '➕', id: 'action-add-place' },
+                    { label: 'View Reports', icon: '📋', id: 'action-reports' },
+                    { label: 'Manage Badges', icon: '🏆', id: 'action-badges' },
+                    { label: 'System Health', icon: '💚', id: 'action-health' },
+                  ].map((action) => (
+                    <button key={action.id} id={action.id} className="action-btn">
+                      <span className="action-icon">{action.icon}</span>
+                      <span className="action-label">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );

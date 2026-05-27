@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../services/auth_service.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../screens/otp_screen.dart';
+import '../../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   final AuthService authService;
@@ -247,7 +248,11 @@ class _LoginForm extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.g_mobiledata, size: 32, color: Colors.black54),
+                  const Icon(
+                    Icons.g_mobiledata,
+                    size: 32,
+                    color: Colors.black54,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Continue with Google',

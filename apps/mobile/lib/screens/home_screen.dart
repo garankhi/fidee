@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
+import '../features/auth/login_page.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
-import '../features/auth/login_page.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 class HomeScreen extends StatefulWidget {
@@ -101,7 +102,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               // Dark-style tile layer
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.mapvibe.mapvibe_mobile',
                 maxZoom: 20,
@@ -147,7 +149,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Row(
                       children: [
                         const SizedBox(width: 16),
-                        Icon(Icons.search, color: Colors.white.withValues(alpha: 0.5), size: 20),
+                        Icon(
+                          Icons.search,
+                          color: Colors.white.withValues(alpha: 0.5),
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           'Tim kiem dia diem...',
@@ -181,7 +187,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.person, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ),
               ],
@@ -204,7 +214,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   }
                   if (!mounted) return;
                   setState(() {
-                    _showLocationBanner = _locationService.status != LocationStatus.granted;
+                    _showLocationBanner =
+                        _locationService.status != LocationStatus.granted;
                   });
                   if (_locationService.hasRealLocation) {
                     _animateToLocation(_locationService.currentPosition);
@@ -234,9 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             bottom: 40,
             left: 0,
             right: 0,
-            child: Center(
-              child: _CheckInButton(onPressed: _onCheckIn),
-            ),
+            child: Center(child: _CheckInButton(onPressed: _onCheckIn)),
           ),
         ],
       ),
@@ -300,9 +309,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     _signOut(context);
                   },
                   icon: const Icon(Icons.logout, size: 20),
-                  label: const Text('Dang xuat', style: TextStyle(fontSize: 16)),
+                  label: const Text(
+                    'Dang xuat',
+                    style: TextStyle(fontSize: 16),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                    backgroundColor: const Color(
+                      0xFFEF4444,
+                    ).withValues(alpha: 0.15),
                     foregroundColor: const Color(0xFFEF4444),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -340,9 +354,10 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -364,7 +379,9 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
             height: 60 * _animation.value,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.2 * (1 - _animation.value)),
+              color: const Color(
+                0xFF3B82F6,
+              ).withValues(alpha: 0.2 * (1 - _animation.value)),
             ),
           ),
           // Inner dot
@@ -553,12 +570,19 @@ class _LocationDeniedBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text(_buttonText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            child: Text(
+              _buttonText,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onDismiss,
-            child: Icon(Icons.close, color: Colors.white.withValues(alpha: 0.4), size: 18),
+            child: Icon(
+              Icons.close,
+              color: Colors.white.withValues(alpha: 0.4),
+              size: 18,
+            ),
           ),
         ],
       ),

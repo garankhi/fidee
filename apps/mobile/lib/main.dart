@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'services/auth_service.dart';
+
 import 'features/auth/login_page.dart';
 import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,7 +13,7 @@ void main() {
 
 class MapVibeApp extends StatefulWidget {
   final AuthService? authService;
-  
+
   const MapVibeApp({super.key, this.authService});
 
   @override
@@ -53,14 +55,12 @@ class _MapVibeAppState extends State<MapVibeApp> {
       ),
       home: _isInitialized
           ? _authService.state == AuthState.authenticated
-              ? HomeScreen(authService: _authService)
-              : LoginPage(authService: _authService)
+                ? HomeScreen(authService: _authService)
+                : LoginPage(authService: _authService)
           : const Scaffold(
               backgroundColor: Color(0xFF0A0E17),
               body: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF3B82F6),
-                ),
+                child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
               ),
             ),
     );
