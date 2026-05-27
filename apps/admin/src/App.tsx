@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ModerationPage from './features/moderation/ModerationPage';
+import ModerationDetailsPage from './features/moderation/ModerationDetailsPage';
+import { navigateToPath } from './navigation';
 
 const NAV_ITEMS = [
   { icon: '📊', label: 'Dashboard', id: 'dashboard' },
@@ -17,8 +19,42 @@ const STATS = [
   { label: 'Pending Moderation', value: '7', change: '-15%', color: 'var(--accent-orange)' },
 ];
 
+function getModerationDetailId(pathname: string) {
+  const match = pathname.match(/^\/admin\/moderation\/([^/]+)$/);
+  return match ? match[1] : null;
+}
+
 export default function App() {
-  const [activeNav, setActiveNav] = useState('dashboard');
+  const [activeNav, setActiveNav] = useState(() => (window.location.pathname.startsWith('/admin/moderation') ? 'moderation' : 'dashboard'));
+  const [moderationDetailId, setModerationDetailId] = useState<string | null>(() => getModerationDetailId(window.location.pathname));
+
+  useEffect(() => {
+    const syncRoute = () => {
+      const detailId = getModerationDetailId(window.location.pathname);
+      setActiveNav(window.location.pathname.startsWith('/admin/moderation') ? 'moderation' : 'dashboard');
+      setModerationDetailId(detailId);
+    };
+
+    window.addEventListener('popstate', syncRoute);
+    syncRoute();
+
+    return () => {
+      window.removeEventListener('popstate', syncRoute);
+    };
+  }, []);
+
+  const handleNavigation = (itemId: string) => {
+    setActiveNav(itemId);
+
+    if (itemId === 'moderation') {
+      setModerationDetailId(null);
+      navigateToPath('/admin/moderation');
+      return;
+    }
+
+    setModerationDetailId(null);
+    navigateToPath('/');
+  };
 
   return (
     <div className="app">
@@ -34,7 +70,7 @@ export default function App() {
               key={item.id}
               id={`nav-${item.id}`}
               className={`nav-item ${activeNav === item.id ? 'active' : ''}`}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => handleNavigation(item.id)}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
@@ -53,7 +89,9 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {activeNav === 'moderation' ? (
+        {moderationDetailId ? (
+          <ModerationDetailsPage requestId={moderationDetailId} />
+        ) : activeNav === 'moderation' ? (
           <ModerationPage />
         ) : (
           <>

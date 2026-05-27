@@ -1,43 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  type CandidateFilter,
-  type ModerationCandidate,
-  type CandidateStatus,
-  loadPendingCandidates,
-} from './mockModerationAdapter';
+import { type ModerationRequest, type ModerationStatus, loadPendingCandidates } from './mockModerationAdapter';
+import { navigateToPath } from '../../navigation';
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
-
-function matchesQuery(candidate: ModerationCandidate, query: string) {
+function matchesQuery(request: ModerationRequest, query: string) {
   if (!query) {
     return true;
   }
 
   const normalized = query.toLowerCase();
-  return [candidate.title, candidate.summary, candidate.source, candidate.reason]
+  return [request.name, request.summary, request.source, request.submittedBy, request.placeDetails.name]
     .join(' ')
     .toLowerCase()
     .includes(normalized);
 }
 
+function formatStatus(status: ModerationStatus) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 export default function ModerationPage() {
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<CandidateFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<CandidateStatus | 'all'>('all');
-  
+  const [filterType, setFilterType] = useState<'all-pending' | 'all'>('all-pending');
+  const [filterStatus, setFilterStatus] = useState<ModerationStatus | 'All'>('All');
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulateError, setSimulateError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
-  const [candidates, setCandidates] = useState<ModerationCandidate[]>([]);
-  const [selected, setSelected] = useState<ModerationCandidate | null>(null);
+  const [requests, setRequests] = useState<ModerationRequest[]>([]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -48,7 +38,7 @@ export default function ModerationPage() {
     loadPendingCandidates(simulateError)
       .then((items) => {
         if (!isCancelled) {
-          setCandidates(items);
+          setRequests(items);
         }
       })
       .catch((loadError: unknown) => {
@@ -67,21 +57,32 @@ export default function ModerationPage() {
     };
   }, [reloadToken, simulateError]);
 
-  const visibleCandidates = useMemo(() => {
-    return candidates.filter((candidate) => {
-      const typeMatches = filter === 'all' || candidate.type === filter;
-      const statusMatches = statusFilter === 'all' || candidate.status === statusFilter;
-      return typeMatches && statusMatches && matchesQuery(candidate, search);
-    });
-  }, [candidates, filter, search, statusFilter]);
+  const visibleRequests = useMemo(() => {
+    return requests.filter((request) => {
+      if (filterType === 'all-pending' && request.status !== 'pending') {
+        return false;
+      }
 
-  const handleDecision = (candidateId: string, newStatus: CandidateStatus) => {
-    setCandidates((current) => current.map((c) => (c.id === candidateId ? { ...c, status: newStatus } : c)));
+      if (filterStatus !== 'All' && request.status !== filterStatus) {
+        return false;
+      }
+
+      return matchesQuery(request, search);
+    });
+  }, [filterStatus, filterType, requests, search]);
+
+  const handleDecision = (requestId: string, newStatus: ModerationStatus) => {
+    setRequests((current) => current.map((request) => (request.id === requestId ? { ...request, status: newStatus } : request)));
   };
 
-  const totalCount = candidates.length;
-  const pendingCount = candidates.filter((c) => c.status === 'pending').length;
-  const approvedCount = candidates.filter((c) => c.status === 'approved').length;
+  const stats = useMemo(
+    () => ({
+      total: requests.length,
+      pending: requests.filter((request) => request.status === 'pending').length,
+      approved: requests.filter((request) => request.status === 'approved').length,
+    }),
+    [requests],
+  );
 
   return (
     <section className="moderation-page">
@@ -91,7 +92,7 @@ export default function ModerationPage() {
           <p className="page-subtitle">Review pending candidates without waiting for backend data.</p>
         </div>
         <div className="moderation-meta">
-          <span className="queue-pill">{visibleCandidates.length} pending</span>
+          <span className="queue-pill">{visibleRequests.length} pending</span>
           <button type="button" className="secondary-btn" onClick={() => setReloadToken((value) => value + 1)}>
             Refresh
           </button>
@@ -108,15 +109,15 @@ export default function ModerationPage() {
       <div className="moderation-summary">
         <div className="summary-card card">
           <div className="summary-label">Total</div>
-          <div className="summary-value">{totalCount}</div>
+          <div className="summary-value">{stats.total}</div>
         </div>
         <div className="summary-card card">
           <div className="summary-label">Pending</div>
-          <div className="summary-value">{pendingCount}</div>
+          <div className="summary-value">{stats.pending}</div>
         </div>
         <div className="summary-card card">
           <div className="summary-label">Approved</div>
-          <div className="summary-value">{approvedCount}</div>
+          <div className="summary-value">{stats.approved}</div>
         </div>
       </div>
 
@@ -134,25 +135,21 @@ export default function ModerationPage() {
 
         <label className="field">
           <span className="field-label">Filter</span>
-          <select className="control-input" value={filter} onChange={(event) => setFilter(event.target.value as CandidateFilter)}>
-            <option value="all">All pending</option>
-            <option value="place">Places</option>
-            <option value="review">Reviews</option>
-            <option value="user">Users</option>
+          <select className="control-input" value={filterType} onChange={(event) => setFilterType(event.target.value as 'all-pending' | 'all')}>
+            <option value="all-pending">All pending</option>
+            <option value="all">All</option>
           </select>
         </label>
 
         <label className="field">
           <span className="field-label">Status</span>
-          <select className="control-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as CandidateStatus | 'all')}>
+          <select className="control-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as ModerationStatus | 'All')}>
+            <option value="All">All</option>
             <option value="pending">Pending</option>
-            <option value="all">All</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
         </label>
-
-        {/* Sort removed per request */}
       </div>
 
       {loading ? (
@@ -168,16 +165,16 @@ export default function ModerationPage() {
             Retry
           </button>
         </div>
-      ) : visibleCandidates.length === 0 ? (
+      ) : visibleRequests.length === 0 ? (
         <div className="state-card card">
-          <div className="state-title">No pending candidates</div>
+          <div className="state-title">No requests found</div>
           <div className="state-copy">Try another search term or clear the selected filter.</div>
         </div>
       ) : (
         <div className="card moderation-table-card">
           <div className="moderation-table-header">
             <h3 className="card-title">Pending Candidates</h3>
-            <span className="moderation-count">{visibleCandidates.length} items</span>
+            <span className="moderation-count">{visibleRequests.length} items</span>
           </div>
 
           <div className="moderation-table-scroll">
@@ -185,7 +182,6 @@ export default function ModerationPage() {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Type</th>
                   <th>Submitted</th>
                   <th>Submitted By</th>
                   <th>Status</th>
@@ -193,162 +189,38 @@ export default function ModerationPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleCandidates.map((candidate) => (
-                  <tr key={candidate.id}>
+                {visibleRequests.map((request) => (
+                  <tr key={request.id}>
                     <td>
                       <div className="candidate-cell">
-                        <div className="candidate-title">{candidate.title}</div>
-                        <div className="candidate-subtitle">{candidate.source}</div>
+                        <div className="candidate-title">{request.name}</div>
+                        <div className="candidate-subtitle">{request.source}</div>
                       </div>
                     </td>
+                    <td>{request.submittedAt}</td>
                     <td>
-                      <span className={`type-pill type-${candidate.type}`}>{candidate.type}</span>
-                    </td>
-                    <td>{formatDate(candidate.createdAt)}</td>
-                    <td>
-                      <div className="candidate-submitter">{candidate.submittedBy?.username ?? '—'}</div>
+                      <div className="candidate-submitter">{request.submittedBy}</div>
                     </td>
                     <td>
-                      <div className={`status-pill status-${candidate.status}`}>{candidate.status}</div>
+                      <div className={`status-pill status-${request.status}`}>{formatStatus(request.status)}</div>
                     </td>
                     <td>
                       <div className="table-actions">
-                        <button type="button" className="approve-btn" onClick={() => handleDecision(candidate.id, 'approved')}>
+                        <button type="button" className="approve-btn" onClick={() => handleDecision(request.id, 'approved')}>
                           Approve
                         </button>
-                        <button type="button" className="reject-btn" onClick={() => handleDecision(candidate.id, 'rejected')}>
+                        <button type="button" className="reject-btn" onClick={() => handleDecision(request.id, 'rejected')}>
                           Reject
                         </button>
-                        <button type="button" className="secondary-btn" onClick={() => setSelected(candidate)}>
+                        <a className="secondary-btn view-link" href={`/admin/moderation/${request.id}`} onClick={(event) => { event.preventDefault(); navigateToPath(`/admin/moderation/${request.id}`); }}>
                           View
-                        </button>
+                        </a>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {selected && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-card card">
-            <div className="modal-header">
-              <h3 className="card-title">{selected.title}</h3>
-              <button className="secondary-btn" onClick={() => setSelected(null)}>Close</button>
-            </div>
-            <div className="modal-body modal-grid">
-              <div className="modal-left">
-                <div className="modal-row">
-                  <strong>Type:</strong> {selected.type}
-                </div>
-                <div className="modal-row">
-                  <strong>Submitted by:</strong> {selected.submittedBy?.username}
-                </div>
-                <div className="modal-row">
-                  <strong>Submitted:</strong> {formatDate(selected.createdAt)}
-                </div>
-                <div className="modal-row">
-                  <strong>Summary:</strong>
-                  <div className="candidate-reason">{selected.summary}</div>
-                </div>
-
-                {selected.type === 'place' && selected.payload && 'name' in selected.payload && (
-                  <div className="detail-section place-details">
-                    <h4 className="detail-title">Place details</h4>
-                    <div className="detail-row"><strong>Name:</strong> {(selected.payload as any).name}</div>
-                    <div className="detail-row"><strong>Address:</strong> {(selected.payload as any).address}</div>
-                    <div className="detail-row"><strong>Phone:</strong> {(selected.payload as any).phone ?? '—'}</div>
-                    <div className="detail-row"><strong>Description:</strong> {(selected.payload as any).description}</div>
-                    <div className="detail-row"><strong>Amenities:</strong>
-                      <div className="amenities-list">
-                        {Object.entries((selected.payload as any).amenities)
-                          .filter(([, v]) => !!v)
-                          .map(([k]) => (
-                            <span key={k} className={`amenity-pill`}>{k}</span>
-                          ))}
-                      </div>
-                    </div>
-                    {(selected.payload as any).posterReview && (
-                      <div className="poster-review">
-                        <h5 className="detail-subtitle">Poster review</h5>
-                        <div className="rating-stars">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <span key={i} className={`star ${i < (selected.payload as any).posterReview.rating ? 'filled' : ''}`}>★</span>
-                          ))}
-                        </div>
-                        <div className="candidate-reason">{(selected.payload as any).posterReview.text}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {selected.type === 'review' && selected.payload && 'rating' in selected.payload && (
-                  <div className="detail-section review-details">
-                    <h4 className="detail-title">Review details</h4>
-                    <div className="detail-row"><strong>Rating:</strong>
-                      <div className="rating-stars">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span key={i} className={`star ${i < (selected.payload as any).rating ? 'filled' : ''}`}>★</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="detail-row"><strong>Feedback:</strong>
-                      <div className="candidate-reason">{(selected.payload as any).feedback}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="modal-right">
-                {/* Images and media */}
-                {selected.type === 'place' && selected.payload && 'images' in (selected.payload as any) && (
-                  <div className="image-galleries">
-                    <div className="gallery">
-                      <div className="gallery-title">Menu</div>
-                      <div className="images-row">
-                        {((selected.payload as any).images.menu || []).map((src: string, i: number) => (
-                          <img key={`m${i}`} src={src} alt={`menu-${i}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="gallery">
-                      <div className="gallery-title">Space</div>
-                      <div className="images-row">
-                        {((selected.payload as any).images.space || []).map((src: string, i: number) => (
-                          <img key={`s${i}`} src={src} alt={`space-${i}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="gallery">
-                      <div className="gallery-title">Dishes</div>
-                      <div className="images-row">
-                        {((selected.payload as any).images.dishes || []).map((src: string, i: number) => (
-                          <img key={`d${i}`} src={src} alt={`dish-${i}`} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selected.type === 'review' && selected.payload && 'images' in (selected.payload as any) && (
-                  <div className="gallery">
-                    <div className="gallery-title">Review images</div>
-                    <div className="images-row">
-                      {((selected.payload as any).images || []).map((src: string, i: number) => (
-                        <img key={`r${i}`} src={src} alt={`review-${i}`} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="approve-btn" onClick={() => { handleDecision(selected.id, 'approved'); setSelected(null); }}>Approve</button>
-              <button className="reject-btn" onClick={() => { handleDecision(selected.id, 'rejected'); setSelected(null); }}>Reject</button>
-            </div>
           </div>
         </div>
       )}

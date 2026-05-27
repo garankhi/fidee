@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, it, expect } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
 import ModerationPage from './features/moderation/ModerationPage';
+
+beforeEach(() => {
+  window.history.pushState({}, '', '/');
+});
 
 describe('App', () => {
   it('renders the dashboard title', () => {
@@ -41,16 +45,17 @@ describe('ModerationPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading moderation queue');
     expect(await screen.findByText('Rooftop Bar Saigon')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: 'review' } });
+    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: 'all' } });
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'approved' } });
 
-    expect(screen.getByText('Spam review on Banh Mi Huynh Hoa')).toBeInTheDocument();
-    expect(screen.getByText('Off-topic review for train station')).toBeInTheDocument();
+    expect(screen.getByText('Night Noodle Corner')).toBeInTheDocument();
+    expect(screen.queryByText('Rooftop Bar Saigon')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Search by title, source, or reason'), {
       target: { value: 'no matches here' },
     });
 
-    expect(await screen.findByText('No pending candidates')).toBeInTheDocument();
+    expect(await screen.findByText('No requests found')).toBeInTheDocument();
   });
 
   it('shows an error state when the mock adapter fails', async () => {
@@ -59,5 +64,18 @@ describe('ModerationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Simulate error' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load moderation queue.');
+  });
+
+  it('opens the detail page by id from the moderation list', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /moderation/i }));
+
+    expect(await screen.findByText('Pending Candidates')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('link', { name: 'View' })[0]);
+
+    expect(await screen.findByRole('heading', { name: 'Rooftop Bar Saigon', level: 2 })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/admin/moderation/cand-1001');
   });
 });
