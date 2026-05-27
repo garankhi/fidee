@@ -1,0 +1,7 @@
+{
+  "status": "error",
+  "error": {
+    "code": "MISSING_PARAMS",
+    "message": "Required parameters: lat, lng, context, media_id"
+  }
+}

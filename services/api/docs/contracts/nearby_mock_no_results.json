@@ -1,0 +1,30 @@
+{
+  "status": "success",
+  "metadata": {
+    "source": "goong_places",
+    "has_goong_fallback": true,
+    "total_results": 1,
+    "request_lat": 10.820000,
+    "request_lng": 106.630000,
+    "radius_meters": 50
+  },
+  "data": [
+    {
+      "id": "custom_fallback",
+      "place_id": null,
+      "source": "custom",
+      "display_name": "Tạo địa điểm mới tại đây",
+      "address": "Khu vực chưa có địa điểm đăng ký",
+      "category": "custom",
+      "distance_meters": 0,
+      "confidence": "low",
+      "coordinates": {
+        "lat": 10.820000,
+        "lng": 106.630000
+      },
+      "actions": {
+        "primary": "create_custom_place"
+      }
+    }
+  ]
+}

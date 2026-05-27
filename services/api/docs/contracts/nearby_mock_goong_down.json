@@ -1,0 +1,30 @@
+{
+  "status": "success",
+  "metadata": {
+    "source": "goong_places",
+    "has_goong_fallback": false,
+    "total_results": 1,
+    "request_lat": 10.771597,
+    "request_lng": 106.704416,
+    "radius_meters": 50
+  },
+  "data": [
+    {
+      "id": "custom_fallback",
+      "place_id": null,
+      "source": "custom",
+      "display_name": "Tạo địa điểm mới tại đây",
+      "address": "10.7716°N, 106.7044°E",
+      "category": "custom",
+      "distance_meters": 0,
+      "confidence": "low",
+      "coordinates": {
+        "lat": 10.771597,
+        "lng": 106.704416
+      },
+      "actions": {
+        "primary": "create_custom_place"
+      }
+    }
+  ]
+}
