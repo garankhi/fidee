@@ -9,102 +9,158 @@
 | **Owner** | Nguyễn Thế Minh (Product / Tech Lead) |
 | **Created Date** | October 2025 |
 | **Status** | Approved |
+| **MVP Business Rules** | See `docs/MapVibe_Business_Rules.md` |
 
 ## 2. Executive Summary
 
 ### 2.1 Product Overview
-MapVibe is an intelligent, AI-driven map discovery web platform that helps diners and explorers find suitable locations by translating natural language prompts into structured search parameters. It leverages Amazon Bedrock and a serverless AWS architecture to provide personalized, scalable, and intelligent location discovery.
+MapVibe MVP is an AI-search web app paired with a camera-first social food discovery mobile flow. Users can search food places quickly with simple keyword-based search, and can also capture a real food/place moment in the app, attach the photo to a nearby place using GPS proof, and share it with a trusted friend circle. The MVP keeps AI search lightweight first: keyword matching over MapVibe place data, without Bedrock, knowledge base retrieval, or complex intent parsing.
 
 ### 2.2 Problem Statement
-Conventional map platforms (e.g., Google Maps) rely heavily on static filters and basic keyword searches (e.g., "nearby restaurants"). They struggle to process nuanced, context-rich human intent like *"find a luxury rooftop restaurant with a city view open until midnight."*
+Conventional map and review platforms are too broad for quick food decisions. Users need a fast way to search places, but they also still ask friends where to eat because public reviews can feel generic, seeded, or disconnected from their own taste circle.
 
 ### 2.3 Proposed Solution
-MapVibe bridges the gap between human intent and map-based data retrieval. Users can express their needs in natural language, and the AI engine interprets the context (mood, time, purpose). The platform also features AI-summarized place overviews, user-generated reviews, and robust content moderation.
+MapVibe combines simple search and real check-ins by friends. The MVP validates two loops: keyword-based place discovery on web, and private social food sharing on mobile. Bedrock-powered natural-language search, AI summaries, semantic knowledge base retrieval, and shop monetization are later phases after the core data and social loop are useful.
 
 ## 3. Goals and Non-Goals
 
 ### 3.1 Goals
 | Goal ID | Goal | Success Metric |
 |---|---|---|
-| G-01 | Accurate Natural Language Search | >90% successful AI intent parsing rate |
-| G-02 | Optimize Cloud Infrastructure Costs | Maintain <$200 AWS budget over 8 weeks (95% cache hit rate) |
-| G-03 | Ensure Safe User-Generated Content | 100% of uploaded images pass automated moderation |
+| G-01 | Provide fast food place discovery | Users can search places by simple keyword/category/location-style text |
+| G-02 | Validate camera-first food check-in loop | Users can capture photo, select nearby place, and publish friends-only check-in |
+| G-03 | Build trusted friend-based food discovery | Friends can view, comment, upvote, and save shared places |
+| G-04 | Ensure safe user-generated content | 100% of uploaded images pass automated moderation |
+| G-05 | Optimize cloud and provider costs | Maintain <$200 AWS budget over 8 weeks with GOONG/SMS quota guardrails |
 
 ### 3.2 Non-Goals
 | Non-Goal ID | Description | Reason |
 |---|---|---|
 | NG-01 | In-app food delivery or reservations | Out of scope for discovery MVP. Focus is purely on search and curation. |
 | NG-02 | Real-time chat between users | Increases architectural complexity and moderation overhead unnecessarily. |
+| NG-03 | Map-first check-in flow | Deferred to keep MVP focused on camera-first creation. |
+| NG-04 | Bedrock/KB-powered natural-language search | Phase 2. MVP search uses simple keyword matching first. |
+| NG-05 | Paid shop boost dashboard | Requires enough users and quality controls before monetization. |
 
 ## 4. Target Users and Personas
 
 | Persona / Role | Characteristics | Main Needs & Permissions |
 |---|---|---|
-| **Guest / Registered User (Diners)** | Looking for specific dining experiences based on mood/context. | Search via prompt, view AI summaries. Registered users can submit reviews, upload photos, and suggest places. |
-| **Moderator (Community Team)** | Ensures platform quality and accuracy. | Approve/reject new place suggestions and resolve reported reviews. |
-| **Admin (Ops / Platform)** | Manages the overall system health and users. | Configure system, manage users, assign badges, observe CloudWatch metrics. |
+| **Search User (Web)** | Wants a fast way to find food places. | Search by keyword/category/location-style text, view place results and details. |
+| **Registered User (Diners)** | Shares food moments with friends and looks for trusted friend-based recommendations. | Capture in-app photos, attach nearby places, create friends-only check-ins, save places, suggest custom places. |
+| **Friend Viewer** | Consumes check-ins from mutual friends. | View feed, comment, upvote, save places shared by friends. |
+| **Moderator (Community Team)** | Ensures place quality and safety. | Review custom place candidates, duplicate matches, media moderation, and public promotion requests. |
+| **Admin (Ops / Platform)** | Manages system health, data quality, and guardrails. | Configure system, manage users, review audit logs, observe CloudWatch metrics, monitor cost/quota. |
 
 ## 5. Feature Requirements & Scope
 
 ### 5.1 In Scope for MVP
-* Natural language prompt-based search powered by Amazon Bedrock.
-* Category and trending searches based on engagement algorithms.
-* Place details pages with automated AI summarizations (7-day refresh).
-* User content generation: Reviews, image uploads (with Rekognition moderation), and place suggestions.
-* Admin and Moderator dashboards.
-* Gamification: Automated badge assignments (Bronze, Silver, Gold).
+* Web app with simple keyword-based food place search.
+* Basic place result and place detail experience.
+* Flutter Android-first camera capture flow.
+* GPS proof captured by the app during photo capture.
+* Nearby place resolver after capture: `GET /places/nearby` with `context=camera_check_in`.
+* Place selection from public `Place`, friends-visible `PlaceCandidate`, and guarded GOONG fallback.
+* Custom place candidate creation when nearby results are incorrect or missing.
+* Friends-only check-in feed with comment/upvote.
+* Saved food list/my map for places and candidates.
+* Rekognition moderation for uploaded media.
+* Admin/moderator review for candidate approval, merge, reject, and duplicate handling.
 
 ## 6. Detailed Functional Requirements
 
 ### 6.1 Search & Discovery
-**FR-01: Prompt-Based Search (Core Feature)**
-* **Description:** Accepts a text prompt, utilizes Bedrock LLM to extract structured filters (cuisine, price, location, mood), and queries DynamoDB using a geo-index.
+**FR-01: Simple Keyword Search**
+* **Description:** Users can search MapVibe places quickly from the web app using simple text input.
 * **Acceptance Criteria:**
-    * System successfully sanitizes prompt for safety before sending to Bedrock.
-    * Identical prompts within 24 hours return cached responses to save AI token costs.
-    * Guest users can perform searches without authentication.
+    * Search supports simple keyword/category/location-style query over available place data.
+    * Search does not require Bedrock, knowledge base retrieval, vector search, or complex prompt parsing for MVP.
+    * Results show place name, category, address, and enough metadata for a basic place detail page.
 
-**FR-03: Trending and Recommendation Feed**
-* **Description:** Displays a horizontal carousel of highly-rated/visited restaurants updated daily.
-* **Acceptance Criteria:** Trending weight must be calculated as `(views * rating * recency)` via EventBridge nightly cron job.
-
-### 6.2 Restaurant Details & AI Integration
-**FR-04 & FR-15: View Details & AI Summarization**
-* **Description:** Displays basic info, photos, reviews, and an AI-generated overview of the place.
-* **Acceptance Criteria:** AI summary must automatically refresh if the text is > 7 days old or if the place receives > 10 new reviews.
-
-### 6.3 User-Generated Content & Moderation
-**FR-07: Write a Review & Photo Upload**
-* **Description:** Authenticated users can submit text, ratings (Food, Price, Service), and photos via presigned S3 URLs.
+### 6.2 Camera-First Check-In
+**FR-02: In-App Camera Capture**
+* **Description:** Authenticated users start the MVP creation loop from the camera, not from map-first browsing.
 * **Acceptance Criteria:**
-    * System restricts users to 1 active review per restaurant.
-    * Uploaded photos must pass AWS Rekognition checks for NSFW/disallowed content.
+    * Mobile opens camera from the main action.
+    * App captures GPS, timestamp, and accuracy at photo time.
+    * App does not accept manually entered lat/lng for check-in creation.
 
-**FR-10: Suggest New Place**
-* **Description:** Users can submit new locations for the map.
-* **Acceptance Criteria:** System must run deduplication logic comparing normalized names and a 100m geo-radius before marking as "pending" for moderators.
+**FR-03: Media Upload and Moderation**
+* **Description:** Captured media is uploaded through a controlled flow and checked for safety.
+* **Acceptance Criteria:**
+    * Backend exposes protected `POST /media/uploads` and returns a presigned S3 POST for authenticated users.
+    * Presigned POST only allows `image/jpeg`, `image/png`, or `image/webp`, with maximum upload size 5MB.
+    * Upload metadata must include `mediaId`, owner user id, source, latitude, longitude, and optional captured timestamp and accuracy.
+    * Free users can upload `IN_APP_CAMERA` media but cannot upload `EXIF_GALLERY` media.
+    * Pro users can upload both `IN_APP_CAMERA` and `EXIF_GALLERY` media.
+    * S3 object-created events flow through EventBridge, SQS, and a worker Lambda before creating `Media` with `PENDING_MODERATION`.
+    * Disallowed or unmoderated content cannot become visible in friends feed.
+
+### 6.3 Nearby Place Selection
+**FR-04: Camera Context Nearby Resolver**
+* **Description:** After photo capture, app calls `GET /places/nearby` using captured GPS to help user attach the photo to the correct place.
+* **Acceptance Criteria:**
+    * Request supports `lat`, `lng`, `radius`, `context=camera_check_in`, and optional `media_id`.
+    * Radius defaults to 100 meters and is capped at 300 meters for MVP.
+    * Results include public `Place`, friends-visible `PlaceCandidate`, and guarded GOONG fallback when needed.
+    * Each result includes `source`, `confidence`, `distance_meters`, `display_name`, `category`, and `address`.
+
+**FR-05: Custom Place Candidate Creation**
+* **Description:** If no nearby result is correct, user can create a custom place candidate from the captured GPS proof.
+* **Acceptance Criteria:**
+    * Candidate is friends-visible by default.
+    * Backend checks duplicate places/candidates before creation.
+    * Candidate does not become public without admin approval or merge.
+
+### 6.4 Social Discovery
+**FR-06: Friends-Only Check-In Feed**
+* **Description:** Friends see check-ins shared by mutual friends.
+* **Acceptance Criteria:**
+    * Check-in post includes media plus selected `Place` or `PlaceCandidate`.
+    * Only mutual friends can view friends-only posts.
+    * Friends can comment and upvote.
+
+**FR-07: Saved Food List / My Map**
+* **Description:** Users can save public places or eligible friends-visible candidates to a personal list/map.
+* **Acceptance Criteria:**
+    * Saved items are not duplicated for the same user/place.
+    * Saved visibility respects place/candidate permissions.
+
+### 6.5 Admin and Moderation
+**FR-08: Candidate Review and Merge**
+* **Description:** Admin/moderator reviews place candidates and duplicate suggestions before public promotion.
+* **Acceptance Criteria:**
+    * Admin can approve, merge, reject, or request more evidence.
+    * Reject and merge actions require reason.
+    * Admin decisions write audit logs.
 
 ## 7. Business Rules
 
 | Rule ID | Rule | Applies To |
 |---|---|---|
-| BR-04 / 05 | Only authenticated users can review; limited to ONE review per place per user. | Registered Users |
-| BR-08 | All images must pass Rekognition moderation automatically. | System |
-| BR-10 | Users can edit a review freely within 24 hours; edits after 24h require Moderator re-approval. | Users / Moderators |
-| BR-13 | Cached AI query results must be reused for identical prompts within a 24-hour window to minimize cost. | System |
+| BR-01 | MVP creation flow is camera-first. Map-first check-in is deferred. | Mobile / Product |
+| BR-02 | MVP web search is simple keyword matching, not Bedrock/KB-powered prompt search. | Web / Backend |
+| BR-03 | Check-ins and custom place candidates require app-captured GPS proof. | Mobile / Backend |
+| BR-04 | Custom places are `PlaceCandidate` records and are friends-visible by default. | Backend / Admin |
+| BR-05 | Public `Place` records require seed, admin approval, or admin merge. | Admin / Data |
+| BR-06 | Friends-only content is visible only to accepted mutual friends. | Backend / Mobile |
+| BR-07 | GOONG Places is fallback/reference only, not source of truth. | Backend / Data |
+| BR-08 | Admin approve, reject, and merge decisions must write audit logs. | Admin / Backend |
+
+Full business rule details, mock nearby JSON, and design scope guidance live in `docs/MapVibe_Business_Rules.md`.
 
 ## 8. System Architecture & Constraints
 
 ### 8.1 Technical Architecture
 MapVibe is a serverless, event-driven web application on AWS (ap-southeast-1). Key components include:
 * **Edge & API:** Route 53, CloudFront, WAF, API Gateway.
-* **Compute:** AWS Lambda microservices, EventBridge for chron jobs.
-* **Data & Storage:** DynamoDB (stateless API persistence), S3 (media storage).
-* **AI & Security:** Amazon Bedrock, Rekognition, Cognito (JWT Auth).
+* **Compute:** AWS Lambda microservices, EventBridge for routing upload events and scheduled jobs, SQS for retryable async processing.
+* **Data & Storage:** DynamoDB for places, profiles, and media records; S3 for direct media uploads.
+* **AI & Security:** Amazon Bedrock for later AI phases, Rekognition, Cognito JWT auth, and source-based media license checks.
 
 ### 8.2 Non-Functional Requirements
-* **Performance:** Results cached for 10 minutes (Category) or 24 hours (Prompt). 95% AI cache hit rate expected.
-* **Security:** Least-privilege IAM policies, prompt-injection sanitization for Bedrock, Token expiry auto sign-out.
+* **Performance:** Simple search and nearby resolver should return quickly enough for MVP UI. Nearby resolver should avoid unnecessary GOONG fallback calls.
+* **Security:** Least-privilege IAM policies, Cognito token expiry auto sign-out, no hardcoded API keys, and no manual lat/lng bypass for GPS proof flows.
 
 ## 9. Cost & Budget Management (Crucial Constraint)
 

@@ -85,12 +85,18 @@ describe('MapVibeStack', () => {
 
   it('creates core resources', () => {
     template.resourceCountIs('AWS::Cognito::UserPool', 1);
-    template.resourceCountIs('AWS::DynamoDB::Table', 1);
+    template.resourceCountIs('AWS::DynamoDB::Table', 2);
     template.resourceCountIs('AWS::S3::Bucket', 1);
     template.resourceCountIs('AWS::CloudFront::Distribution', 1);
     template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'mapvibe-dev-search',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-create-media-upload',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-handle-media-uploaded',
     });
     mediaTemplate.resourceCountIs('AWS::WAFv2::WebACL', 1);
     template.resourceCountIs('AWS::WAFv2::WebACL', 1);
@@ -141,12 +147,25 @@ describe('MapVibeStack', () => {
     });
   });
 
+  it('creates a protected POST /media/uploads endpoint', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'mapvibe-dev-create-media-upload',
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'POST',
+      AuthorizationType: 'COGNITO_USER_POOLS',
+    });
+  });
+
   it('names dev resources with mapvibe-dev prefix', () => {
     template.hasResourceProperties('AWS::Cognito::UserPool', {
       UserPoolName: 'mapvibe-dev-users',
     });
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       TableName: 'mapvibe-dev-places',
+    });
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 'mapvibe-dev-user-profiles',
     });
     template.hasResourceProperties('AWS::ApiGateway::RestApi', {
       Name: 'mapvibe-dev-api',
@@ -205,6 +224,52 @@ describe('MapVibeStack', () => {
     });
   });
 
+  it('enables S3 EventBridge notifications for media uploads', () => {
+    template.hasResourceProperties('Custom::S3BucketNotifications', {
+      NotificationConfiguration: {
+        EventBridgeConfiguration: {},
+      },
+    });
+  });
+
+  it('routes media upload object-created events through EventBridge to SQS', () => {
+    template.resourceCountIs('AWS::SQS::Queue', 2);
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: 'mapvibe-dev-media-upload-events',
+      RedrivePolicy: {
+        deadLetterTargetArn: Match.anyValue(),
+        maxReceiveCount: 3,
+      },
+    });
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: 'mapvibe-dev-media-upload-events-dlq',
+    });
+    template.hasResourceProperties('AWS::Events::Rule', {
+      Name: 'mapvibe-dev-media-upload-object-created',
+      EventPattern: Match.objectLike({
+        source: ['aws.s3'],
+        'detail-type': ['Object Created'],
+        detail: Match.objectLike({
+          object: {
+            key: [{ prefix: 'uploads/' }],
+          },
+        }),
+      }),
+      Targets: Match.arrayWith([
+        Match.objectLike({
+          Arn: Match.anyValue(),
+        }),
+      ]),
+    });
+  });
+
+  it('configures the media upload worker to consume SQS events', () => {
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      BatchSize: 10,
+      EventSourceArn: Match.anyValue(),
+    });
+  });
+
   it('creates CloudFront-scoped media WAF', () => {
     mediaTemplate.hasResourceProperties('AWS::WAFv2::WebACL', {
       Name: 'mapvibe-dev-media-waf',
@@ -255,9 +320,7 @@ describe('MapVibeStack', () => {
     // not ARN resources. This is an AWS limitation. Filter these out.
     const nonSnsStatements = statements.filter((statement) => {
       const statementActions = asArray(statement.Action);
-      return !statementActions.some(
-        (a) => typeof a === 'string' && a === 'sns:Publish',
-      );
+      return !statementActions.some((a) => typeof a === 'string' && a === 'sns:Publish');
     });
     const resources = nonSnsStatements.flatMap((statement) => asArray(statement.Resource));
 

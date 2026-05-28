@@ -2,9 +2,9 @@
 
 ## 1. Tổng quan
 
-MapVibe MVP v1 là ứng dụng mobile social discovery cho ăn uống. Người dùng mở app tại quán, chụp ảnh bằng camera trong app, scan khu vực xung quanh để chọn địa điểm có sẵn hoặc tạo địa điểm tùy chỉnh, rồi lưu vào bản đồ/danh sách quán của mình để bạn bè xem.
+MapVibe MVP v1 là AI-search web app đi kèm mobile social discovery cho ăn uống. Web app cho user tìm quán nhanh bằng keyword/category/location-style text đơn giản. Mobile app cho user mở app tại quán, chụp ảnh bằng camera trong app, scan khu vực xung quanh để chọn địa điểm có sẵn hoặc tạo địa điểm tùy chỉnh, rồi lưu vào bản đồ/danh sách quán của mình để bạn bè xem.
 
-Khác backlog cũ, MVP này không lấy AI search làm lõi. Lõi sản phẩm là vòng lặp:
+MVP vẫn giữ hướng AI search, nhưng bản đầu làm nhẹ bằng keyword/simple search, chưa tích hợp Bedrock, knowledge base, semantic search hoặc prompt parsing phức tạp. Lõi social discovery là vòng lặp:
 
 1. Chụp ảnh/check-in tại quán.
 2. Gợi ý địa điểm gần đó.
@@ -20,25 +20,27 @@ Khác backlog cũ, MVP này không lấy AI search làm lõi. Lõi sản phẩm 
 - **Backend:** AWS serverless, event-driven.
 - **IaC:** AWS CDK TypeScript.
 - **Auth:** Amazon Cognito Phone OTP.
-- **Map provider:** Google Maps SDK.
+- **Map provider:** GOONG Map SDK/API.
+- **Web search MVP:** Keyword/simple search trên MapVibe place data, chưa dùng Bedrock/KB.
 - **Place resolver:** Hybrid resolver.
   - Ưu tiên MapVibe DB.
-  - Fallback Google Places Nearby/Autocomplete khi match yếu.
-  - Google `place_id` chỉ là external reference, không là source of truth.
+  - Fallback GOONG Places/Nearby/Autocomplete khi match yếu.
+  - GOONG `place_id` chỉ là external reference, không là source of truth.
 - **Nguồn dữ liệu public:** MapVibe DynamoDB.
 - **Custom place:** Friends-visible mặc định, không public ngay.
 - **Public toggle:** "Đề xuất công khai", tạo admin review candidate, không publish trực tiếp.
 - **Giới hạn tạo custom place:** 5 địa điểm/người dùng/ngày.
 - **Promotion:** Score + admin queue.
 - **External social signals:** Không nằm trong MVP.
-- **AI search, AI summary, gamification:** Phase 2.
+- **Bedrock AI search, AI summary, gamification:** Phase 2.
 - **LocalStack:** Không dùng. Dev/test dùng AWS dev.
-- **Budget:** PRD giữ ngân sách AWS <$200/8 tuần. Google Maps/Places và SMS OTP theo quota/cost guardrail riêng.
+- **Budget:** PRD giữ ngân sách AWS <$200/8 tuần. GOONG Map/Places và SMS OTP theo quota/cost guardrail riêng.
+- **Business rules:** Xem `docs/MapVibe_Business_Rules.md` để khóa MVP camera-first, rule place selection, mock JSON và scope guide cho design.
 
 ### 1.2 Non-goals của MVP
 
 - Không build website người dùng.
-- Không dùng Full Places API làm nguồn dữ liệu chính.
+- Không dùng Full GOONG Places API làm nguồn dữ liệu chính.
 - Không tự động crawl TikTok/Instagram/Facebook/YouTube.
 - Không auto-publish địa điểm public dựa trên số vote/comment.
 - Không cho user nhập lat/lng thủ công để tạo địa điểm.
@@ -68,7 +70,7 @@ Jira issue không bắt buộc phải gắn component/folder. Dùng label chỉ 
 - `Social`: friendship, feed, reactions, comments.
 - `Moderation`: Rekognition, admin queue, audit log.
 - `Admin`: internal admin web.
-- `Cost`: AWS budgets, Google quota, SMS guardrails.
+- `Cost`: AWS budgets, GOONG quota, SMS guardrails.
 
 ### 2.3 Priority
 
@@ -98,6 +100,83 @@ Một ticket chỉ được coi là Done khi:
 - Không hardcode secret/API key trong repo.
 - Có cập nhật docs khi behavior/API đổi.
 
+### 2.6 Backlog board hiển thị trong Jira
+
+Backlog nên quản lý bằng Jira Scrum board, không chỉ bằng danh sách daily plan trong docs.
+
+**Board columns:**
+
+| Column | Ý nghĩa | Rule kéo ticket |
+|---|---|---|
+| `Backlog` | Việc chưa vào sprint hiện tại. | Chỉ chứa ticket chưa cần làm ngay hoặc can-slip. |
+| `Selected for Sprint` | Việc đã commit cho sprint. | PM/lead kéo vào trước sprint planning. |
+| `In Progress` | Đang code/design/test. | Assignee tự kéo khi bắt đầu làm trong ngày. |
+| `Blocked` | Bị chặn bởi API/design/test data/quyết định scope. | Phải ghi blocker rõ trong comment. |
+| `In Review` | Chờ review code/UI/contract. | Có PR, mock, screenshot, hoặc contract draft để review. |
+| `QA / Evidence` | Đang smoke/integration/đính evidence. | Duy hoặc owner chạy test, attach pass/fail. |
+| `Done` | Hoàn tất theo Definition of Done. | AC pass, test/evidence đủ, docs cập nhật nếu cần. |
+
+**Quick filters nên có:**
+
+- `Assignee = Minh`
+- `Assignee = ty ty`
+- `Assignee = Hân`
+- `Assignee = Duy`
+- `Label/Component = Mobile`
+- `Label/Component = Backend`
+- `Label/Component = Admin`
+- `Label/Component = QA`
+- `Priority = P0`
+- `Blocked only`
+
+**Swimlane khuyến nghị:**
+
+- Dùng `Stories` để parent story nằm đầu swimlane, subtask nằm dưới.
+- Khi daily standup, nhìn theo assignee filter trước, rồi mở swimlane parent để thấy flow có bị lệch hay không.
+- Không quản lý bằng epic quá sớm trong daily vì team cần thấy task nhỏ theo ngày.
+
+### 2.7 Cách chia task trong backlog
+
+Task daily phải là subtask nhỏ, có owner rõ, output test được trong 0.5-2 ngày. Parent story giữ business capability; subtask là việc triển khai cụ thể.
+
+| Parent | Capability | Subtasks dùng trong lịch daily |
+|---|---|---|
+| `MAP-13` | Camera capture, upload, media record | `MAP-31`, `MAP-32`, `MAP-33` |
+| `MAP-14` | Nearby resolver sau khi chụp ảnh | `MAP-35`, `MAP-36`, `MAP-37`, `MAP-38`, `MAP-39` |
+| `MAP-15` | Custom place + dedupe | `MAP-40`, `MAP-41`, `MAP-42`, `MAP-43` |
+| `MAP-24` | Rekognition moderation pipeline | `MAP-44`, `MAP-45` |
+| `MAP-25` | Admin review public request | `MAP-46`, `MAP-47`, `MAP-48`, `MAP-49` |
+| `MAP-27` | Curated seed places | `MAP-50`, `MAP-51` |
+| `MAP-28` | MVP test matrix/evidence | `MAP-52`, `MAP-53`, `MAP-54`, `MAP-55` |
+| `MAP-29` | Internal release/runbook | `MAP-56`, `MAP-57` |
+| `MAP-10` | Guardrails/quota/abuse | `MAP-59`, `MAP-60` |
+| `MAP-16` | Saved places optional polish | `MAP-62` |
+
+**Task split rules:**
+
+- Backend API ticket phải có contract, validation, permission, tests/logging tối thiểu.
+- Mobile ticket phải có happy path, loading/error state, mock/API adapter rõ.
+- Admin UI ticket phải có list/detail/action state, nhưng không cần polish quá mức trước API stable.
+- QA ticket phải ghi input case, expected result, pass/fail, bug list.
+- Evidence ticket không được dùng để build feature mới; chỉ xác nhận feature đã xong.
+
+### 2.8 Sprint setup
+
+Daily plan chia thành 2 sprint ngắn để dễ quản lý scope và demo.
+
+| Sprint | Dates | Goal | Main tickets |
+|---|---|---|---|
+| `MAP Sprint 2` | 2026-05-26 to 2026-06-02 | Camera-first foundation: upload, GPS proof, nearby resolver, custom place, seed, admin mock. | `MAP-31`, `MAP-32`, `MAP-33`, `MAP-35`, `MAP-36`, `MAP-37`, `MAP-38`, `MAP-39`, `MAP-40`, `MAP-41`, `MAP-42`, `MAP-43`, `MAP-44`, `MAP-45`, `MAP-46`, `MAP-47`, `MAP-50`, `MAP-51`, `MAP-52` |
+| `MAP Sprint 3` | 2026-06-03 to 2026-06-06 | Integration hardening: admin review API, mobile/admin smoke evidence, guardrails, quota docs, release notes. | `MAP-48`, `MAP-49`, `MAP-52`, `MAP-53`, `MAP-54`, `MAP-55`, `MAP-56`, `MAP-57`, `MAP-59`, `MAP-60`, optional `MAP-62` |
+
+**Sprint operating rules:**
+
+- Sprint 2 ưu tiên feature build; Sprint 3 ưu tiên integration, QA, evidence, release readiness.
+- Không kéo task mới vào Sprint 3 nếu critical path chưa xanh.
+- `MAP-62` chỉ vào Sprint 3 nếu mobile smoke, admin smoke, backend tests đều pass.
+- P0 bug trong critical path được phép thay thế optional/polish task.
+- Cuối mỗi ngày update Jira status theo daily plan, không để ticket đang làm vẫn nằm `To Do`.
+
 ---
 
 ## 3. Data model nền tảng
@@ -107,9 +186,9 @@ Một ticket chỉ được coi là Done khi:
 - `Place`
   - Địa điểm public, ai cũng search/discover được.
   - Chỉ tạo qua seed, admin approve, hoặc merge từ candidate.
-  - Có thể lưu `google_place_id` làm external reference.
+  - Có thể lưu `goong_place_id` làm external reference.
 - `PlaceCandidate`
-  - Địa điểm user tạo hoặc Google gợi ý nhưng chưa public.
+  - Địa điểm user tạo hoặc GOONG gợi ý nhưng chưa public.
   - Visibility mặc định: `FRIENDS`.
   - Có owner, tọa độ, normalized name, evidence photos/check-ins.
 - `PromotionCandidate`
@@ -121,7 +200,7 @@ Một ticket chỉ được coi là Done khi:
 - `CheckInPost`
   - Ảnh/caption/check-in user đăng cho bạn bè.
 - `Media`
-  - File ảnh/video metadata, moderation status, S3 key, GPS proof.
+  - File ảnh/video metadata, moderation status, S3 key, GPS proof, source (`IN_APP_CAMERA` hoặc `EXIF_GALLERY`) và owner user id.
 - `Friendship`
   - Quan hệ mutual friends.
 - `Comment`, `Vote`
@@ -143,7 +222,7 @@ Một ticket chỉ được coi là Done khi:
 - User tạo tối đa 5 custom places/ngày.
 - Custom place phải có GPS capture từ app.
 - Nếu tên normalized giống >=85% trong bán kính 100m, bắt user chọn/merge thay vì tạo mới.
-- Nếu Google `place_id` đã map với `Place`/`PlaceCandidate`, không tạo duplicate.
+- Nếu GOONG `place_id` đã map với `Place`/`PlaceCandidate`, không tạo duplicate.
 - Friends-only post/list chỉ mutual friends thấy.
 - User bật public chỉ tạo review queue, không public ngay.
 - Promotion đủ score chỉ vào admin queue, không auto publish.
@@ -202,16 +281,16 @@ Một ticket chỉ được coi là Done khi:
 - **Story Points:** 5
 - **Component:** `Infra`, `Cost`
 - **Blocked By:** MAP-002
-- **Description:** Bảo vệ ngân sách AWS <$200/8 tuần và kiểm soát Google/SMS bằng quota riêng.
+- **Description:** Bảo vệ ngân sách AWS <$200/8 tuần và kiểm soát GOONG/SMS bằng quota riêng.
 - **Acceptance Criteria:**
   - [ ] AWS Budgets có cảnh báo 50%, 75%, 90%, 100% forecast/actual.
   - [ ] CloudWatch alarms cho Lambda errors, API Gateway 5xx/4xx spike, DynamoDB throttles, S3 errors.
   - [ ] WAF rate limit cho API Gateway.
   - [ ] API rate limit theo user/IP/device cho OTP, upload, create candidate, vote/comment.
-  - [ ] Google Maps/Places quota documented trong docs và cloud console.
+  - [ ] GOONG Map/Places quota documented trong docs và provider console.
   - [ ] Cognito SMS OTP rate limit và abuse policy documented.
   - [ ] Logs có correlation id/request id.
-- **Technical Notes:** AWS budget không bao gồm Google/SMS theo quyết định hiện tại, nhưng docs phải tách rõ để tránh hiểu nhầm.
+- **Technical Notes:** AWS budget không bao gồm GOONG/SMS theo quyết định hiện tại, nhưng docs phải tách rõ để tránh hiểu nhầm.
 
 ### [MAP-004] Implement Cognito Phone OTP Authentication and RBAC
 
@@ -239,7 +318,7 @@ Một ticket chỉ được coi là Done khi:
 **Mục tiêu:** Build luồng mobile giống UI mẫu: scan quanh vị trí, chọn gợi ý, hoặc tạo custom place.  
 **MVP Critical:** Có.
 
-### [MAP-005] Build Flutter Android App Shell with Google Map
+### [MAP-005] Build Flutter Android App Shell with GOONG Map
 
 - **Issue Type:** Story
 - **Priority:** P0
@@ -254,7 +333,7 @@ Một ticket chỉ được coi là Done khi:
   - [ ] App xin quyền location runtime.
   - [ ] Map hiển thị current location.
   - [ ] Có camera/check-in CTA.
-  - [ ] Google Maps API key không hardcode trong source public.
+  - [ ] GOONG Map API key không hardcode trong source public.
 - **Technical Notes:** Nếu user deny location, show fallback UX rõ và không cho tạo place từ tọa độ giả.
 
 ### [MAP-006] Implement In-App Camera Capture with GPS Proof and S3 Upload
@@ -268,12 +347,17 @@ Một ticket chỉ được coi là Done khi:
 - **Acceptance Criteria:**
   - [ ] Mobile mở camera trong app.
   - [ ] Khi chụp, app capture current GPS, timestamp, accuracy.
-  - [ ] Backend cấp presigned upload URL chỉ cho authenticated user.
+  - [ ] Backend cấp `POST /media/uploads` chỉ cho authenticated user và trả presigned S3 POST.
   - [ ] File type chỉ cho phép `image/jpeg`, `image/png`, `image/webp`.
   - [ ] File size giới hạn tối đa 5MB cho MVP.
-  - [ ] Upload thành công tạo `Media` status `PENDING_MODERATION`.
+  - [ ] Presigned POST ràng buộc đúng S3 key, `Content-Type`, signed metadata và `content-length-range` 1-5MB.
+  - [ ] Free user + `EXIF_GALLERY` bị chặn `403`; Free user + `IN_APP_CAMERA` được phép.
+  - [ ] Pro user được phép dùng cả `EXIF_GALLERY` và `IN_APP_CAMERA`.
+  - [ ] Upload thành công tạo `Media` status `PENDING_MODERATION` qua pipeline S3 EventBridge -> EventBridge rule -> SQS + DLQ -> worker Lambda.
+  - [ ] Worker đọc `HeadObject`, revalidate metadata/object, và ghi `Media` idempotent theo `mediaId`.
+  - [ ] `UserProfilesTable` là source of truth cho Free/Pro; thiếu profile mặc định là Free.
   - [ ] Nếu location accuracy kém hơn ngưỡng cấu hình, app yêu cầu retry/confirm.
-- **Technical Notes:** Không proxy ảnh qua Lambda/API Gateway.
+- **Technical Notes:** Không proxy ảnh qua Lambda/API Gateway. Image bytes đi thẳng mobile -> S3; Lambda chỉ cấp presigned POST và xử lý metadata/event.
 
 ### [MAP-007] Implement Nearby Place Scan and Hybrid Resolver API
 
@@ -282,17 +366,18 @@ Một ticket chỉ được coi là Done khi:
 - **Story Points:** 8
 - **Component:** `Backend`, `Data`, `Mobile`
 - **Blocked By:** MAP-005, MAP-006
-- **Description:** Scan khu vực quanh user và trả gợi ý địa điểm: MapVibe DB trước, Google fallback sau.
+- **Description:** Sau khi user chụp ảnh, scan khu vực quanh GPS proof của ảnh và trả gợi ý địa điểm: MapVibe DB trước, GOONG fallback sau.
 - **Acceptance Criteria:**
-  - [ ] API `GET /places/nearby?lat={lat}&lng={lng}&radius={meters}`.
+  - [ ] API `GET /places/nearby?lat={lat}&lng={lng}&radius={meters}&context=camera_check_in&media_id={media_id}`.
   - [ ] Radius mặc định 100m, max 300m cho MVP.
-  - [ ] Kết quả gồm public `Place`, friends-visible `PlaceCandidate`, và Google fallback nếu cần.
-  - [ ] Ranking ưu tiên: exact DB match, friend candidate, high-confidence Google match, low-confidence Google match.
+  - [ ] Kết quả gồm public `Place`, friends-visible `PlaceCandidate`, và GOONG fallback nếu cần.
+  - [ ] Ranking ưu tiên: exact DB match, friend candidate, high-confidence GOONG match, low-confidence GOONG match.
   - [ ] Mỗi result có `source`, `confidence`, `distance_meters`, `display_name`, `category`, `address`.
-  - [ ] Mobile hiển thị bottom sheet danh sách quán gần đây giống UI mẫu.
+  - [ ] Mobile gọi API sau khi chụp ảnh và hiển thị bottom sheet danh sách quán gần ảnh vừa chụp.
   - [ ] User có thể search/filter trong danh sách gần đó.
   - [ ] Có CTA `Tạo địa điểm tùy chỉnh` khi không thấy match đúng.
-- **Technical Notes:** Google Places fallback phải dùng quota guardrail. Không lưu toàn bộ payload Google nếu không cần. Chỉ lưu field tối thiểu phục vụ dedupe/reference.
+  - [ ] Map-first place selection không nằm trong scope MVP của ticket này.
+- **Technical Notes:** GOONG Places fallback phải dùng quota guardrail. Không lưu toàn bộ payload GOONG nếu không cần. Chỉ lưu field tối thiểu phục vụ dedupe/reference.
 
 ### [MAP-008] Implement Custom Place Candidate Creation with Deduplication
 
@@ -309,7 +394,7 @@ Một ticket chỉ được coi là Done khi:
   - [ ] Name được normalize: lowercase, trim, bỏ dấu, bỏ ký tự nhiễu.
   - [ ] Trước khi tạo, backend kiểm tra duplicate trong bán kính 100m.
   - [ ] Nếu name similarity >=85% với place/candidate hiện có, trả về conflict candidates để user chọn.
-  - [ ] Nếu Google `place_id` trùng bản ghi đã có, không tạo mới.
+  - [ ] Nếu GOONG `place_id` trùng bản ghi đã có, không tạo mới.
   - [ ] User bị giới hạn 5 custom places/ngày.
   - [ ] Candidate mới mặc định status `FRIENDS_VISIBLE`.
   - [ ] Candidate không xuất hiện trong public search/discover.
@@ -556,8 +641,8 @@ Một ticket chỉ được coi là Done khi:
   - [ ] Seed import idempotent.
   - [ ] Có ít nhất một khu vực test dày đủ để scan UI hiển thị nhiều lựa chọn.
   - [ ] Không import dữ liệu vi phạm license.
-  - [ ] Google `place_id` chỉ thêm khi được resolve hợp lệ.
-- **Technical Notes:** Curated seed giúp UX tốt mà không phụ thuộc Full Places API.
+  - [ ] GOONG `place_id` chỉ thêm khi được resolve hợp lệ.
+- **Technical Notes:** Curated seed giúp UX tốt mà không phụ thuộc Full GOONG Places API.
 
 ### [MAP-021] Implement MVP Test Matrix and Critical Integration Tests
 
@@ -569,7 +654,7 @@ Một ticket chỉ được coi là Done khi:
 - **Description:** Kiểm thử các luồng critical trước demo/release.
 - **Acceptance Criteria:**
   - [ ] Test auth OTP happy path và blocked path.
-  - [ ] Test nearby resolver DB match, Google fallback, no match.
+  - [ ] Test nearby resolver DB match, GOONG fallback, no match.
   - [ ] Test duplicate custom place conflict.
   - [ ] Test friends-only permission.
   - [ ] Test promotion candidate approve/merge/reject.
@@ -590,7 +675,7 @@ Một ticket chỉ được coi là Done khi:
   - [ ] Build Android release/internal APK hoặc app bundle.
   - [ ] Env/config prod-like được tách khỏi dev.
   - [ ] Runbook có cách kiểm tra alarms, logs, failed media moderation, pending queue.
-  - [ ] Runbook có cách tạm khóa Google fallback nếu cost spike.
+  - [ ] Runbook có cách tạm khóa GOONG fallback nếu cost spike.
   - [ ] Runbook có cách disable promotion submission nếu spam.
   - [ ] Known limitations MVP được ghi rõ.
 - **Technical Notes:** Release trước tiên là internal/testing release, chưa cần public store nếu chưa chốt store policy.
@@ -635,63 +720,196 @@ Các ticket sau không thuộc MVP 1 tháng, nhưng nên giữ trong roadmap.
 
 ---
 
-## 6. Sprint plan 1 tháng
+## 6. MVP daily delivery schedule
 
-### Week 1: Foundation & Auth
+Lịch này bám scope đã chốt ngày 2026-05-26: web app vẫn theo hướng AI search nhưng MVP chỉ keyword/simple search; mobile MVP là camera-first social food discovery; map/place provider là GOONG; user chỉ gửi yêu cầu public, admin duyệt trước khi địa điểm xuất hiện public.
 
-- MAP-001 Setup Monorepo
-- MAP-002 AWS Dev/Staging CDK
-- MAP-003 Cost/Security Guardrails
-- MAP-004 Cognito Phone OTP
-- MAP-020 Seed Places bắt đầu song song
+### Ngày 27/5
 
-**Exit Criteria:**
-- App Android login được.
-- Backend deploy dev được.
-- CDK deploy dev được.
-- Budget/alarm/rate-limit base có.
+**Minh:**
+- MAP-35 Nearby API contract/mock.
+- MAP-31 Upload API and Media record bắt đầu.
 
-### Week 2: Camera, Map, Nearby Scan
+**ty ty:**
+- MAP-32 Mobile camera capture and GPS proof.
 
-- MAP-005 Flutter Map Shell
-- MAP-006 Camera + S3 Upload
-- MAP-007 Nearby Hybrid Resolver
-- MAP-008 Custom Place Candidate
+**Hân:**
+- MAP-46 Admin pending list mock UI.
 
-**Exit Criteria:**
-- User đứng tại vị trí, chụp ảnh, scan quanh khu vực.
-- User chọn place có sẵn hoặc tạo custom candidate friends-visible.
-- Duplicate prevention hoạt động.
+**Duy:**
+- MAP-50 Seed file bắt đầu.
+- MAP-52 Test matrix skeleton.
 
-### Week 3: Social Loop
+### Ngày 28/5
 
-- MAP-009 Saved Food List
-- MAP-010 Mutual Friends
-- MAP-011 Friends-only Check-in Feed
-- MAP-012 Comments/Upvotes
-- MAP-017 Rekognition Moderation
+**Minh:**
+- MAP-31 Upload API and Media record hoàn tất.
+- Nếu còn thời gian: chuẩn bị MAP-36.
 
-**Exit Criteria:**
-- Bạn bè mutual xem được list/feed.
-- Non-friend không xem được.
-- Ảnh pending/approved/rejected đúng trạng thái.
+**ty ty:**
+- MAP-32 hoàn tất.
+- Bắt đầu nối preview/upload với mock hoặc API thật.
 
-### Week 4: Promotion, Admin, Release Hardening
+**Hân:**
+- MAP-33 Upload preview and pending status UI.
+- Tiếp tục MAP-46 nếu chưa xong.
 
-- MAP-013 Promotion Candidate
-- MAP-014 Promotion Score Engine
-- MAP-015 Discover Feed
-- MAP-016 Public Place Profile/Search/Rating
-- MAP-018 Admin Review
-- MAP-019 Merge Duplicate
-- MAP-021 Test Matrix
-- MAP-022 Android Internal Release
+**Duy:**
+- MAP-50 hoàn tất 50-100 places.
+- Bắt đầu MAP-51 seed import/verify.
 
-**Exit Criteria:**
-- User đề xuất công khai được.
-- Admin approve/merge/reject được.
-- Public Place search/discover chỉ có approved place.
-- Internal Android build sẵn sàng demo.
+### Ngày 29/5
+
+**Minh:**
+- MAP-36 Nearby API implementation.
+
+**ty ty:**
+- MAP-37 Mobile nearby bottom sheet.
+
+**Hân:**
+- MAP-38 Nearby UI polish.
+- Nếu rảnh: tiếp MAP-47 admin detail/actions UI mock.
+
+**Duy:**
+- MAP-51 Seed import/verify.
+- MAP-39 Nearby seed verification QA.
+
+### Ngày 30/5
+
+**Minh:**
+- MAP-36 hoàn tất + tests.
+- Chuẩn bị MAP-40.
+
+**ty ty:**
+- MAP-37 hoàn tất search/filter/select place.
+
+**Hân:**
+- MAP-38 hoàn tất.
+- MAP-47 detail/actions UI mock bắt đầu.
+
+**Duy:**
+- MAP-39 hoàn tất.
+- Update MAP-52 test matrix với nearby cases.
+
+### Ngày 31/5
+
+**Minh:**
+- MAP-40 Custom place API + dedupe bắt đầu.
+
+**ty ty:**
+- MAP-41 Mobile custom place form bắt đầu.
+
+**Hân:**
+- MAP-42 Custom place conflict UI.
+- Tiếp MAP-47 nếu chưa xong.
+
+**Duy:**
+- MAP-43 Duplicate QA cases chuẩn bị bằng mock/expected cases.
+
+### Ngày 1/6
+
+**Minh:**
+- MAP-40 hoàn tất + tests.
+
+**ty ty:**
+- MAP-41 hoàn tất nối mock/real API.
+
+**Hân:**
+- MAP-42 hoàn tất.
+- MAP-47 hoàn tất admin detail/actions UI mock.
+
+**Duy:**
+- MAP-43 chạy QA nếu API đã có.
+- Update MAP-52.
+
+### Ngày 2/6
+
+**Minh:**
+- MAP-44 Rekognition moderation pipeline.
+
+**ty ty:**
+- Mobile status UI pending/approved/rejected trong flow upload/custom place.
+- Chuẩn bị evidence cho MAP-54.
+
+**Hân:**
+- MAP-46 + MAP-47 connect mock adapter sạch.
+- Chuẩn bị connect API thật.
+
+**Duy:**
+- MAP-45 Moderation QA chuẩn bị cases.
+- Tiếp MAP-52.
+
+### Ngày 3/6
+
+**Minh:**
+- MAP-48 Admin review APIs.
+- Fix contract mismatch cho MAP-31/36/40/44.
+
+**ty ty:**
+- Full mobile flow test lần 1.
+- MAP-54 Mobile smoke evidence bắt đầu.
+
+**Hân:**
+- Connect Admin UI với MAP-48.
+- MAP-55 Admin smoke evidence bắt đầu.
+
+**Duy:**
+- MAP-49 Admin QA.
+- MAP-45 Moderation QA nếu pipeline ready.
+
+### Ngày 4/6
+
+**Minh:**
+- Integration fix toàn bộ critical path.
+- Nếu ổn mới làm MAP-59 guardrails.
+
+**ty ty:**
+- Finish MAP-54.
+- P0 mobile fixes.
+
+**Hân:**
+- Finish MAP-55.
+- Admin UI bugfix only.
+
+**Duy:**
+- Finish MAP-52 test matrix pass/fail lần 1.
+- Gộp bug list P0/P1.
+
+### Ngày 5/6
+
+**Minh:**
+- MAP-59 Guardrails implementation.
+- MAP-53 Backend test evidence.
+
+**ty ty:**
+- Mobile smoke again.
+- Optional MAP-62 chỉ làm nếu mọi critical path xanh.
+
+**Hân:**
+- Admin visual polish.
+- Không thêm feature mới.
+
+**Duy:**
+- MAP-60 Quota/abuse docs.
+- MAP-56 Runbook/demo script bắt đầu.
+
+### Ngày 6/6
+
+**Minh:**
+- Backend tests/build/synth.
+- MAP-53 hoàn tất.
+- P0 fixes.
+
+**ty ty:**
+- Android analyze/test/smoke.
+- MAP-57 Android build notes/artifact bắt đầu.
+
+**Hân:**
+- Admin regression.
+- P0/P1 UI fixes.
+
+**Duy:**
+- MAP-52 final bug list.
 
 ---
 
@@ -709,10 +927,10 @@ Các ticket sau không thuộc MVP 1 tháng, nhưng nên giữ trong roadmap.
 
 ### Delivery note
 
-116 SP là scope đầy đủ để backlog không thiếu việc. Với mục tiêu 1 tháng, team cần cắt release theo "must-demo" nếu capacity thấp:
+116 SP là scope đầy đủ để backlog không thiếu việc. Với mục tiêu demo MVP trong 1 tháng, team cần cắt release theo "must-demo" nếu capacity thấp:
 
-- **Must-demo:** MAP-001 đến MAP-013, MAP-017, MAP-018 basic approve/reject, MAP-020, MAP-021 smoke tests.
-- **Can slip 1-2 tuần:** MAP-014 scoring nâng cao, MAP-015 Discover ranking, MAP-016 rating đầy đủ, MAP-019 merge nâng cao, MAP-022 store-ready polish.
+- **Must-demo:** auth/dev deploy, GOONG app shell, camera + GPS proof + upload draft, nearby resolver contract/API, nearby sheet, custom candidate + dedupe, friends-only feed, public request, admin approve/reject basic, keyword public search, smoke tests, Android internal build.
+- **Can slip 1-2 tuần:** promotion score nâng cao, discover ranking đẹp, rating đầy đủ, merge duplicate nâng cao, store-ready polish, Bedrock/KB AI search, map-first flow.
 
 ---
 
@@ -726,9 +944,9 @@ Các ticket sau không thuộc MVP 1 tháng, nhưng nên giữ trong roadmap.
 ### 8.2 Duplicate địa điểm
 
 - **Risk:** Nhiều user tạo cùng quán với tên khác nhau.
-- **Mitigation:** normalized name, similarity >=85%, Google `place_id`, merge workflow, no hard delete.
+- **Mitigation:** normalized name, similarity >=85%, GOONG `place_id`, merge workflow, no hard delete.
 
-### 8.3 Google Places cost spike
+### 8.3 GOONG Places cost spike
 
 - **Risk:** Nearby/Autocomplete fallback bị spam.
 - **Mitigation:** DB-first resolver, quota, caching minimal, per-user/IP limits, kill switch fallback.
@@ -766,5 +984,5 @@ MVP được coi là hoàn thành khi:
 - Chỉ approved public places mới xuất hiện trong public search/discover.
 - Ảnh được moderation trước khi hiển thị rộng.
 - Không còn LocalStack scope trong backlog MVP.
-- Có cost/rate-limit guardrails cho AWS, Google fallback và SMS OTP.
+- Có cost/rate-limit guardrails cho AWS, GOONG fallback và SMS OTP.
 

@@ -4,10 +4,14 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
 
@@ -238,6 +242,14 @@ export class MapVibeStack extends cdk.Stack {
       removalPolicy,
     });
 
+    const userProfilesTable = new dynamodb.Table(this, 'UserProfilesTable', {
+      tableName: resourceName(stage, 'user-profiles'),
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'expiresAt',
+      removalPolicy,
+    });
+
     placesTable.addGlobalSecondaryIndex({
       indexName: 'GSI1',
       partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
@@ -252,6 +264,7 @@ export class MapVibeStack extends cdk.Stack {
       removalPolicy,
       autoDeleteObjects: !isProd(stage),
     });
+    mediaBucket.enableEventBridgeNotification();
 
     const mediaDistribution = new cloudfront.Distribution(this, 'MediaDistribution', {
       comment: resourceName(stage, 'media'),
@@ -315,6 +328,58 @@ export class MapVibeStack extends cdk.Stack {
       },
     });
 
+    const createMediaUploadFn = new lambda.Function(this, 'CreateMediaUploadFunction', {
+      functionName: resourceName(stage, 'create-media-upload'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handlers/create-media-upload.handler',
+      code: lambda.Code.fromAsset('../../services/api/dist'),
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        STAGE: stage,
+        MEDIA_BUCKET: mediaBucket.bucketName,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+        UPLOAD_EXPIRY_SECONDS: '300',
+      },
+    });
+    userProfilesTable.grantReadData(createMediaUploadFn);
+    mediaBucket.grantPut(createMediaUploadFn, 'uploads/*');
+
+    const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
+      queueName: resourceName(stage, 'media-upload-events-dlq'),
+      retentionPeriod: cdk.Duration.days(14),
+    });
+
+    const mediaUploadEventsQueue = new sqs.Queue(this, 'MediaUploadEventsQueue', {
+      queueName: resourceName(stage, 'media-upload-events'),
+      retentionPeriod: cdk.Duration.days(4),
+      visibilityTimeout: cdk.Duration.seconds(90),
+      deadLetterQueue: {
+        queue: mediaUploadEventsDlq,
+        maxReceiveCount: 3,
+      },
+    });
+
+    const handleMediaUploadedFn = new lambda.Function(this, 'HandleMediaUploadedFunction', {
+      functionName: resourceName(stage, 'handle-media-uploaded'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handlers/handle-media-uploaded.handler',
+      code: lambda.Code.fromAsset('../../services/api/dist'),
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        STAGE: stage,
+        PLACES_TABLE: placesTable.tableName,
+        MEDIA_BUCKET: mediaBucket.bucketName,
+      },
+    });
+    mediaBucket.grantRead(handleMediaUploadedFn, 'uploads/*');
+    placesTable.grantWriteData(handleMediaUploadedFn);
+    mediaUploadEventsQueue.grantConsumeMessages(handleMediaUploadedFn);
+    handleMediaUploadedFn.addEventSource(
+      new lambdaEventSources.SqsEventSource(mediaUploadEventsQueue, { batchSize: 10 }),
+    );
+
     const api = new apigateway.RestApi(this, 'Api', {
       restApiName: resourceName(stage, 'api'),
       deployOptions: {
@@ -348,6 +413,30 @@ export class MapVibeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+
+    const mediaResource = api.root.addResource('media');
+    const mediaUploadsResource = mediaResource.addResource('uploads');
+    mediaUploadsResource.addMethod('POST', new apigateway.LambdaIntegration(createMediaUploadFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const mediaUploadObjectCreatedRule = new events.Rule(this, 'MediaUploadObjectCreatedRule', {
+      ruleName: resourceName(stage, 'media-upload-object-created'),
+      eventPattern: {
+        source: ['aws.s3'],
+        detailType: ['Object Created'],
+        detail: {
+          bucket: {
+            name: [mediaBucket.bucketName],
+          },
+          object: {
+            key: [{ prefix: 'uploads/' }],
+          },
+        },
+      },
+    });
+    mediaUploadObjectCreatedRule.addTarget(new targets.SqsQueue(mediaUploadEventsQueue));
 
     const apiWebAcl = new wafv2.CfnWebACL(this, 'ApiWebAcl', {
       name: resourceName(stage, 'api-waf'),
@@ -383,6 +472,10 @@ export class MapVibeStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
     new cdk.CfnOutput(this, 'PlacesTableName', { value: placesTable.tableName });
+    new cdk.CfnOutput(this, 'UserProfilesTableName', { value: userProfilesTable.tableName });
+    new cdk.CfnOutput(this, 'MediaUploadEventsQueueUrl', {
+      value: mediaUploadEventsQueue.queueUrl,
+    });
     new cdk.CfnOutput(this, 'MediaBucketName', { value: mediaBucket.bucketName });
     new cdk.CfnOutput(this, 'MediaDistributionDomainName', {
       value: mediaDistribution.distributionDomainName,
