@@ -1,0 +1,64 @@
+{
+  "status": "success",
+  "metadata": {
+    "source": "goong_places",
+    "has_goong_fallback": true,
+    "total_results": 3,
+    "request_lat": 10.771597,
+    "request_lng": 106.704416,
+    "radius_meters": 50
+  },
+  "data": [
+    {
+      "id": "place_mapvibe_001",
+      "place_id": "goong_pid_98765",
+      "source": "goong_places",
+      "display_name": "Bitexco Financial Tower",
+      "address": "2 Hải Triều, Bến Nghé, Quận 1, Hồ Chí Minh",
+      "category": "tourist_attraction",
+      "distance_meters": 5,
+      "confidence": "high",
+      "coordinates": {
+        "lat": 10.771597,
+        "lng": 106.704416
+      },
+      "actions": {
+        "primary": "attach_place_to_photo"
+      }
+    },
+    {
+      "id": "place_mapvibe_002",
+      "place_id": "goong_pid_43210",
+      "source": "goong_places",
+      "display_name": "Katinat Saigon Kafe",
+      "address": "91 Đồng Khởi, Bến Nghé, Quận 1, Hồ Chí Minh",
+      "category": "cafe",
+      "distance_meters": 28,
+      "confidence": "medium",
+      "coordinates": {
+        "lat": 10.771800,
+        "lng": 106.704600
+      },
+      "actions": {
+        "primary": "attach_place_to_photo"
+      }
+    },
+    {
+      "id": "custom_fallback",
+      "place_id": null,
+      "source": "custom",
+      "display_name": "Tạo địa điểm mới tại đây",
+      "address": "Gần 2 Hải Triều, Quận 1, Hồ Chí Minh",
+      "category": "custom",
+      "distance_meters": 0,
+      "confidence": "low",
+      "coordinates": {
+        "lat": 10.771597,
+        "lng": 106.704416
+      },
+      "actions": {
+        "primary": "create_custom_place"
+      }
+    }
+  ]
+}

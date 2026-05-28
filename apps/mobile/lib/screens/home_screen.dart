@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../features/auth/login_page.dart';
+import 'nearby_places_sheet.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 class HomeScreen extends StatefulWidget {
@@ -64,15 +67,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _onCheckIn() {
-    // TODO: Navigate to check-in/camera screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tinh nang check-in dang phat trien...'),
-        backgroundColor: Color(0xFF3B82F6),
-        behavior: SnackBarBehavior.floating,
-      ),
+  void _onCheckIn() async {
+    // 1. Open camera
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+      maxWidth: 1920,
     );
+
+    if (image == null || !mounted) return;
+
+    // 2. Get current location for nearby search
+    final lat = _locationService.currentPosition.latitude;
+    final lng = _locationService.currentPosition.longitude;
+
+    // 3. Show nearby places bottom sheet
+    final selectedPlace = await NearbyPlacesSheet.show(
+      context,
+      photo: File(image.path),
+      lat: lat,
+      lng: lng,
+    );
+
+    if (selectedPlace == null || !mounted) return;
+
+    // 4. Handle selection
+    if (selectedPlace.isCustomFallback) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tao dia diem moi - tinh nang dang phat trien'),
+          backgroundColor: Color(0xFF3B82F6),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Da gan anh vao: ${selectedPlace.displayName}'),
+          backgroundColor: const Color(0xFF22C55E),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
