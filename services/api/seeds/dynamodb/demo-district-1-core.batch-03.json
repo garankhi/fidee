@@ -1,0 +1,484 @@
+{
+  "mapvibe-dev-places": [
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-051"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-051"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#alley-beat-coffee#demo-d1-051"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-051"
+          },
+          "name": {
+            "S": "Alley Beat Coffee"
+          },
+          "normalizedName": {
+            "S": "alley-beat-coffee"
+          },
+          "category": {
+            "S": "cafe"
+          },
+          "lat": {
+            "N": "10.768450"
+          },
+          "lng": {
+            "N": "106.695650"
+          },
+          "address": {
+            "S": "17 De Tham, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-052"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-052"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#backpacker-bun-cha-house#demo-d1-052"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-052"
+          },
+          "name": {
+            "S": "Backpacker Bun Cha House"
+          },
+          "normalizedName": {
+            "S": "backpacker-bun-cha-house"
+          },
+          "category": {
+            "S": "vietnamese"
+          },
+          "lat": {
+            "N": "10.768630"
+          },
+          "lng": {
+            "N": "106.695490"
+          },
+          "address": {
+            "S": "40 De Tham, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-053"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-053"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#sunset-brick-oven#demo-d1-053"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-053"
+          },
+          "name": {
+            "S": "Sunset Brick Oven"
+          },
+          "normalizedName": {
+            "S": "sunset-brick-oven"
+          },
+          "category": {
+            "S": "bakery"
+          },
+          "lat": {
+            "N": "10.768330"
+          },
+          "lng": {
+            "N": "106.695860"
+          },
+          "address": {
+            "S": "28 Bui Vien, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-054"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-054"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#night-owl-grill-yard#demo-d1-054"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-054"
+          },
+          "name": {
+            "S": "Night Owl Grill Yard"
+          },
+          "normalizedName": {
+            "S": "night-owl-grill-yard"
+          },
+          "category": {
+            "S": "grill"
+          },
+          "lat": {
+            "N": "10.768700"
+          },
+          "lng": {
+            "N": "106.695790"
+          },
+          "address": {
+            "S": "53 Bui Vien, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-055"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-055"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#lemongrass-corner-pho#demo-d1-055"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-055"
+          },
+          "name": {
+            "S": "Lemongrass Corner Pho"
+          },
+          "normalizedName": {
+            "S": "lemongrass-corner-pho"
+          },
+          "category": {
+            "S": "pho"
+          },
+          "lat": {
+            "N": "10.768230"
+          },
+          "lng": {
+            "N": "106.695460"
+          },
+          "address": {
+            "S": "11 Do Quang Dau, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-056"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-056"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#mango-alley-juice-bar#demo-d1-056"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-056"
+          },
+          "name": {
+            "S": "Mango Alley Juice Bar"
+          },
+          "normalizedName": {
+            "S": "mango-alley-juice-bar"
+          },
+          "category": {
+            "S": "juice_bar"
+          },
+          "lat": {
+            "N": "10.768760"
+          },
+          "lng": {
+            "N": "106.695610"
+          },
+          "address": {
+            "S": "37 Do Quang Dau, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-057"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-057"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#paper-lantern-dessert-club#demo-d1-057"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-057"
+          },
+          "name": {
+            "S": "Paper Lantern Dessert Club"
+          },
+          "normalizedName": {
+            "S": "paper-lantern-dessert-club"
+          },
+          "category": {
+            "S": "dessert"
+          },
+          "lat": {
+            "N": "10.768100"
+          },
+          "lng": {
+            "N": "106.695730"
+          },
+          "address": {
+            "S": "16 Bui Vien, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-058"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-058"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#hidden-courtyard-seafood#demo-d1-058"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-058"
+          },
+          "name": {
+            "S": "Hidden Courtyard Seafood"
+          },
+          "normalizedName": {
+            "S": "hidden-courtyard-seafood"
+          },
+          "category": {
+            "S": "seafood"
+          },
+          "lat": {
+            "N": "10.768530"
+          },
+          "lng": {
+            "N": "106.695940"
+          },
+          "address": {
+            "S": "24 Pham Ngu Lao, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-059"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-059"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#calm-lotus-vegetarian#demo-d1-059"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-059"
+          },
+          "name": {
+            "S": "Calm Lotus Vegetarian"
+          },
+          "normalizedName": {
+            "S": "calm-lotus-vegetarian"
+          },
+          "category": {
+            "S": "vegetarian"
+          },
+          "lat": {
+            "N": "10.768360"
+          },
+          "lng": {
+            "N": "106.695340"
+          },
+          "address": {
+            "S": "8 Do Quang Dau, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-060"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-060"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#rooftop-echo-bar-and-kitchen#demo-d1-060"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-060"
+          },
+          "name": {
+            "S": "Rooftop Echo Bar And Kitchen"
+          },
+          "normalizedName": {
+            "S": "rooftop-echo-bar-and-kitchen"
+          },
+          "category": {
+            "S": "rooftop_bar"
+          },
+          "lat": {
+            "N": "10.768720"
+          },
+          "lng": {
+            "N": "106.695380"
+          },
+          "address": {
+            "S": "65 De Tham, Pham Ngu Lao, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Bui Vien and De Tham in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    }
+  ]
+}

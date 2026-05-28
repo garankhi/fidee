@@ -1,17 +1,39 @@
-# mapvibe_mobile
+# MapVibe Mobile
 
-A new Flutter project.
+Flutter app for the MapVibe mobile client.
 
-## Getting Started
+## SDK Setup
 
-This project is a starting point for a Flutter application.
+This app is pinned to:
 
-A few resources to get you started if this is your first Flutter project:
+- Flutter `3.41.9`
+- Dart `3.11.5` through the bundled Flutter SDK
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+The pinned Flutter version lives in [`apps/mobile/.fvmrc`](./.fvmrc).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Recommended Workflow
+
+Use FVM so the whole team stays on the same Flutter/Dart SDK:
+
+```bash
+dart pub global activate fvm
+cd apps/mobile
+fvm use
+fvm flutter pub get
+fvm flutter run
+```
+
+If you open the repository in VS Code, the shared workspace setting at
+`/.vscode/settings.json` points the Dart extension to `apps/mobile/.fvm/flutter_sdk`.
+After `fvm use` creates that symlink, restart the Dart/Flutter analyzer if the IDE
+does not switch automatically.
+
+## Common Commands
+
+```bash
+cd apps/mobile
+fvm flutter pub get
+fvm flutter analyze
+fvm flutter test
+fvm flutter run
+```

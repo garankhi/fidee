@@ -5,10 +5,12 @@ node_modules/
 dist/
 cdk.out/
 tmp/
+.tooling/
 
 # IDE
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.swp
 *.swo
 
@@ -24,3 +26,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# FVM Version Cache
+.fvm/

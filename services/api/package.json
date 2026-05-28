@@ -10,6 +10,7 @@
     "lint:fix": "eslint 'src/**/*.ts' --fix",
     "format": "prettier --write 'src/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts'",
+    "seed:demo:build": "node scripts/build-demo-place-seed.cjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

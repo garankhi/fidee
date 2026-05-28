@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
+import '../features/auth/login_page.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
-import '../features/auth/login_page.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 class HomeScreen extends StatefulWidget {

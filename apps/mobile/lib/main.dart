@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'services/auth_service.dart';
+
 import 'features/auth/login_page.dart';
 import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
