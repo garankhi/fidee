@@ -18,7 +18,13 @@ class LocationService {
   /// Request location permission and get current position.
   Future<void> initialize() async {
     // 1. Check if location service is enabled
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled;
+    try {
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    } catch (e) {
+      serviceEnabled = false;
+    }
+    
     if (!serviceEnabled) {
       _status = LocationStatus.serviceDisabled;
       return;

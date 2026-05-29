@@ -70,7 +70,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Vui long nhap so dien thoai hoac email'),
+        find.text('Vui lòng nhập số điện thoại hoặc email'),
         findsOneWidget,
       );
     });

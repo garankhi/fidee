@@ -28,7 +28,7 @@ class LoginTextStyles {
   static TextStyle title() {
     return GoogleFonts.poppins(
       color: LoginColors.textPrimary,
-      fontSize: 27,
+      fontSize: 36,
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
     );
@@ -36,7 +36,7 @@ class LoginTextStyles {
 
   static TextStyle fieldText() {
     return GoogleFonts.poppins(
-      color: LoginColors.textPrimary,
+      color: LoginColors.textMuted,
       fontSize: 12,
       fontWeight: FontWeight.w500,
       letterSpacing: 0,
@@ -46,7 +46,7 @@ class LoginTextStyles {
   static TextStyle fieldLabel() {
     return GoogleFonts.poppins(
       color: LoginColors.textMuted,
-      fontSize: 13,
+      fontSize: 15,
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
     );

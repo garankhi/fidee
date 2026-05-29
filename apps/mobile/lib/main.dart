@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/auth/auth_providers.dart';
-import 'features/auth/login_page.dart';
 import 'screens/home_screen.dart';
-import 'services/auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,8 +13,6 @@ class FideeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authControllerProvider);
-
     return MaterialApp(
       title: 'Fidee',
       debugShowCheckedModeBanner: false,
@@ -33,32 +28,7 @@ class FideeApp extends ConsumerWidget {
         ),
         fontFamily: 'Inter',
       ),
-      home: authState.when(
-        loading: () => const _SplashScreen(),
-        error: (_, _) => const LoginPage(),
-        data: (state) => state.authState == AuthState.authenticated
-            ? const HomeScreen()
-            : const LoginPage(),
-      ),
-    );
-  }
-}
-
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF0A0E17),
-      body: Center(
-        child: Image(
-          image: AssetImage('assets/images/logo.png'),
-          width: 120,
-          height: 120,
-          fit: BoxFit.contain,
-        ),
-      ),
+      home: const HomeScreen(),
     );
   }
 }

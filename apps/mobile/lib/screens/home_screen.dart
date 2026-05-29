@@ -28,16 +28,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _initLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initLocation();
+    });
   }
 
   Future<void> _initLocation() async {
-    await _locationService.initialize();
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _showLocationBanner = _locationService.status != LocationStatus.granted;
-    });
+    try {
+      await _locationService.initialize();
+    } catch (e) {
+      debugPrint('Error initializing location: $e');
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _showLocationBanner = _locationService.status != LocationStatus.granted;
+      });
+    }
   }
 
   void _animateToLocation(LatLng target) {
@@ -110,14 +118,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0A0E17),
+        backgroundColor: Colors.white,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+          child: CircularProgressIndicator(color: Color(0xFFFF3B30)),
         ),
       );
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // === MAP ===
@@ -130,7 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               minZoom: 3.0,
             ),
             children: [
-              // Dark-style tile layer
+              // Light-style tile layer (Voyager)
               TileLayer(
                 urlTemplate:
                     'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
@@ -154,73 +163,114 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ],
           ),
 
-          // === TOP BAR (Search + Avatar) ===
+          // === TOP UI (Logo, Avatar, Search) ===
           Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            left: 16,
-            right: 16,
-            child: Row(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 0,
+            right: 0,
+            child: Column(
               children: [
-                // Search bar
-                Expanded(
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1F2E).withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                // Logo & Avatar Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 40), // Balance the avatar
+                      const Text(
+                        'FIDEE',
+                        style: TextStyle(
+                          color: Color(0xFFFF3B30),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 16),
-                        Icon(
-                          Icons.search,
-                          color: Colors.white.withValues(alpha: 0.5),
-                          size: 20,
+                      ),
+                      GestureDetector(
+                        onTap: () => _showProfileMenu(context),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF5A8DEE),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'AA',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF3B30),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    '1',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Tim kiem dia diem...',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-
-                // Avatar / Menu
-                GestureDetector(
-                  onTap: () => _showProfileMenu(context),
+                const SizedBox(height: 16),
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Container(
-                    width: 48,
-                    height: 48,
+                    height: 50,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
-                      ),
-                      borderRadius: BorderRadius.circular(24),
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
-                          blurRadius: 12,
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 24,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, color: Color(0xFFFF3B30)),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Want something /fidee/ today?',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.mic, color: Colors.grey.shade600),
+                      ],
                     ),
                   ),
                 ),
@@ -231,7 +281,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // === LOCATION DENIED BANNER ===
           if (_showLocationBanner)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 72,
+              top: MediaQuery.of(context).padding.top + 140,
               left: 16,
               right: 16,
               child: _LocationDeniedBanner(
@@ -255,37 +305,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
 
-          // === MY LOCATION BUTTON ===
-          Positioned(
-            right: 16,
-            bottom: 120,
-            child: _FloatingButton(
-              icon: Icons.my_location,
-              onPressed: _goToMyLocation,
-              size: 48,
-              backgroundColor: const Color(0xFF1A1F2E).withValues(alpha: 0.95),
-              iconColor: _locationService.hasRealLocation
-                  ? const Color(0xFF3B82F6)
-                  : Colors.white.withValues(alpha: 0.5),
+            // === BOTTOM BUTTONS ===
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Compass (Left)
+                  _BottomNavIcon(
+                    assetPath: 'assets/icons/Discovery.png',
+                    onTap: _goToMyLocation,
+                    size: 60,
+                    iconSize: 42,
+                  ),
+                  const SizedBox(width: 24),
+                  // Camera (Center)
+                  _BottomNavIcon(
+                    assetPath: 'assets/icons/Camera.png',
+                    onTap: _onCheckIn,
+                    size: 76,
+                    iconSize: 85,
+                  ),
+                  const SizedBox(width: 24),
+                  // Chat (Right)
+                  _BottomNavIcon(
+                    assetPath: 'assets/icons/Chat.png',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Chat - tinh nang dang phat trien'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    size: 60,
+                    iconSize: 75,
+                  ),
+                ],
+              ),
             ),
-          ),
-
-          // === CHECK-IN / CAMERA BUTTON ===
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(child: _CheckInButton(onPressed: _onCheckIn)),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
   }
 
   void _showProfileMenu(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A1F2E),
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -299,7 +369,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -310,18 +380,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
-                ),
+                color: const Color(0xFF5A8DEE),
                 borderRadius: BorderRadius.circular(32),
               ),
-              child: const Icon(Icons.person, color: Colors.white, size: 32),
+              child: const Center(
+                child: Text(
+                  'AA',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
               'Fidee User',
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.black87,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -340,9 +417,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.logout, size: 20),
                 label: const Text('Dang xuat', style: TextStyle(fontSize: 16)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(
-                    0xFFEF4444,
-                  ).withValues(alpha: 0.15),
+                  backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.1),
                   foregroundColor: const Color(0xFFEF4444),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -358,6 +433,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 }
+
+  // === BOTTOM NAV ICON ===
+  class _BottomNavIcon extends StatelessWidget {
+    final String assetPath;
+    final VoidCallback onTap;
+    final double size;
+    final double iconSize;
+  
+    const _BottomNavIcon({
+      required this.assetPath,
+      required this.onTap,
+      this.size = 60,
+      this.iconSize = 28, // <-- ĐÂY LÀ CHỖ TĂNG KÍCH THƯỚC ICON MẶC ĐỊNH
+    });
+  
+    @override
+    Widget build(BuildContext context) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.8),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.9),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Image.asset(
+              assetPath,
+              width: iconSize,
+              height: iconSize,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.error, color: Colors.grey),
+            ),
+          ),
+        ),
+      );
+    }
+  }
 
 // === PULSING LOCATION MARKER ===
 class _PulsingLocationMarker extends StatefulWidget {
@@ -404,9 +530,7 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
             height: 60 * _animation.value,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(
-                0xFF3B82F6,
-              ).withValues(alpha: 0.2 * (1 - _animation.value)),
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.2 * (1 - _animation.value)),
             ),
           ),
           // Inner dot
@@ -426,95 +550,6 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// === CHECK-IN BUTTON ===
-class _CheckInButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _CheckInButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 180,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFEF4050), Color(0xFFE91E63)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFEF4050).withValues(alpha: 0.45),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.camera_alt_rounded, color: Colors.white, size: 24),
-            SizedBox(width: 10),
-            Text(
-              'Check-in',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// === FLOATING BUTTON ===
-class _FloatingButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onPressed;
-  final double size;
-  final Color backgroundColor;
-  final Color iconColor;
-
-  const _FloatingButton({
-    required this.icon,
-    required this.onPressed,
-    required this.size,
-    required this.backgroundColor,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(size / 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: iconColor, size: size * 0.5),
       ),
     );
   }
@@ -561,14 +596,14 @@ class _LocationDeniedBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1F2E).withValues(alpha: 0.95),
+        color: Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -581,14 +616,14 @@ class _LocationDeniedBanner extends StatelessWidget {
           Expanded(
             child: Text(
               _message,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: Colors.black87, fontSize: 13),
             ),
           ),
           const SizedBox(width: 8),
           TextButton(
             onPressed: onAllow,
             style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+              backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.1),
               foregroundColor: const Color(0xFF3B82F6),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               shape: RoundedRectangleBorder(
@@ -603,9 +638,9 @@ class _LocationDeniedBanner extends StatelessWidget {
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onDismiss,
-            child: Icon(
+            child: const Icon(
               Icons.close,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: Colors.black38,
               size: 18,
             ),
           ),

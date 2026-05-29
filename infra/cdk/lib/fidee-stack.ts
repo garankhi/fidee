@@ -161,17 +161,10 @@ export class FideeStack extends cdk.Stack {
       functionName: resourceName(stage, 'create-auth'),
       handler: 'triggers/create-auth-challenge.handler',
       environment: {
-        SES_SENDER_EMAIL: `tydapchai123@gmail.com`,
-      },
+        RESEND_API_KEY: process.env.RESEND_API_KEY || '', RESEND_SENDER_EMAIL: process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev', },
     });
 
-    // Grant SNS publish for SMS (resource must be * for phone number targets)
-    createAuthChallengeFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['sns:Publish'],
-        resources: ['*'],
-      }),
-    );
+    // Grant SES send email
     createAuthChallengeFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ses:SendEmail'],
@@ -195,8 +188,8 @@ export class FideeStack extends cdk.Stack {
     const userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: resourceName(stage, 'users'),
       selfSignUpEnabled: true,
-      signInAliases: { email: true, phone: true },
-      autoVerify: { email: true, phone: true },
+      signInAliases: { email: true },
+      autoVerify: { email: true },
       passwordPolicy: {
         minLength: 8,
         requireUppercase: true,

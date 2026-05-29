@@ -256,13 +256,13 @@ class AuthService {
       } else {
         return const AuthResult(
           success: false,
-          errorMessage: 'Ma xac thuc sai',
+          errorMessage: 'Mã xác thực sai',
         );
       }
     } catch (e) {
       return const AuthResult(
         success: false,
-        errorMessage: 'Ma xac thuc sai hoac loi ket noi.',
+        errorMessage: 'Mã xác thực sai hoặc lỗi kết nối.',
       );
     }
   }
@@ -272,7 +272,7 @@ class AuthService {
       return AuthResult(
         success: false,
         errorMessage:
-            'Vui long cho $resendCooldownRemaining giay truoc khi gui lai.',
+            'Vui lòng chờ $resendCooldownRemaining giây trước khi gửi lại.',
       );
     }
     if (_username == null) {

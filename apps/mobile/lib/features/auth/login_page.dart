@@ -32,7 +32,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final controller = ref.read(authControllerProvider.notifier);
 
     if (input.isEmpty) {
-      controller.setError('Vui long nhap so dien thoai hoac email');
+      controller.setError('Vui lòng nhập số điện thoại hoặc email');
       return;
     }
 

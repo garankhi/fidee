@@ -17,28 +17,15 @@ class LoginHeader extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            top: metrics.backTop,
-            left: 28,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-              icon: const Icon(
-                Icons.chevron_left,
-                color: Colors.white,
-                size: 24,
-              ),
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
-          ),
-          Positioned(
-            top: metrics.logoTop,
+            top: 0,
+            bottom: 0,
             left: 0,
             right: 0,
             child: Center(
               child: Image.asset(
                 LoginAssets.logo,
-                width: 126,
-                height: 28,
+                width: 180,
+                height: 40,
                 fit: BoxFit.contain,
               ),
             ),
