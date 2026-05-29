@@ -1,19 +1,19 @@
-# MapVibe Business Rules and MVP Flow
+# Fidee Business Rules and MVP Flow
 
 ## 1. Purpose
 
-This document defines the current MapVibe MVP business flow, scope boundaries, and product rules so product, design, mobile, backend, and admin work from the same source of truth.
+This document defines the current Fidee MVP business flow, scope boundaries, and product rules so product, design, mobile, backend, and admin work from the same source of truth.
 
-MapVibe MVP is not a delivery app or broad public review platform. The MVP combines a simple AI-style web search experience with a camera-first social food discovery loop: users can search places quickly by keyword, and can also capture real food/place moments, attach them to a nearby place, and share them with a trusted friend circle.
+Fidee MVP is not a delivery app or broad public review platform. The MVP combines a simple AI-style web search experience with a camera-first social food discovery loop: users can search places quickly by keyword, and can also capture real food/place moments, attach them to a nearby place, and share them with a trusted friend circle.
 
 ## 2. Current Product Direction
 
-MapVibe combines two behavior patterns:
+Fidee combines two behavior patterns:
 
 - Locket-style private sharing: small friend circles see each other's real activity.
 - Bump-style lightweight social loop: fast posting and low-friction interaction.
 
-MapVibe applies this to food discovery through two MVP surfaces: a simple web search flow for fast discovery, and a camera-first mobile flow for real friend-based signals. The MVP does not require Bedrock, knowledge base retrieval, or complex intent parsing before launch.
+Fidee applies this to food discovery through two MVP surfaces: a simple web search flow for fast discovery, and a camera-first mobile flow for real friend-based signals. The MVP does not require Bedrock, knowledge base retrieval, or complex intent parsing before launch.
 
 Core user promise:
 
@@ -25,7 +25,7 @@ Web search promise:
 
 ## 3. MVP Product Pillars
 
-MapVibe MVP has two product pillars:
+Fidee MVP has two product pillars:
 
 1. Simple AI-search web app: search food places by keyword/category/location-style text without Bedrock or knowledge base integration.
 2. Camera-first social discovery: capture in-app photo, attach nearby place, and share friends-only.
@@ -34,7 +34,7 @@ The search pillar helps users discover quickly. The camera-first pillar creates 
 
 ## 4. MVP Primary Mobile Flow: Camera First
 
-For MVP, MapVibe supports one main creation flow only: camera-first check-in.
+For MVP, Fidee supports one main creation flow only: camera-first check-in.
 
 ```text
 User taps camera
@@ -86,7 +86,7 @@ For MVP, AI search means lightweight keyword-based search, not full LLM search.
 ```text
 User opens web app
 -> User types keyword/category/location-style query
--> App searches MapVibe place data with simple matching
+-> App searches Fidee place data with simple matching
 -> App shows place results
 -> User opens place detail or saves/shares if authenticated
 ```
@@ -107,7 +107,7 @@ User opens map
 
 Reason for deferral:
 
-- Camera-first is closer to the social sharing habit MapVibe wants to validate.
+- Camera-first is closer to the social sharing habit Fidee wants to validate.
 - One flow reduces MVP design, mobile, backend, and QA scope.
 - Nearby place resolver can still be designed in a reusable way for map-first later.
 
@@ -121,9 +121,9 @@ Every check-in must be tied to GPS captured by the app during the camera session
 
 For MVP, `GET /places/nearby` is called after photo capture using the photo GPS proof. Mobile should not design MVP around choosing a place before taking a photo.
 
-### BR-PLACE-03: MapVibe data is source of truth
+### BR-PLACE-03: Fidee data is source of truth
 
-MapVibe `Place` and `PlaceCandidate` records are the product source of truth. GOONG Places can be used as fallback/reference, but GOONG data must not become the primary database by default.
+Fidee `Place` and `PlaceCandidate` records are the product source of truth. GOONG Places can be used as fallback/reference, but GOONG data must not become the primary database by default.
 
 ### BR-PLACE-04: Public places are controlled
 
@@ -164,7 +164,7 @@ Each result must include these fields:
 
 | Field | Meaning | Design usage |
 |---|---|---|
-| `source` | Data source: MapVibe place, friend candidate, or GOONG fallback. | Badge, admin/debug state. |
+| `source` | Data source: Fidee place, friend candidate, or GOONG fallback. | Badge, admin/debug state. |
 | `confidence` | Backend confidence from `0` to `1`. | Sorting, weak-match warning, admin review. |
 | `distance_meters` | Distance from captured GPS to result. | Nearby label. |
 | `display_name` | User-facing place name. | Primary row title. |
@@ -173,7 +173,7 @@ Each result must include these fields:
 
 Recommended ranking:
 
-1. Exact MapVibe `Place` match.
+1. Exact Fidee `Place` match.
 2. Friends-visible `PlaceCandidate` from mutual friend circle.
 3. High-confidence GOONG fallback.
 4. Low-confidence GOONG fallback.
@@ -195,7 +195,7 @@ Recommended ranking:
     {
       "id": "plc_01J0PLACE001",
       "entity_type": "place",
-      "source": "mapvibe_place",
+      "source": "fidee_place",
       "confidence": 0.98,
       "distance_meters": 24,
       "display_name": "Cơm Tấm Ba Ghiền",
@@ -313,7 +313,7 @@ Recommended ranking:
       "id": "plc_01J0PLACE001",
       "entity_type": "place",
       "display_name": "Bún Bò Lan",
-      "source": "mapvibe_place",
+      "source": "fidee_place",
       "confidence": 0.87,
       "distance_meters": 38,
       "address": "Phú Nhuận, TP.HCM"

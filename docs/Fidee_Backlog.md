@@ -1,8 +1,8 @@
-# MapVibe - Social Discovery MVP Backlog v2
+# Fidee - Social Discovery MVP Backlog v2
 
 ## 1. Tổng quan
 
-MapVibe MVP v1 là AI-search web app đi kèm mobile social discovery cho ăn uống. Web app cho user tìm quán nhanh bằng keyword/category/location-style text đơn giản. Mobile app cho user mở app tại quán, chụp ảnh bằng camera trong app, scan khu vực xung quanh để chọn địa điểm có sẵn hoặc tạo địa điểm tùy chỉnh, rồi lưu vào bản đồ/danh sách quán của mình để bạn bè xem.
+Fidee MVP v1 là AI-search web app đi kèm mobile social discovery cho ăn uống. Web app cho user tìm quán nhanh bằng keyword/category/location-style text đơn giản. Mobile app cho user mở app tại quán, chụp ảnh bằng camera trong app, scan khu vực xung quanh để chọn địa điểm có sẵn hoặc tạo địa điểm tùy chỉnh, rồi lưu vào bản đồ/danh sách quán của mình để bạn bè xem.
 
 MVP vẫn giữ hướng AI search, nhưng bản đầu làm nhẹ bằng keyword/simple search, chưa tích hợp Bedrock, knowledge base, semantic search hoặc prompt parsing phức tạp. Lõi social discovery là vòng lặp:
 
@@ -21,12 +21,12 @@ MVP vẫn giữ hướng AI search, nhưng bản đầu làm nhẹ bằng keywor
 - **IaC:** AWS CDK TypeScript.
 - **Auth:** Amazon Cognito Phone OTP.
 - **Map provider:** GOONG Map SDK/API.
-- **Web search MVP:** Keyword/simple search trên MapVibe place data, chưa dùng Bedrock/KB.
+- **Web search MVP:** Keyword/simple search trên Fidee place data, chưa dùng Bedrock/KB.
 - **Place resolver:** Hybrid resolver.
-  - Ưu tiên MapVibe DB.
+  - Ưu tiên Fidee DB.
   - Fallback GOONG Places/Nearby/Autocomplete khi match yếu.
   - GOONG `place_id` chỉ là external reference, không là source of truth.
-- **Nguồn dữ liệu public:** MapVibe DynamoDB.
+- **Nguồn dữ liệu public:** Fidee DynamoDB.
 - **Custom place:** Friends-visible mặc định, không public ngay.
 - **Public toggle:** "Đề xuất công khai", tạo admin review candidate, không publish trực tiếp.
 - **Giới hạn tạo custom place:** 5 địa điểm/người dùng/ngày.
@@ -35,7 +35,7 @@ MVP vẫn giữ hướng AI search, nhưng bản đầu làm nhẹ bằng keywor
 - **Bedrock AI search, AI summary, gamification:** Phase 2.
 - **LocalStack:** Không dùng. Dev/test dùng AWS dev.
 - **Budget:** PRD giữ ngân sách AWS <$200/8 tuần. GOONG Map/Places và SMS OTP theo quota/cost guardrail riêng.
-- **Business rules:** Xem `docs/MapVibe_Business_Rules.md` để khóa MVP camera-first, rule place selection, mock JSON và scope guide cho design.
+- **Business rules:** Xem `docs/Fidee_Business_Rules.md` để khóa MVP camera-first, rule place selection, mock JSON và scope guide cho design.
 
 ### 1.2 Non-goals của MVP
 
@@ -268,7 +268,7 @@ Daily plan chia thành 2 sprint ngắn để dễ quản lý scope và demo.
 - **Acceptance Criteria:**
   - [ ] CDK support stage: `dev`, `prod`; stage khác fail fast.
   - [ ] CDK tạo API Gateway, Lambda, DynamoDB, S3 media bucket, CloudFront media distribution, Cognito, WAF.
-  - [ ] Tài nguyên non-prod có naming convention rõ: `mapvibe-{stage}-{resource}`.
+  - [ ] Tài nguyên non-prod có naming convention rõ: `fidee-{stage}-{resource}`.
   - [ ] Có script deploy/synth/diff: `cdk:synth`, `cdk:diff`, `cdk:deploy:dev`, `cdk:diff:prod`.
   - [ ] Non-prod có TTL/tagging để dễ cleanup cost.
   - [ ] Không có file compose LocalStack, local AWS app env, hoặc endpoint AWS emulator local.
@@ -366,7 +366,7 @@ Daily plan chia thành 2 sprint ngắn để dễ quản lý scope và demo.
 - **Story Points:** 8
 - **Component:** `Backend`, `Data`, `Mobile`
 - **Blocked By:** MAP-005, MAP-006
-- **Description:** Sau khi user chụp ảnh, scan khu vực quanh GPS proof của ảnh và trả gợi ý địa điểm: MapVibe DB trước, GOONG fallback sau.
+- **Description:** Sau khi user chụp ảnh, scan khu vực quanh GPS proof của ảnh và trả gợi ý địa điểm: Fidee DB trước, GOONG fallback sau.
 - **Acceptance Criteria:**
   - [ ] API `GET /places/nearby?lat={lat}&lng={lng}&radius={meters}&context=camera_check_in&media_id={media_id}`.
   - [ ] Radius mặc định 100m, max 300m cho MVP.

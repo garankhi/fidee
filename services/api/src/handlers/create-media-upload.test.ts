@@ -60,7 +60,7 @@ function setup(plan: UserPlan = 'FREE'): {
     createUploadPost,
     mediaIdFactory: () => 'media-1',
     env: {
-      mediaBucket: 'mapvibe-dev-media',
+      mediaBucket: 'fidee-dev-media',
       uploadExpirySeconds: 300,
     },
   });
@@ -92,7 +92,7 @@ describe('create-media-upload handler', () => {
     expect(result.statusCode).toBe(200);
     expect(createUploadPost).toHaveBeenCalledOnce();
     expect(uploadInputs[0]).toMatchObject({
-      bucket: 'mapvibe-dev-media',
+      bucket: 'fidee-dev-media',
       key: 'uploads/media-1.jpg',
       contentType: 'image/jpeg',
       metadata: {

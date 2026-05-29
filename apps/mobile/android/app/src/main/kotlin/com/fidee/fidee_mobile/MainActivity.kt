@@ -1,4 +1,4 @@
-package com.mapvibe.mapvibe_mobile
+package com.fidee.fidee_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

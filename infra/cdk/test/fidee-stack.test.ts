@@ -2,20 +2,20 @@ import { describe, it, expect } from 'vitest';
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import {
-  assertMapVibeStage,
+  assertFideeStage,
   CLOUDFRONT_WAF_REGION,
   MAIN_REGION,
-  MapVibeMediaWafStack,
-  MapVibeStack,
-} from '../lib/mapvibe-stack';
+  FideeMediaWafStack,
+  FideeStack,
+} from '../lib/fidee-stack';
 
 const createDevTemplates = () => {
   const app = new cdk.App();
-  const mediaWafStack = new MapVibeMediaWafStack(app, 'TestMediaWafStack', {
+  const mediaWafStack = new FideeMediaWafStack(app, 'TestMediaWafStack', {
     stage: 'dev',
     env: { account: '123456789012', region: CLOUDFRONT_WAF_REGION },
   });
-  const stack = new MapVibeStack(app, 'TestStack', {
+  const stack = new FideeStack(app, 'TestStack', {
     stage: 'dev',
     env: { account: '123456789012', region: MAIN_REGION },
     mediaWebAclArn: mediaWafStack.webAclArn,
@@ -67,15 +67,15 @@ const policyStatementsFromResources = (resources: Record<string, unknown>): CfnP
     return [...resourcePolicyStatements, ...roleInlinePolicyStatements];
   });
 
-describe('MapVibe stage validation', () => {
+describe('Fidee stage validation', () => {
   it('allows dev and prod only', () => {
-    expect(assertMapVibeStage('dev')).toBe('dev');
-    expect(assertMapVibeStage('prod')).toBe('prod');
-    expect(() => assertMapVibeStage('staging')).toThrow('Unsupported stage');
+    expect(assertFideeStage('dev')).toBe('dev');
+    expect(assertFideeStage('prod')).toBe('prod');
+    expect(() => assertFideeStage('staging')).toThrow('Unsupported stage');
   });
 });
 
-describe('MapVibeStack', () => {
+describe('FideeStack', () => {
   const { mediaWafStack, mediaTemplate, stack, template } = createDevTemplates();
 
   it('uses ap-southeast-1 for the main stack and us-east-1 for CloudFront WAF', () => {
@@ -90,13 +90,13 @@ describe('MapVibeStack', () => {
     template.resourceCountIs('AWS::CloudFront::Distribution', 1);
     template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-search',
+      FunctionName: 'fidee-dev-search',
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-create-media-upload',
+      FunctionName: 'fidee-dev-create-media-upload',
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-handle-media-uploaded',
+      FunctionName: 'fidee-dev-handle-media-uploaded',
     });
     mediaTemplate.resourceCountIs('AWS::WAFv2::WebACL', 1);
     template.resourceCountIs('AWS::WAFv2::WebACL', 1);
@@ -124,22 +124,22 @@ describe('MapVibeStack', () => {
 
   it('creates auth trigger Lambda functions', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-define-auth',
+      FunctionName: 'fidee-dev-define-auth',
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-create-auth',
+      FunctionName: 'fidee-dev-create-auth',
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-verify-auth',
+      FunctionName: 'fidee-dev-verify-auth',
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-pre-sign-up',
+      FunctionName: 'fidee-dev-pre-sign-up',
     });
   });
 
   it('creates a protected GET /profile endpoint', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-get-profile',
+      FunctionName: 'fidee-dev-get-profile',
     });
     template.hasResourceProperties('AWS::ApiGateway::Method', {
       HttpMethod: 'GET',
@@ -149,7 +149,7 @@ describe('MapVibeStack', () => {
 
   it('creates a protected POST /media/uploads endpoint', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'mapvibe-dev-create-media-upload',
+      FunctionName: 'fidee-dev-create-media-upload',
     });
     template.hasResourceProperties('AWS::ApiGateway::Method', {
       HttpMethod: 'POST',
@@ -157,21 +157,21 @@ describe('MapVibeStack', () => {
     });
   });
 
-  it('names dev resources with mapvibe-dev prefix', () => {
+  it('names dev resources with fidee-dev prefix', () => {
     template.hasResourceProperties('AWS::Cognito::UserPool', {
-      UserPoolName: 'mapvibe-dev-users',
+      UserPoolName: 'fidee-dev-users',
     });
     template.hasResourceProperties('AWS::DynamoDB::Table', {
-      TableName: 'mapvibe-dev-places',
+      TableName: 'fidee-dev-places',
     });
     template.hasResourceProperties('AWS::DynamoDB::Table', {
-      TableName: 'mapvibe-dev-user-profiles',
+      TableName: 'fidee-dev-user-profiles',
     });
     template.hasResourceProperties('AWS::ApiGateway::RestApi', {
-      Name: 'mapvibe-dev-api',
+      Name: 'fidee-dev-api',
     });
     mediaTemplate.hasResourceProperties('AWS::WAFv2::WebACL', {
-      Name: 'mapvibe-dev-media-waf',
+      Name: 'fidee-dev-media-waf',
     });
   });
 
@@ -215,7 +215,7 @@ describe('MapVibeStack', () => {
 
   it('creates regional API WAF and associates it with the API Gateway stage', () => {
     template.hasResourceProperties('AWS::WAFv2::WebACL', {
-      Name: 'mapvibe-dev-api-waf',
+      Name: 'fidee-dev-api-waf',
       Scope: 'REGIONAL',
     });
     template.hasResourceProperties('AWS::WAFv2::WebACLAssociation', {
@@ -235,17 +235,17 @@ describe('MapVibeStack', () => {
   it('routes media upload object-created events through EventBridge to SQS', () => {
     template.resourceCountIs('AWS::SQS::Queue', 2);
     template.hasResourceProperties('AWS::SQS::Queue', {
-      QueueName: 'mapvibe-dev-media-upload-events',
+      QueueName: 'fidee-dev-media-upload-events',
       RedrivePolicy: {
         deadLetterTargetArn: Match.anyValue(),
         maxReceiveCount: 3,
       },
     });
     template.hasResourceProperties('AWS::SQS::Queue', {
-      QueueName: 'mapvibe-dev-media-upload-events-dlq',
+      QueueName: 'fidee-dev-media-upload-events-dlq',
     });
     template.hasResourceProperties('AWS::Events::Rule', {
-      Name: 'mapvibe-dev-media-upload-object-created',
+      Name: 'fidee-dev-media-upload-object-created',
       EventPattern: Match.objectLike({
         source: ['aws.s3'],
         'detail-type': ['Object Created'],
@@ -272,7 +272,7 @@ describe('MapVibeStack', () => {
 
   it('creates CloudFront-scoped media WAF', () => {
     mediaTemplate.hasResourceProperties('AWS::WAFv2::WebACL', {
-      Name: 'mapvibe-dev-media-waf',
+      Name: 'fidee-dev-media-waf',
       Scope: 'CLOUDFRONT',
     });
   });
@@ -285,17 +285,17 @@ describe('MapVibeStack', () => {
       Tags: Match.arrayWith([{ Key: 'AutoCleanup', Value: 'true' }]),
     });
     template.hasResourceProperties('AWS::DynamoDB::Table', {
-      Tags: Match.arrayWith([{ Key: 'CostCenter', Value: 'mapvibe' }]),
+      Tags: Match.arrayWith([{ Key: 'CostCenter', Value: 'fidee' }]),
     });
   });
 
   it('uses retain policies in prod', () => {
     const app = new cdk.App();
-    const prodStack = new MapVibeStack(app, 'ProdStack', {
+    const prodStack = new FideeStack(app, 'ProdStack', {
       stage: 'prod',
       env: { account: '123456789012', region: MAIN_REGION },
       mediaWebAclArn:
-        'arn:aws:wafv2:us-east-1:123456789012:global/webacl/mapvibe-prod-media-waf/example',
+        'arn:aws:wafv2:us-east-1:123456789012:global/webacl/fidee-prod-media-waf/example',
     });
     const prodTemplate = Template.fromStack(prodStack);
 

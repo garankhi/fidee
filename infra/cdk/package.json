@@ -1,8 +1,8 @@
 {
-  "name": "@mapvibe/cdk",
+  "name": "@fidee/cdk",
   "version": "0.0.1",
   "private": true,
-  "description": "MapVibe AWS CDK infrastructure",
+  "description": "Fidee AWS CDK infrastructure",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

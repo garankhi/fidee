@@ -106,8 +106,8 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
                 child: _isLoading
                     ? _buildLoading()
                     : _error != null
-                        ? _buildError()
-                        : _buildPlacesList(scrollController),
+                    ? _buildError()
+                    : _buildPlacesList(scrollController),
               ),
             ],
           ),
@@ -168,7 +168,11 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(Icons.close, color: Colors.white.withValues(alpha: 0.6), size: 20),
+              child: Icon(
+                Icons.close,
+                color: Colors.white.withValues(alpha: 0.6),
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -197,11 +201,18 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, color: Colors.white.withValues(alpha: 0.3), size: 48),
+          Icon(
+            Icons.error_outline,
+            color: Colors.white.withValues(alpha: 0.3),
+            size: 48,
+          ),
           const SizedBox(height: 12),
           Text(
             _error!,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
           ),
         ],
       ),
@@ -240,7 +251,9 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
       decoration: BoxDecoration(
         color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+        ),
       ),
       child: const Row(
         children: [
@@ -312,9 +325,14 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
                       if (place.confidence == 'high')
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFF22C55E,
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
@@ -357,7 +375,11 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.3), size: 20),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withValues(alpha: 0.3),
+                  size: 20,
+                ),
               ],
             ),
           ],
@@ -399,7 +421,11 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.add_location_alt, color: Color(0xFF3B82F6), size: 22),
+              child: const Icon(
+                Icons.add_location_alt,
+                color: Color(0xFF3B82F6),
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -425,7 +451,11 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: const Color(0xFF3B82F6).withValues(alpha: 0.6), size: 16),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.6),
+              size: 16,
+            ),
           ],
         ),
       ),

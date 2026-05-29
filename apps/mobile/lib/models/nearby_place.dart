@@ -1,4 +1,5 @@
 /// Data models for the GET /places/nearby API contract.
+library;
 
 class NearbyPlaceCoordinates {
   final double lat;
@@ -62,8 +63,8 @@ class NearbyPlace {
       category: json['category'] as String,
       distanceMeters: json['distance_meters'] as int,
       confidence: json['confidence'] as String,
-      coordinates: NearbyPlaceCoordinates.fromJson(json['coordinates']),
-      actions: NearbyPlaceActions.fromJson(json['actions']),
+      coordinates: NearbyPlaceCoordinates.fromJson(json['coordinates'] as Map<String, dynamic>),
+      actions: NearbyPlaceActions.fromJson(json['actions'] as Map<String, dynamic>),
     );
   }
 }
@@ -102,8 +103,12 @@ class NearbyResponse {
   factory NearbyResponse.fromJson(Map<String, dynamic> json) {
     return NearbyResponse(
       status: json['status'] as String,
-      metadata: NearbyMetadata.fromJson(json['metadata']),
-      data: (json['data'] as List).map((e) => NearbyPlace.fromJson(e)).toList(),
+      metadata: NearbyMetadata.fromJson(json['metadata'] as Map<String, dynamic>),
+      data: (json['data'] as List).map((e) => NearbyPlace.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 }
+
+
+
+

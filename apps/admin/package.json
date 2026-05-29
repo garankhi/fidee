@@ -1,9 +1,9 @@
 {
-  "name": "@mapvibe/admin",
+  "name": "@fidee/admin",
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "MapVibe Admin Dashboard",
+  "description": "Fidee Admin Dashboard",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

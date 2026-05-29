@@ -1,26 +1,26 @@
-# Product Requirements Document (PRD): MapVibe
+# Product Requirements Document (PRD): Fidee
 
 ## 1. Document Control
 
 | Field | Details |
 |---|---|
-| **Product / Project Name** | MapVibe |
+| **Product / Project Name** | Fidee |
 | **Version** | 1.0.0 |
 | **Owner** | Nguyễn Thế Minh (Product / Tech Lead) |
 | **Created Date** | October 2025 |
 | **Status** | Approved |
-| **MVP Business Rules** | See `docs/MapVibe_Business_Rules.md` |
+| **MVP Business Rules** | See `docs/Fidee_Business_Rules.md` |
 
 ## 2. Executive Summary
 
 ### 2.1 Product Overview
-MapVibe MVP is an AI-search web app paired with a camera-first social food discovery mobile flow. Users can search food places quickly with simple keyword-based search, and can also capture a real food/place moment in the app, attach the photo to a nearby place using GPS proof, and share it with a trusted friend circle. The MVP keeps AI search lightweight first: keyword matching over MapVibe place data, without Bedrock, knowledge base retrieval, or complex intent parsing.
+Fidee MVP is an AI-search web app paired with a camera-first social food discovery mobile flow. Users can search food places quickly with simple keyword-based search, and can also capture a real food/place moment in the app, attach the photo to a nearby place using GPS proof, and share it with a trusted friend circle. The MVP keeps AI search lightweight first: keyword matching over Fidee place data, without Bedrock, knowledge base retrieval, or complex intent parsing.
 
 ### 2.2 Problem Statement
 Conventional map and review platforms are too broad for quick food decisions. Users need a fast way to search places, but they also still ask friends where to eat because public reviews can feel generic, seeded, or disconnected from their own taste circle.
 
 ### 2.3 Proposed Solution
-MapVibe combines simple search and real check-ins by friends. The MVP validates two loops: keyword-based place discovery on web, and private social food sharing on mobile. Bedrock-powered natural-language search, AI summaries, semantic knowledge base retrieval, and shop monetization are later phases after the core data and social loop are useful.
+Fidee combines simple search and real check-ins by friends. The MVP validates two loops: keyword-based place discovery on web, and private social food sharing on mobile. Bedrock-powered natural-language search, AI summaries, semantic knowledge base retrieval, and shop monetization are later phases after the core data and social loop are useful.
 
 ## 3. Goals and Non-Goals
 
@@ -71,7 +71,7 @@ MapVibe combines simple search and real check-ins by friends. The MVP validates 
 
 ### 6.1 Search & Discovery
 **FR-01: Simple Keyword Search**
-* **Description:** Users can search MapVibe places quickly from the web app using simple text input.
+* **Description:** Users can search Fidee places quickly from the web app using simple text input.
 * **Acceptance Criteria:**
     * Search supports simple keyword/category/location-style query over available place data.
     * Search does not require Bedrock, knowledge base retrieval, vector search, or complex prompt parsing for MVP.
@@ -147,12 +147,12 @@ MapVibe combines simple search and real check-ins by friends. The MVP validates 
 | BR-07 | GOONG Places is fallback/reference only, not source of truth. | Backend / Data |
 | BR-08 | Admin approve, reject, and merge decisions must write audit logs. | Admin / Backend |
 
-Full business rule details, mock nearby JSON, and design scope guidance live in `docs/MapVibe_Business_Rules.md`.
+Full business rule details, mock nearby JSON, and design scope guidance live in `docs/Fidee_Business_Rules.md`.
 
 ## 8. System Architecture & Constraints
 
 ### 8.1 Technical Architecture
-MapVibe is a serverless, event-driven web application on AWS (ap-southeast-1). Key components include:
+Fidee is a serverless, event-driven web application on AWS (ap-southeast-1). Key components include:
 * **Edge & API:** Route 53, CloudFront, WAF, API Gateway.
 * **Compute:** AWS Lambda microservices, EventBridge for routing upload events and scheduled jobs, SQS for retryable async processing.
 * **Data & Storage:** DynamoDB for places, profiles, and media records; S3 for direct media uploads.

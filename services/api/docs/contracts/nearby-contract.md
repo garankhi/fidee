@@ -5,7 +5,7 @@
 > **Branch**: `MAP-14A-nearby-contract`  
 > **Context**: Camera-first check-in flow  
 > **Provider**: GOONG Maps  
-> **Figma**: https://www.figma.com/design/SsebSYBh7Ja6wAhCYVTLCl/MapVibe?node-id=53-7
+> **Figma**: https://www.figma.com/design/SsebSYBh7Ja6wAhCYVTLCl/Fidee?node-id=53-7
 
 ---
 
@@ -72,7 +72,7 @@ GET /places/nearby?lat=10.771597&lng=106.704416&radius=50&context=camera_check_i
   },
   "data": [
     {
-      "id": "string",                  // MapVibe internal ID
+      "id": "string",                  // Fidee internal ID
       "place_id": "string | null",     // GOONG place_id (null cho custom)
       "source": "goong_places | custom",
       "display_name": "string",
@@ -96,7 +96,7 @@ GET /places/nearby?lat=10.771597&lng=106.704416&radius=50&context=camera_check_i
 
 | Field              | Description                                                                 |
 |--------------------|-----------------------------------------------------------------------------|
-| `id`               | ID nội bộ MapVibe. Format: `place_mapvibe_{number}` hoặc `custom_fallback` |
+| `id`               | ID nội bộ Fidee. Format: `place_fidee_{number}` hoặc `custom_fallback` |
 | `place_id`         | ID gốc từ GOONG Maps. `null` cho custom place                              |
 | `source`           | `goong_places` = từ Goong API. `custom` = user tự tạo (fallback)           |
 | `display_name`     | Tên hiển thị chính trên UI                                                 |

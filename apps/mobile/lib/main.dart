@@ -1,68 +1,78 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'services/auth_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'features/auth/auth_providers.dart';
 import 'features/auth/login_page.dart';
-import 'screens/home_screen.dart';
+import 'features/auth/screens/register_step3_name_page.dart';
+import 'screens/camera_screen.dart';
+import 'services/auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MapVibeApp());
+  runApp(const ProviderScope(child: FideeApp()));
 }
 
-class MapVibeApp extends StatefulWidget {
-  final AuthService? authService;
-  
-  const MapVibeApp({super.key, this.authService});
+class FideeApp extends ConsumerWidget {
+  const FideeApp({super.key});
 
   @override
-  State<MapVibeApp> createState() => _MapVibeAppState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authControllerProvider);
 
-class _MapVibeAppState extends State<MapVibeApp> {
-  late final AuthService _authService;
-  bool _isInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _authService = widget.authService ?? AuthService();
-    _initialize();
-  }
-
-  Future<void> _initialize() async {
-    await _authService.initialize();
-    setState(() => _isInitialized = true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MapVibe',
+      title: 'Fidee',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0A0E17),
-        primaryColor: const Color(0xFF3B82F6),
+        primaryColor: const Color(0xFFEF4050),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF3B82F6),
-          secondary: Color(0xFF8B5CF6),
+          primary: Color(0xFFEF4050),
+          secondary: Color(0xFFEF4050),
           surface: Color(0xFF1A1F2E),
           error: Color(0xFFEF4444),
         ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFFEF4050),
+          selectionColor: Color(0x4DEF4050),
+          selectionHandleColor: Color(0xFFEF4050),
+        ),
         fontFamily: 'Inter',
       ),
-      home: _isInitialized
-          ? _authService.state == AuthState.authenticated
-              ? HomeScreen(authService: _authService)
-              : LoginPage(authService: _authService)
-          : const Scaffold(
-              backgroundColor: Color(0xFF0A0E17),
-              body: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF3B82F6),
-                ),
-              ),
-            ),
+      home: authState.when(
+        loading: () => const _SplashScreen(),
+        error: (_, _) => const LoginPage(),
+        data: (state) {
+          if (state.authState == AuthState.authenticated) {
+            return const CameraScreen();
+          } else if (state.authState == AuthState.incompleteProfile) {
+            // BEST PRACTICE: Bắt lỗi đăng ký dở dang, ép vào màn nhập Tên
+            return const RegisterStep3NamePage();
+          } else {
+            return const LoginPage();
+          }
+        },
+      ),
+      
+    );
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFEF4050),
+      body: Center(
+        child: Image(
+          image: AssetImage('assets/images/logo.png'),
+          width: 120,
+          height: 120,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 }

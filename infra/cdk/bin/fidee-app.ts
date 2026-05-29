@@ -2,19 +2,19 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import {
-  assertMapVibeStage,
+  assertFideeStage,
   CLOUDFRONT_WAF_REGION,
   MAIN_REGION,
-  MapVibeMediaWafStack,
-  MapVibeStack,
-} from '../lib/mapvibe-stack';
+  FideeMediaWafStack,
+  FideeStack,
+} from '../lib/fidee-stack';
 
 const app = new cdk.App();
 
-const stage = assertMapVibeStage(app.node.tryGetContext('stage') ?? 'dev');
+const stage = assertFideeStage(app.node.tryGetContext('stage') ?? 'dev');
 const account = process.env.CDK_DEFAULT_ACCOUNT;
 
-const mediaWafStack = new MapVibeMediaWafStack(app, `MapVibe-${stage}-MediaWaf`, {
+const mediaWafStack = new FideeMediaWafStack(app, `Fidee-${stage}-MediaWaf`, {
   env: {
     account,
     region: CLOUDFRONT_WAF_REGION,
@@ -23,7 +23,7 @@ const mediaWafStack = new MapVibeMediaWafStack(app, `MapVibe-${stage}-MediaWaf`,
   stage,
 });
 
-const appStack = new MapVibeStack(app, `MapVibe-${stage}`, {
+const appStack = new FideeStack(app, `Fidee-${stage}`, {
   env: {
     account,
     region: MAIN_REGION,

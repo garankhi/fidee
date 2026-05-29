@@ -9,7 +9,7 @@ const eventBody = (key = 'uploads/media-1.jpg'): string =>
     source: 'aws.s3',
     'detail-type': 'Object Created',
     detail: {
-      bucket: { name: 'mapvibe-dev-media' },
+      bucket: { name: 'fidee-dev-media' },
       object: { key, size: 1024 },
     },
   });
@@ -77,13 +77,13 @@ describe('handle-media-uploaded handler', () => {
 
     await handler(sqsEvent());
 
-    expect(headObject).toHaveBeenCalledWith('mapvibe-dev-media', 'uploads/media-1.jpg');
+    expect(headObject).toHaveBeenCalledWith('fidee-dev-media', 'uploads/media-1.jpg');
     expect(putMedia).toHaveBeenCalledOnce();
     expect(putRecords[0]).toMatchObject({
       mediaId: 'media-1',
       ownerUserId: 'user-1',
       status: 'PENDING_MODERATION',
-      s3Bucket: 'mapvibe-dev-media',
+      s3Bucket: 'fidee-dev-media',
       s3Key: 'uploads/media-1.jpg',
       contentType: 'image/jpeg',
       contentLength: 1024,
@@ -152,6 +152,6 @@ describe('handle-media-uploaded handler', () => {
 
     await handler(sqsEvent(eventBody('uploads%2Fmedia-1.jpg')));
 
-    expect(headObject).toHaveBeenCalledWith('mapvibe-dev-media', 'uploads/media-1.jpg');
+    expect(headObject).toHaveBeenCalledWith('fidee-dev-media', 'uploads/media-1.jpg');
   });
 });

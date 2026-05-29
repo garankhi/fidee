@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.mapvibe" "\0"
-            VALUE "FileDescription", "mapvibe_mobile" "\0"
+            VALUE "CompanyName", "com.fidee" "\0"
+            VALUE "FileDescription", "fidee_mobile" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "mapvibe_mobile" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.mapvibe. All rights reserved." "\0"
-            VALUE "OriginalFilename", "mapvibe_mobile.exe" "\0"
-            VALUE "ProductName", "mapvibe_mobile" "\0"
+            VALUE "InternalName", "fidee_mobile" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.fidee. All rights reserved." "\0"
+            VALUE "OriginalFilename", "fidee_mobile.exe" "\0"
+            VALUE "ProductName", "fidee_mobile" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

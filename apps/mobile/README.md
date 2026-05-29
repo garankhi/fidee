@@ -1,4 +1,4 @@
-# mapvibe_mobile
+# fidee_mobile
 
 A new Flutter project.
 

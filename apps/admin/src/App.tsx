@@ -25,7 +25,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <span className="brand-icon">🗺️</span>
-          <h1 className="brand-text">MapVibe</h1>
+          <h1 className="brand-text">Fidee</h1>
           <span className="brand-badge">Admin</span>
         </div>
         <nav className="sidebar-nav">

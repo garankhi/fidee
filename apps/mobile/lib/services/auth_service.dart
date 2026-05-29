@@ -72,7 +72,9 @@ class SecureCognitoStorage extends CognitoStorage {
 }
 
 // Auth state and result.
-enum AuthState { loading, unauthenticated, otpSent, authenticated }
+enum AuthState { loading, unauthenticated, otpSent, authenticated, incompleteProfile }
+
+enum UserTier { free, pro }
 
 class AuthResult {
   final bool success;
@@ -94,6 +96,7 @@ class AuthService {
   String? _username;
   DateTime? _lastOtpSent;
   String? _destination;
+  UserTier _tier = UserTier.free;
 
   late CognitoUserPool _userPool;
   CognitoUser? _cognitoUser;
@@ -104,6 +107,7 @@ class AuthService {
   AuthService({this.isTestMode = false});
 
   AuthState get state => _state;
+  UserTier get tier => _tier;
   String? get destination => _destination;
 
   int get resendCooldownRemaining {
@@ -147,7 +151,33 @@ class AuthService {
 
       if (session != null && session.isValid()) {
         _username = user.getUsername();
-        _state = AuthState.authenticated;
+        
+        // Fetch attributes to check if profile is complete
+        final attributes = await user.getUserAttributes();
+        bool hasName = false;
+        
+        if (attributes != null) {
+          for (var attr in attributes) {
+            // Check for a custom attribute or standard attribute that indicates completion
+            // For example, checking if 'given_name' or 'name' or 'preferred_username' is set
+            if (attr.getName() == 'given_name' && (attr.getValue()?.isNotEmpty ?? false)) {
+              hasName = true;
+            }
+            if (attr.getName() == 'custom:tier') {
+              if (attr.getValue() == 'pro') {
+                _tier = UserTier.pro;
+              } else {
+                _tier = UserTier.free;
+              }
+            }
+          }
+        }
+
+        if (hasName) {
+          _state = AuthState.authenticated;
+        } else {
+          _state = AuthState.incompleteProfile;
+        }
       } else {
         await user.signOut();
         _state = AuthState.unauthenticated;
@@ -162,21 +192,56 @@ class AuthService {
     }
   }
 
-  Future<AuthResult> signIn(String rawUsername) async {
-    // 1. Format the username
-    String username = rawUsername.trim();
-    final isEmail = username.contains('@');
-    if (!isEmail) {
-      // Auto format Vietnamese phone numbers if missing country code
-      if (username.startsWith('0')) {
-        username = '+84${username.substring(1)}';
-      } else if (!username.startsWith('+')) {
-        username = '+$username';
-      }
+  Future<AuthResult> signIn(String email, String password) async {
+    _username = email.trim();
+    
+    if (isTestMode) {
+      _state = AuthState.authenticated;
+      return const AuthResult(success: true);
     }
 
-    _username = username;
-    _destination = _maskDestination(username);
+    try {
+      _cognitoUser = CognitoUser(_username, _userPool);
+      _cognitoUser!.setAuthenticationFlowType('USER_PASSWORD_AUTH');
+
+      final session = await _cognitoUser!.authenticateUser(
+        AuthenticationDetails(username: _username, password: password),
+      );
+
+      if (session != null && session.isValid()) {
+        _state = AuthState.authenticated;
+        return const AuthResult(success: true);
+      } else {
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Login failed',
+        );
+      }
+    } on CognitoUserConfirmationNecessaryException {
+      _state = AuthState.otpSent;
+      _lastOtpSent = DateTime.now();
+      _destination = _maskDestination(_username!);
+      // Cần verify email
+      return AuthResult(
+        success: true,
+        destination: _destination,
+      );
+    } on CognitoClientException catch (e) {
+      return AuthResult(
+        success: false,
+        errorMessage: e.message ?? 'Sai tài khoản hoặc mật khẩu',
+      );
+    } catch (e) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Lỗi kết nối.',
+      );
+    }
+  }
+
+  Future<AuthResult> signUp(String email, String password) async {
+    _username = email.trim();
+    _destination = _maskDestination(_username!);
 
     if (isTestMode) {
       _state = AuthState.otpSent;
@@ -185,60 +250,47 @@ class AuthService {
     }
 
     try {
-      _cognitoUser = CognitoUser(username, _userPool);
-      _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
+      final attributes = [
+        AttributeArg(name: 'email', value: _username),
+      ];
 
-      try {
-        await _cognitoUser!.initiateAuth(
-          AuthenticationDetails(username: username),
-        );
-      } on CognitoUserCustomChallengeException {
-        // Expected exception indicating OTP is sent
-      } on CognitoClientException catch (e) {
-        if (e.code == 'UserNotFoundException') {
-          // Auto sign-up for new users with correct attributes
-          final attributes = [
-            AttributeArg(
-              name: isEmail ? 'email' : 'phone_number',
-              value: username,
-            ),
-          ];
-          await _userPool.signUp(
-            username,
-            'MapVibeTempPwd123!',
-            userAttributes: attributes,
-          );
+      await _userPool.signUp(
+        _username!,
+        password,
+        userAttributes: attributes,
+      );
 
-          _cognitoUser = CognitoUser(username, _userPool);
-          _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
-          try {
-            await _cognitoUser!.initiateAuth(
-              AuthenticationDetails(username: username),
-            );
-          } on CognitoUserCustomChallengeException {
-            // Expected
-          }
-        } else {
-          rethrow;
-        }
-      }
-
+      _cognitoUser = CognitoUser(_username, _userPool);
       _state = AuthState.otpSent;
       _lastOtpSent = DateTime.now();
+
       return AuthResult(success: true, destination: _destination);
+    } on CognitoClientException catch (e) {
+      return AuthResult(
+        success: false,
+        errorMessage: e.message ?? 'Không thể đăng ký. Email có thể đã tồn tại.',
+      );
     } catch (e) {
       return const AuthResult(
         success: false,
-        errorMessage: 'Loi ket noi hoac Sdt khong hop le.',
+        errorMessage: 'Lỗi hệ thống.',
       );
     }
+  }
+
+  Future<AuthResult> signInWithGoogle() async {
+    // Requires google_sign_in package setup and Cognito Identity Pool
+    return const AuthResult(
+      success: false,
+      errorMessage: 'Chưa hỗ trợ Google Login',
+    );
   }
 
   Future<AuthResult> verifyOtp(String code) async {
     if (_username == null) {
       return const AuthResult(
         success: false,
-        errorMessage: 'No sign-in in progress',
+        errorMessage: 'Không tìm thấy phiên đăng ký',
       );
     }
 
@@ -248,21 +300,25 @@ class AuthService {
     }
 
     try {
-      final session = await _cognitoUser!.sendCustomChallengeAnswer(code);
-      if (session != null && session.isValid()) {
+      final confirmed = await _cognitoUser!.confirmRegistration(code);
+      if (confirmed) {
         _state = AuthState.authenticated;
-        // Tokens are automatically cached to secure storage by the Cognito SDK.
         return const AuthResult(success: true);
       } else {
         return const AuthResult(
           success: false,
-          errorMessage: 'Ma xac thuc sai',
+          errorMessage: 'Mã xác thực sai',
         );
       }
+    } on CognitoClientException catch (e) {
+      return AuthResult(
+        success: false,
+        errorMessage: e.message ?? 'Mã xác thực sai',
+      );
     } catch (e) {
       return const AuthResult(
         success: false,
-        errorMessage: 'Ma xac thuc sai hoac loi ket noi.',
+        errorMessage: 'Lỗi kết nối.',
       );
     }
   }
@@ -272,16 +328,26 @@ class AuthService {
       return AuthResult(
         success: false,
         errorMessage:
-            'Vui long cho $resendCooldownRemaining giay truoc khi gui lai.',
+            'Vui lòng chờ $resendCooldownRemaining giây trước khi gửi lại.',
       );
     }
     if (_username == null) {
       return const AuthResult(
         success: false,
-        errorMessage: 'No sign-in in progress',
+        errorMessage: 'Không tìm thấy phiên đăng ký',
       );
     }
-    return await signIn(_username!);
+    
+    try {
+      await _cognitoUser?.resendConfirmationCode();
+      _lastOtpSent = DateTime.now();
+      return const AuthResult(success: true);
+    } catch (e) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Không thể gửi lại mã',
+      );
+    }
   }
 
   Future<void> signOut() async {
@@ -308,3 +374,9 @@ class AuthService {
         '${input.substring(input.length - 3)}';
   }
 }
+
+
+
+
+
+
