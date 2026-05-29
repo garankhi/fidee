@@ -1,0 +1,1 @@
+{"root":["./src/app.test.tsx","./src/app.tsx","./src/main.tsx","./src/navigation.ts","./src/test-setup.ts","./src/vite-env.d.ts","./src/features/admin/adminpages.tsx","./src/features/admin/admindata.ts","./src/features/moderation/moderationdetailspage.tsx","./src/features/moderation/moderationpage.tsx","./src/features/moderation/mockmoderationadapter.ts"],"version":"5.9.3"}
