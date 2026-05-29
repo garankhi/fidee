@@ -370,7 +370,7 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animation,
-      builder: (_, __) => Stack(
+      builder: (_, _) => Stack(
         alignment: Alignment.center,
         children: [
           // Outer pulse
