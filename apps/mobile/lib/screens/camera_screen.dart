@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:native_exif/native_exif.dart';
 import '../features/auth/auth_providers.dart';
 import '../services/auth_service.dart';
 import 'send_image_screen.dart';
@@ -77,11 +78,54 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
       return;
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    final hideNotice = prefs.getBool('hide_gallery_gps_notice') ?? false;
+
+    if (!hideNotice) {
+      final shouldContinue = await showDialog<bool>(
+        context: context,
+        builder: (context) => const GalleryGpsNoticeDialog(),
+      );
+      if (shouldContinue != true) return;
+    }
+
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
     if (pickedFile != null) {
-      debugPrint('Picked from gallery: ${pickedFile.path}');
-      // TODO: Handle gallery image (e.g. navigate to preview or upload)
+      try {
+        final exif = await Exif.fromPath(pickedFile.path);
+        final latLong = await exif.getLatLong();
+        await exif.close();
+
+        // Nếu ảnh không có tọa độ GPS -> Hiện lỗi chặn lại
+        if (latLong == null) {
+          debugPrint('Missing EXIF GPS data');
+          _showMissingGpsError();
+          return;
+        }
+
+        debugPrint('Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}');
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 300),
+            // Giả sử SendImageScreen của bạn có thể nhận thêm lat/long
+            pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
+              imagePath: pickedFile.path,
+              // latitude: latLong.latitude,
+              // longitude: latLong.longitude,
+            ),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
+      } catch (e) {
+        debugPrint('Lỗi đọc EXIF: $e');
+      }
     }
   }
 
@@ -108,6 +152,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
         _isFlashOn ? FlashMode.torch : FlashMode.off,
       );
     });
+  }
+
+  void _showMissingGpsError() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF252020),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Không tìm thấy vị trí',
+          style: TextStyle(color: Color(0xFFEF484F), fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Bức ảnh này không chứa dữ liệu vị trí (GPS). Vui lòng chọn một bức ảnh khác được chụp bằng camera gốc của máy với tính năng gắn thẻ vị trí đã được bật.',
+          style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', height: 1.5),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF484F),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: const Text('Đã hiểu', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -427,6 +499,83 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
           ],
         ),
       ),
+    );
+  }
+}
+
+class GalleryGpsNoticeDialog extends StatefulWidget {
+  const GalleryGpsNoticeDialog({super.key});
+
+  @override
+  State<GalleryGpsNoticeDialog> createState() => _GalleryGpsNoticeDialogState();
+}
+
+class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
+  bool _dontShowAgain = false;
+
+  void _onContinue() async {
+    // Nếu user tick vào "Không hiện lại", lưu trạng thái xuống máy
+    if (_dontShowAgain) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('hide_gallery_gps_notice', true);
+    }
+    // Trả về true báo hiệu user đồng ý đi tiếp
+    if (mounted) Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF252020),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Lưu ý về vị trí',
+        style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Ảnh tải lên từ thư viện bắt buộc phải được bật Vị trí (GPS) lúc chụp để xác thực điểm check-in.',
+            style: TextStyle(color: Colors.white70, fontFamily: 'SF Pro', fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          Theme(
+            data: Theme.of(context).copyWith(
+              unselectedWidgetColor: Colors.white54,
+            ),
+            child: CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              activeColor: const Color(0xFFEF484F),
+              title: const Text(
+                'Không hiện lại',
+                style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontSize: 15),
+              ),
+              value: _dontShowAgain,
+              onChanged: (value) {
+                setState(() {
+                  _dontShowAgain = value ?? false;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false), // Trả về false nếu Hủy
+          child: const Text('Hủy', style: TextStyle(color: Colors.white54, fontFamily: 'SF Pro')),
+        ),
+        ElevatedButton(
+          onPressed: _onContinue,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFEF484F),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          ),
+          child: const Text('Tiếp tục', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.bold)),
+        ),
+      ],
     );
   }
 }
