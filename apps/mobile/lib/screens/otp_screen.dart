@@ -77,7 +77,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     if (result.success) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+        MaterialPageRoute<void>(builder: (_) => HomeScreen(authService: ref.read(authServiceProvider))),
         (route) => false,
       );
     } else {

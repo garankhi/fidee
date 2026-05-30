@@ -44,14 +44,14 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final username = _normalizeInput(input);
-    final result = await widget.authService.signIn(username);
+    final result = await widget.authService.signIn(username, 'MapVibe@123');
 
     if (!mounted) return;
 
     if (result.success) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => OtpScreen(authService: widget.authService),
+          builder: (_) => const OtpScreen(),
         ),
       );
     } else {
