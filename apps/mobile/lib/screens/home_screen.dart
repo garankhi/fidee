@@ -5,6 +5,9 @@ import 'package:latlong2/latlong.dart';
 import '../features/auth/login_page.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
+import '../services/map_feed_service.dart';
+import '../models/map_feed_item.dart';
+import 'camera_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 class HomeScreen extends StatefulWidget {
@@ -19,12 +22,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final LocationService _locationService = LocationService();
   final MapController _mapController = MapController();
+  late final MapFeedService _mapFeedService;
   bool _isLoading = true;
   bool _showLocationBanner = false;
+  List<MapFeedItem> _feedItems = [];
 
   @override
   void initState() {
     super.initState();
+    _mapFeedService = MapFeedService(widget.authService);
     _initLocation();
   }
 
@@ -34,6 +40,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _isLoading = false;
       _showLocationBanner = _locationService.status != LocationStatus.granted;
+    });
+    _fetchFeed();
+  }
+
+  Future<void> _fetchFeed() async {
+    final pos = _locationService.currentPosition;
+    final items = await _mapFeedService.getMapFeed(pos.latitude, pos.longitude);
+    if (!mounted) return;
+    setState(() {
+      _feedItems = items;
     });
   }
 
@@ -51,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     if (_locationService.hasRealLocation) {
       _animateToLocation(_locationService.currentPosition);
+      _fetchFeed();
     }
   }
 
@@ -66,12 +83,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _onCheckIn() {
-    // TODO: Navigate to check-in/camera screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tinh nang check-in dang phat trien...'),
-        backgroundColor: Color(0xFF3B82F6),
-        behavior: SnackBarBehavior.floating,
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const CameraScreen(),
       ),
     );
   }
@@ -120,6 +134,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: const _PulsingLocationMarker(),
                     ),
                   ],
+                ),
+                
+              // Feed markers
+              if (_feedItems.isNotEmpty)
+                MarkerLayer(
+                  markers: _feedItems.map((item) {
+                    return Marker(
+                      point: LatLng(item.lat, item.lng),
+                      width: 50,
+                      height: 50,
+                      child: GestureDetector(
+                        onTap: () => _showFeedItemDetails(context, item),
+                        child: _FeedMarker(item: item),
+                      ),
+                    );
+                  }).toList(),
                 ),
             ],
           ),
@@ -253,22 +283,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _showProfileMenu(BuildContext context) {
-    showModalBottomSheet<void>(
+    showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1A1F2E),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                width: 40,
-                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(2),
@@ -330,6 +348,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
+    );
+  }
+
+  void _showFeedItemDetails(BuildContext context, MapFeedItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _FeedItemSheet(item: item),
     );
   }
 }
@@ -582,6 +609,145 @@ class _LocationDeniedBanner extends StatelessWidget {
               Icons.close,
               color: Colors.white.withValues(alpha: 0.4),
               size: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedMarker extends StatelessWidget {
+  final MapFeedItem item;
+
+  const _FeedMarker({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3B82F6),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          item.userName.substring(0, 1).toUpperCase(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedItemSheet extends StatelessWidget {
+  final MapFeedItem item;
+
+  const _FeedItemSheet({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1F2E),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    item.userName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.placeName,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${item.createdAt.hour}:${item.createdAt.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          if (item.caption.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              item.caption,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0E17),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: Icon(Icons.image, color: Colors.white24, size: 48),
             ),
           ),
         ],
