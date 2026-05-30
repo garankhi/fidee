@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../features/auth/auth_providers.dart';
 import '../services/auth_service.dart';
 import 'send_image_screen.dart';
+import 'premium_upgrade_sheet.dart';
 
 List<CameraDescription>? globalCameras;
 
@@ -30,12 +32,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _initCamera();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    
+
     _shrinkAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
@@ -66,7 +68,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     }
   }
 
-
   Future<void> _pickFromGallery() async {
     final authState = ref.read(authControllerProvider).valueOrNull;
     final isPro = authState?.tier == UserTier.pro;
@@ -85,26 +86,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
   }
 
   void _showProFeatureDialog() {
-    showDialog<void>(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tính năng Pro'),
-        content: const Text('Nâng cấp lên Pro để tải ảnh từ thư viện. Free user chỉ có thể chụp ảnh trực tiếp để đảm bảo tính xác thực.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Navigate to upgrade screen
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Nâng cấp'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const PremiumUpgradeSheet(),
     );
   }
 
@@ -147,7 +133,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
           children: [
             // Top Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -190,21 +176,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                 ],
               ),
             ),
-            
+
             const Spacer(flex: 1),
-            
+
             // Camera Preview (Square, Centered)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: AspectRatio(
                 aspectRatio: 1 / 1, // Tỷ lệ vuông 1:1
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(40), // Bo góc giống locket
+                  borderRadius: BorderRadius.circular(30),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       CameraPreview(_controller!),
-                      
+
                       // Flash Button
                       Positioned(
                         top: 16,
@@ -225,7 +211,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                           ),
                         ),
                       ),
-                      
+
                       // Zoom Button (Mock)
                       Positioned(
                         top: 16,
@@ -244,78 +230,69 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                 ),
               ),
             ),
-            
+
             const Spacer(flex: 1),
-            
+
             // Pagination Dots Spacer
             const SizedBox(height: 6),
-            const SizedBox(height: 24),
-            
+            const SizedBox(height: 6),
+
             // Bottom Controls (Gallery, Capture, Flip)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Gallery Preview
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: _pickFromGallery,
-                        child: Container(
-                          width: 55,
-                          height: 55,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.image,
-                              color: Colors.white54,
-                              size: 24,
+                  // Gallery Button
+                  GestureDetector(
+                    onTap: _pickFromGallery, // Khi bấm sẽ check quyền và gọi PremiumUI nếu chưa mua
+                    child: SizedBox(
+                      width: 55,
+                      height: 55,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            top: 5,
+                            child: Container(
+                              width: 45,
+                              height: 45,
+                              decoration: BoxDecoration(color: const Color(0xFFDB8787), borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
-                        ),
+                          Positioned(
+                            left: 6,
+                            top: 8,
+                            child: Transform.rotate(
+                              angle: 17 * math.pi / 180,
+                              child: Container(
+                                width: 45,
+                                height: 45,
+                                decoration: BoxDecoration(color: const Color(0xFFE0E0E0), borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  
+
                   // Capture Button
                   AnimatedBuilder(
                     animation: _animationController,
                     builder: (context, child) {
                       final shrinkValue = _shrinkAnimation.value;
-                      
-                      // Base sizes
-                      const double outerSize = 100.0;
-                      const double innerBaseSize = 84.0;
-                      
-                      // Calculate current sizes
-                      double currentInnerSize = innerBaseSize * shrinkValue;
-                      if (0.0 > 0) {
-                        currentInnerSize = currentInnerSize + (outerSize - currentInnerSize) * 0.0;
-                      }
-                      
-                      // Calculate border width
-                      double currentBorderWidth = 4.0 * (1.0 - 0.0);
-                      
-                      // Color transition (White to Dark Gray)
-                      Color? currentColor = Color.lerp(Colors.white, const Color(0xFF333333), 0.0);
+                      final double currentInnerSize = 68.0 * shrinkValue;
 
                       return GestureDetector(
                         onTap: () async {
                           if (!_controller!.value.isInitialized || _animationController.isAnimating) return;
-                          
+
                           _animationController.forward();
                           try {
                             final image = await _controller!.takePicture();
-                            
-                            // Wait for animation to complete if it hasn't already
-                            if (_animationController.isAnimating) {
-                              await Future.delayed(const Duration(milliseconds: 500));
-                            }
-                            
+                            if (_animationController.isAnimating) await Future.delayed(const Duration(milliseconds: 500));
                             if (!mounted) return;
                             Navigator.pushReplacement(
                               context,
@@ -332,59 +309,32 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                             _animationController.reverse();
                           }
                         },
-                        child: Hero(
-                          tag: 'capture_to_send_button',
-                          child: Material(
-                            type: MaterialType.transparency,
+                        child: Container(
+                          width: 86,
+                          height: 86,
+                          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFEF484F), width: 5)),
+                          child: Center(
                             child: Container(
-                              width: outerSize,
-                              height: outerSize,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.red.withValues(alpha: 1.0 - 0.0), 
-                                  width: currentBorderWidth
-                                ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: currentInnerSize,
-                                  height: currentInnerSize,
-                                  decoration: BoxDecoration(
-                                    color: currentColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: 0.0 > 0.5
-                                      ? Center(
-                                          child: Icon(
-                                            Icons.send_rounded,
-                                            color: Colors.white.withValues(alpha: (0.0 - 0.5) * 2),
-                                            size: 36,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                              ),
+                              width: currentInnerSize,
+                              height: currentInnerSize,
+                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                             ),
                           ),
                         ),
                       );
                     },
                   ),
-                  
+
                   // Flip Camera Button
-                  Expanded(
+                  SizedBox(
+                    width: 55,
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
                         onTap: _switchCamera,
                         child: Transform.rotate(
-                          angle: -36 * 3.1415926535 / 180, // Xoay 90 độ
-                          child: const Icon(
-                            LucideIcons.refreshCcw,
-                            color: Colors.white,
-                            size: 45,
-                          ),
+                          angle: -36 * math.pi / 180,
+                          child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 38),
                         ),
                       ),
                     ),
@@ -392,9 +342,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                 ],
               ),
             ),
-            
-            const SizedBox(height: 24),
-            
+
             // Bottom Section Height Match
             SizedBox(
               height: 120,
@@ -403,7 +351,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
@@ -481,13 +429,4 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
       ),
     );
   }
-
-
-
-
-
-
 }
-
-
-

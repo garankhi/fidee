@@ -38,7 +38,7 @@ class FideeApp extends ConsumerWidget {
           selectionColor: Color(0x4DEF4050),
           selectionHandleColor: Color(0xFFEF4050),
         ),
-        fontFamily: 'Inter',
+        fontFamily: 'SF Pro',
       ),
       home: authState.when(
         loading: () => const _SplashScreen(),
