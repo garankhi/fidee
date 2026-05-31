@@ -1037,30 +1037,56 @@ class _ChipWrap extends StatelessWidget {
               onTap: () => onToggle(option),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 8,
-                ),
+                padding: EdgeInsets.fromLTRB(active ? 10 : 15, 8, 15, 8),
                 decoration: BoxDecoration(
-                  color: active || !add
-                      ? _AddSpotScreenState._softAccent
-                      : _AddSpotScreenState._field,
+                  color: active
+                      ? _AddSpotScreenState._accent
+                      : add
+                      ? _AddSpotScreenState._field
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: active
-                        ? _AddSpotScreenState._accent.withValues(alpha: 0.22)
+                        ? _AddSpotScreenState._accent
                         : _AddSpotScreenState._border,
+                    width: active ? 1.4 : 1,
                   ),
+                  boxShadow: active
+                      ? [
+                          BoxShadow(
+                            color: _AddSpotScreenState._accent.withValues(
+                              alpha: 0.18,
+                            ),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
                 ),
-                child: Text(
-                  option,
-                  style: TextStyle(
-                    color: add
-                        ? _AddSpotScreenState._text
-                        : _AddSpotScreenState._accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (active) ...[
+                      const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      option,
+                      style: TextStyle(
+                        color: active
+                            ? Colors.white
+                            : add
+                            ? _AddSpotScreenState._text
+                            : _AddSpotScreenState._muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -1127,19 +1153,41 @@ class _VisibilityTile extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
         decoration: BoxDecoration(
-          color: active
-              ? _AddSpotScreenState._softAccent
-              : _AddSpotScreenState._softAccent.withValues(alpha: 0.68),
+          color: active ? _AddSpotScreenState._softAccent : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: active
-                ? _AddSpotScreenState._accent.withValues(alpha: 0.24)
-                : Colors.transparent,
+                ? _AddSpotScreenState._accent
+                : _AddSpotScreenState._border,
+            width: active ? 1.6 : 1,
           ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: _AddSpotScreenState._accent.withValues(alpha: 0.12),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
-            Icon(icon, color: _AddSpotScreenState._accent, size: 20),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: active
+                    ? _AddSpotScreenState._accent
+                    : _AddSpotScreenState._field,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: active ? Colors.white : _AddSpotScreenState._muted,
+                size: 18,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1147,8 +1195,10 @@ class _VisibilityTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: _AddSpotScreenState._accent,
+                    style: TextStyle(
+                      color: active
+                          ? _AddSpotScreenState._accent
+                          : _AddSpotScreenState._text,
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1156,14 +1206,38 @@ class _VisibilityTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: _AddSpotScreenState._accent,
+                    style: TextStyle(
+                      color: active
+                          ? _AddSpotScreenState._accent
+                          : _AddSpotScreenState._muted,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 12),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: active ? _AddSpotScreenState._accent : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: active
+                      ? _AddSpotScreenState._accent
+                      : _AddSpotScreenState._border,
+                ),
+              ),
+              child: active
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 15,
+                    )
+                  : null,
             ),
           ],
         ),
