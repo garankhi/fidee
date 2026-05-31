@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../services/friend_service.dart';
 
@@ -35,9 +34,9 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
   final TextEditingController _dishNoteController = TextEditingController();
   final TextEditingController _reviewController = TextEditingController();
 
-  final Set<String> _selectedVibes = <String>{'Dating', 'Cafe'};
-  final Set<String> _selectedServices = <String>{'Wifi', 'Outdoor'};
-  final Set<String> _selectedReviewTags = <String>{'Great vibe'};
+  final Set<String> _selectedVibes = <String>{'Hẹn hò', 'Cà phê'};
+  final Set<String> _selectedServices = <String>{'Wifi', 'Ngoài trời'};
+  final Set<String> _selectedReviewTags = <String>{'Không khí tuyệt'};
   final Set<String> _sentFriendIds = <String>{};
 
   int _step = 0;
@@ -110,7 +109,7 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
 
   void _submit() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Spot draft is ready to submit')),
+      const SnackBar(content: Text('Địa điểm đã sẵn sàng để đăng')),
     );
     Navigator.pop(context);
   }
@@ -227,14 +226,14 @@ class _AddSpotHeader extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: _IconCircleButton(
-                  icon: LucideIcons.chevronLeft,
+                  icon: Icons.chevron_left,
                   onTap: onBack,
                 ),
               ),
               Column(
                 children: [
                   Text(
-                    'Step ${step + 1} of 4',
+                    'Bước ${step + 1} / 4',
                     style: const TextStyle(
                       color: _AddSpotScreenState._text,
                       fontSize: 13,
@@ -243,7 +242,7 @@ class _AddSpotHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Add new spot',
+                    'Thêm địa điểm',
                     style: TextStyle(
                       color: _AddSpotScreenState._text,
                       fontSize: 22,
@@ -313,40 +312,40 @@ class _StepOne extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _StepScaffold(
-      action: _PrimaryButton(label: 'Next', onTap: onNext),
+      action: _PrimaryButton(label: 'Tiếp theo', onTap: onNext),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Label('Spot\'s Name', isRequired: true),
+          const _Label('Tên địa điểm', isRequired: true),
           _SoftTextField(
             controller: nameController,
-            hint: 'Example: TikTak Coffee',
+            hint: 'Ví dụ: TikTak Coffee',
           ),
           const SizedBox(height: 20),
-          const _Label('Vibe', isRequired: true),
+          const _Label('Không khí', isRequired: true),
           _ChipWrap(
             options: const <String>[
-              'Dating',
-              'Group',
-              'Study',
-              'Cafe',
-              'Chill',
+              'Hẹn hò',
+              'Nhóm bạn',
+              'Học tập',
+              'Cà phê',
+              'Thư giãn',
               'Healthy',
               'Acoustic',
-              'Sweets',
-              'Others',
+              'Đồ ngọt',
+              'Khác',
             ],
             selected: selectedVibes,
             onToggle: onToggleVibe,
           ),
           const SizedBox(height: 20),
-          const _Label('Khung gio hoat dong', isRequired: true),
+          const _Label('Khung giờ hoạt động', isRequired: true),
           Row(
             children: [
               const SizedBox(
                 width: 62,
                 child: Text(
-                  'Mo cua',
+                  'Mở cửa',
                   style: TextStyle(
                     color: _AddSpotScreenState._text,
                     fontSize: 13,
@@ -365,7 +364,7 @@ class _StepOne extends StatelessWidget {
               const SizedBox(
                 width: 68,
                 child: Text(
-                  'Dong cua',
+                  'Đóng cửa',
                   style: TextStyle(
                     color: _AddSpotScreenState._text,
                     fontSize: 13,
@@ -383,11 +382,11 @@ class _StepOne extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const _Label('Price', isRequired: true),
+          const _Label('Giá tiền', isRequired: true),
           Row(
             children: [
               const Text(
-                'from',
+                'từ',
                 style: TextStyle(color: _AddSpotScreenState._text),
               ),
               const SizedBox(width: 12),
@@ -400,7 +399,7 @@ class _StepOne extends StatelessWidget {
               ),
               const SizedBox(width: 18),
               const Text(
-                'to',
+                'đến',
                 style: TextStyle(color: _AddSpotScreenState._text),
               ),
               const SizedBox(width: 12),
@@ -414,42 +413,42 @@ class _StepOne extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const _Label('Address', isRequired: true),
+          const _Label('Địa chỉ', isRequired: true),
           _SoftTextField(
             controller: addressController,
-            hint: '123 Abc Street, Ben Thanh Ward',
+            hint: '123 Đường Abc, Phường Bến Thành',
           ),
           const SizedBox(height: 20),
-          const _Label('Phone number'),
+          const _Label('Số điện thoại'),
           _SoftTextField(
             controller: phoneController,
             hint: '0912 345 678',
             keyboardType: TextInputType.phone,
           ),
           const SizedBox(height: 20),
-          const _Label('Description'),
+          const _Label('Mô tả'),
           _SoftTextField(
             controller: descriptionController,
-            hint: 'Chill vibe, good view, acoustic music every Sat...',
+            hint: 'Không gian chill, view đẹp, acoustic mỗi tối thứ 7...',
             minLines: 3,
             maxLines: 4,
           ),
           const SizedBox(height: 20),
-          const _Label('Services', isRequired: true),
+          const _Label('Tiện ích', isRequired: true),
           _ChipWrap(
             options: const <String>[
               'Wifi',
-              'Indoor',
-              'Outdoor',
-              'Work-friendly',
-              'Cashless',
+              'Trong nhà',
+              'Ngoài trời',
+              'Làm việc được',
+              'Không tiền mặt',
               'Acoustic',
-              'Car Parking',
-              'Quiet',
-              'No Pet',
-              'Delivery',
-              'No Seating',
-              '+ Add',
+              'Đỗ xe ô tô',
+              'Yên tĩnh',
+              'Không thú cưng',
+              'Giao hàng',
+              'Không có chỗ ngồi',
+              '+ Thêm',
             ],
             selected: selectedServices,
             onToggle: onToggleService,
@@ -480,23 +479,23 @@ class _StepTwo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _StepScaffold(
-      action: _PrimaryButton(label: 'Next', onTap: onNext),
+      action: _PrimaryButton(label: 'Tiếp theo', onTap: onNext),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Label('Drop the menu', isRequired: true),
+          const _Label('Ảnh thực đơn', isRequired: true),
           _ImageDropBox(
             image: menuImage,
             onTap: () => onPickImage(_SpotImageSlot.menu),
           ),
           const SizedBox(height: 22),
-          const _Label('Drop the vibe of this spot'),
+          const _Label('Ảnh không khí địa điểm'),
           _ImageDropBox(
             image: vibeImage,
             onTap: () => onPickImage(_SpotImageSlot.vibe),
           ),
           const SizedBox(height: 22),
-          const _Label('Share us some signature dishes'),
+          const _Label('Món đặc trưng'),
           _ImageDropBox(
             image: dishImage,
             onTap: () => onPickImage(_SpotImageSlot.dishes),
@@ -504,7 +503,7 @@ class _StepTwo extends StatelessWidget {
           const SizedBox(height: 14),
           _SoftTextField(
             controller: dishNoteController,
-            hint: 'Share something about these dishes',
+            hint: 'Chia sẻ gì đó về những món này...',
             minLines: 2,
             maxLines: 3,
           ),
@@ -538,16 +537,16 @@ class _StepThree extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _StepScaffold(
-      action: _PrimaryButton(label: 'Next', onTap: onNext),
+      action: _PrimaryButton(label: 'Tiếp theo', onTap: onNext),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Label('Drop your check-in', isRequired: true),
+          const _Label('Ảnh check-in của bạn', isRequired: true),
           _ImageDropBox(image: checkInImage, onTap: onPickImage),
           const SizedBox(height: 20),
           Row(
             children: [
-              const _Label('Rate this spot', isRequired: true),
+              const _Label('Đánh giá địa điểm', isRequired: true),
               const SizedBox(width: 20),
               Row(
                 children: List.generate(5, (int index) {
@@ -572,9 +571,9 @@ class _StepThree extends StatelessWidget {
           const SizedBox(height: 12),
           _ChipWrap(
             options: const <String>[
-              'Great vibe',
-              'Quick service',
-              'Worth the price',
+              'Không khí tuyệt',
+              'Phục vụ nhanh',
+              'Xứng đáng giá tiền',
             ],
             selected: selectedTags,
             onToggle: onToggleTag,
@@ -582,7 +581,7 @@ class _StepThree extends StatelessWidget {
           const SizedBox(height: 18),
           _SoftTextField(
             controller: reviewController,
-            hint: 'Share something...',
+            hint: 'Chia sẻ cảm nhận của bạn...',
             minLines: 3,
             maxLines: 4,
           ),
@@ -612,14 +611,14 @@ class _StepFour extends StatelessWidget {
         children: [
           Expanded(
             child: _PrimaryButton(
-              label: 'Send to',
-              icon: LucideIcons.send,
+              label: 'Gửi cho',
+              icon: Icons.send_rounded,
               onTap: onOpenFriendSheet,
             ),
           ),
           const SizedBox(width: 24),
           Expanded(
-            child: _PrimaryButton(label: 'Submit', onTap: onSubmit),
+            child: _PrimaryButton(label: 'Đăng', onTap: onSubmit),
           ),
         ],
       ),
@@ -627,7 +626,7 @@ class _StepFour extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Who can view this spot?',
+            'Ai có thể xem địa điểm này?',
             style: TextStyle(
               color: _AddSpotScreenState._accent,
               fontSize: 20,
@@ -636,25 +635,25 @@ class _StepFour extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _VisibilityTile(
-            icon: LucideIcons.globe2,
-            title: 'Public this spot',
-            subtitle: 'Everyone can view in their maps',
+            icon: Icons.public_rounded,
+            title: 'Công khai',
+            subtitle: 'Mọi người đều có thể xem trên bản đồ',
             active: visibility == 'public',
             onTap: () => onVisibilityChanged('public'),
           ),
           const SizedBox(height: 12),
           _VisibilityTile(
-            icon: LucideIcons.users,
-            title: 'Share to friends',
-            subtitle: 'Just your friends can view in their maps',
+            icon: Icons.people_rounded,
+            title: 'Chia sẻ với bạn bè',
+            subtitle: 'Chỉ bạn bè của bạn mới thấy trên bản đồ',
             active: visibility == 'friends',
             onTap: () => onVisibilityChanged('friends'),
           ),
           const SizedBox(height: 12),
           _VisibilityTile(
-            icon: LucideIcons.star,
-            title: 'Close friends',
-            subtitle: 'Select your close friends to view in their maps',
+            icon: Icons.star_rounded,
+            title: 'Bạn thân',
+            subtitle: 'Chọn bạn thân để họ thấy trên bản đồ',
             active: visibility == 'close',
             onTap: () => onVisibilityChanged('close'),
           ),
@@ -716,7 +715,7 @@ class _FriendPickerSheetState extends State<_FriendPickerSheet> {
             ),
             const SizedBox(height: 18),
             const Text(
-              'Message',
+              'Nhắn tin',
               style: TextStyle(
                 color: _AddSpotScreenState._text,
                 fontSize: 18,
@@ -726,8 +725,8 @@ class _FriendPickerSheetState extends State<_FriendPickerSheet> {
             const SizedBox(height: 16),
             _SoftTextField(
               controller: _searchController,
-              hint: 'Search',
-              prefixIcon: LucideIcons.search,
+              hint: 'Tìm kiếm',
+              prefixIcon: Icons.search_rounded,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 14),
@@ -841,10 +840,10 @@ class _FriendEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(LucideIcons.users, color: _AddSpotScreenState._accent, size: 34),
+          Icon(Icons.people_rounded, color: _AddSpotScreenState._accent, size: 34),
           SizedBox(height: 12),
           Text(
-            'No friends yet',
+            'Chưa có bạn bè',
             style: TextStyle(
               color: _AddSpotScreenState._text,
               fontSize: 15,
@@ -853,7 +852,7 @@ class _FriendEmptyState extends StatelessWidget {
           ),
           SizedBox(height: 6),
           Text(
-            'Your friend list will appear here when it is available.',
+            'Danh sách bạn bè sẽ hiển thị ở đây khi có sẵn.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: _AddSpotScreenState._muted,
@@ -1118,7 +1117,7 @@ class _ImageDropBox extends StatelessWidget {
         child: image == null
             ? const Center(
                 child: Icon(
-                  LucideIcons.image,
+                  Icons.image_rounded,
                   color: Color(0xFFD2D2D2),
                   size: 40,
                 ),
@@ -1309,7 +1308,7 @@ class _FriendRow extends StatelessWidget {
             ),
           ),
           _MiniButton(
-            label: sent ? 'Sent' : 'Send',
+            label: sent ? 'Đã gửi' : 'Gửi',
             onTap: sent ? null : onSend,
           ),
         ],
