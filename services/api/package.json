@@ -28,11 +28,13 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1055.0",
+    "@aws-sdk/client-dynamodb": "^3.1057.0",
     "@aws-sdk/client-s3": "^3.1055.0",
     "@aws-sdk/client-secrets-manager": "^3.1057.0",
     "@aws-sdk/lib-dynamodb": "^3.1055.0",
     "@aws-sdk/s3-presigned-post": "^3.1055.0",
+    "@aws-sdk/client-ses": "^3.700.0",
+    "@aws-sdk/client-sns": "^3.700.0",
     "dotenv": "^17.4.2",
     "pg": "^8.21.0",
     "resend": "^6.12.4"
