@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:native_exif/native_exif.dart';
@@ -54,6 +55,45 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
       setState(() {
         _isLoading = value;
       });
+    }
+  }
+
+  /// Accuracy threshold for camera GPS proof (metres).
+  static const double _kGpsAccuracyThreshold = 50.0;
+
+  /// Fetches current GPS position for camera capture proof.
+  /// Returns [latitude, longitude] or null on permission/service failure.
+  /// Shows [showBadAccuracyError] and returns null if accuracy is poor.
+  Future<List<double>?> _captureGpsProof() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Vị trí (GPS đang tắt)');
+        return null;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Vị trí');
+        return null;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      if (position.accuracy > _kGpsAccuracyThreshold) {
+        if (mounted) ErrorDialogs.showBadAccuracyError(context);
+        return null;
+      }
+
+      return [position.latitude, position.longitude];
+    } catch (e) {
+      debugPrint('GPS capture error: $e');
+      return null;
     }
   }
 
@@ -139,6 +179,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
             transitionDuration: const Duration(milliseconds: 300),
             pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
               imagePath: pickedFile.path,
+              // AC2: pass EXIF GPS to preview screen
+              gpsCoordinates: [latLong.latitude, latLong.longitude],
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
@@ -148,6 +190,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
       } catch (e) {
         _setLoading(false);
         debugPrint('Lỗi đọc EXIF: $e');
+        if (mounted) ErrorDialogs.showMissingGpsError(context);
       }
     }
   }
@@ -338,6 +381,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                               _setLoading(true);
 
                                 final image = await _controller!.takePicture();
+
+                                // AC1: capture GPS proof at shoot time
+                                final gpsCoords = await _captureGpsProof();
+
                                 if (_animationController.isAnimating) await Future<void>.delayed(const Duration(milliseconds: 500));
 
                                 _setLoading(false);
@@ -346,7 +393,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                                 navigator.pushReplacement(
                                   PageRouteBuilder<void>(
                                     transitionDuration: const Duration(milliseconds: 300),
-                                    pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(imagePath: image.path),
+                                    pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
+                                      imagePath: image.path,
+                                      gpsCoordinates: gpsCoords,
+                                    ),
                                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                       return FadeTransition(opacity: animation, child: child);
                                     },
