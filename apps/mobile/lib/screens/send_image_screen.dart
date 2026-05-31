@@ -2,23 +2,41 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:geolocator/geolocator.dart';
+
+import '../utils/error.dart';
 import 'camera_screen.dart';
 
 class SendImageScreen extends StatefulWidget {
   final String imagePath;
-  const SendImageScreen({super.key, required this.imagePath});
+
+  /// GPS coordinates captured at photo time.
+  /// For camera: [latitude, longitude] from Geolocator at capture.
+  /// For gallery: [latitude, longitude] from EXIF data.
+  /// Null means no GPS proof available.
+  final List<double>? gpsCoordinates;
+
+  const SendImageScreen({
+    super.key,
+    required this.imagePath,
+    this.gpsCoordinates,
+  });
 
   @override
   State<SendImageScreen> createState() => _SendImageScreenState();
 }
 
+enum _UploadStatus { idle, pending, error }
+
 class _SendImageScreenState extends State<SendImageScreen> {
   final List<String> _friends = ['ahn', 'giang', 'huy', 'linh'];
-  
+
+  _UploadStatus _uploadStatus = _UploadStatus.idle;
+
   // Data cho các caption
   String _locationString = 'Đang tải...';
   String _weatherString = 'Đang tải...';
@@ -67,7 +85,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
 
   Future<void> _fetchLocationAndWeather() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) setState(() => _locationString = 'Không có GPS');
         return;
@@ -98,7 +116,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
         setState(() {
           final address = jsonGeo['address'];
           if (address != null) {
-            _locationString = address['city'] ?? address['state'] ?? address['country'] ?? 'Vị trí';
+            _locationString = (address['city'] ?? address['state'] ?? address['country'] ?? 'Vị trí') as String;
           } else {
             _locationString = 'Vị trí';
           }
@@ -112,7 +130,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
       final stringDataWeather = await responseWeather.transform(utf8.decoder).join();
       final jsonWeather = json.decode(stringDataWeather);
       
-      final code = jsonWeather['current']['weather_code'];
+      final code = jsonWeather['current']['weather_code'] as int;
       _parseWeatherCode(code);
       
     } catch (e) {
@@ -153,6 +171,28 @@ class _SendImageScreenState extends State<SendImageScreen> {
     }
   }
 
+  Future<void> _handleSend() async {
+    if (_uploadStatus == _UploadStatus.pending) return;
+
+    setState(() => _uploadStatus = _UploadStatus.pending);
+
+    try {
+      // Simulate upload — replace with real API call when backend is ready.
+      await Future<void>.delayed(const Duration(seconds: 2));
+
+      // TODO: POST /media/uploads with imagePath + gpsCoordinates
+      // On success, navigate to home/map.
+
+      // For now: reset to idle after simulated success.
+      if (mounted) setState(() => _uploadStatus = _UploadStatus.idle);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadStatus = _UploadStatus.error);
+        ErrorDialogs.showUploadError(context, _handleSend);
+      }
+    }
+  }
+
   void _selectCaption(int index) {
     setState(() {
       _currentIndex = index;
@@ -167,7 +207,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
   }
 
   void _showCaptionBottomSheet() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -252,9 +292,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
     );
   }
 
-  Widget _buildColorDot(Color color) {
-    return Container(width: 20, height: 20, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
-  }
+
 
   Widget _buildBottomSheetPill({
     required dynamic icon, required String label, bool isTextIcon = false, bool isEmoji = false,
@@ -366,184 +404,296 @@ class _SendImageScreenState extends State<SendImageScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Align(
-                    alignment: Alignment.center,
-                    child: Text('Gửi đến...', style: TextStyle(fontFamily: 'SF Pro Text', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: const Icon(LucideIcons.download, color: Colors.white54, size: 24),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(flex: 1),
-            // Image Preview
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: AspectRatio(
-                aspectRatio: 1 / 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(40),
+            Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Stack(
-                    fit: StackFit.expand,
+                    alignment: Alignment.center,
                     children: [
-                      Image.file(
-                        File(widget.imagePath),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800], child: const Center(child: Icon(Icons.image, size: 60, color: Colors.white54))),
+                      const Align(
+                        alignment: Alignment.center,
+                        child: Text('Gửi đến...', style: TextStyle(fontFamily: 'SF Pro Text', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                       ),
-                      
-                      // Caption Carousel
-                      Positioned(
-                        bottom: 24,
-                        left: 0,
-                        right: 0,
-                        height: 60,
-                        child: PageView(
-                          controller: _pageController,
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentIndex = index;
-                              _isEditingMessage = false;
-                            });
-                          },
-                          children: [
-                            _buildTextCaption(), // 0: Văn bản
-                            _buildStaticCaption(icon: Icons.location_on_rounded, label: _locationString), // 1: Vị trí
-                            _buildStaticCaption(icon: _weatherIcon, label: _weatherString, icnColor: _weatherColor, bg: Colors.blue.withValues(alpha: 0.6)), // 2: Thời tiết
-                            _buildStaticCaption(icon: Icons.access_time_filled_rounded, label: _timeString), // 3: Thời gian
-                            _buildStaticCaption(icon: '🪩', label: 'Quẩy thôi!', isEmoji: true, bg: const Color(0xFFC0FF61).withValues(alpha: 0.8), txt: Colors.black), // 4: Quẩy thôi
-                            _buildStaticCaption(icon: '🎆', label: 'Boombayah', isEmoji: true), // 5: Boombayah
-                          ],
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {},
+                          child: const Icon(LucideIcons.download, color: Colors.white54, size: 24),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
-            const Spacer(flex: 1),
-            // Pagination Dots
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_totalCaptions, (index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3), 
-                width: 6, height: 6, 
-                decoration: BoxDecoration(color: index == _currentIndex ? Colors.white : Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle)
-              )),
-            ),
-            const SizedBox(height: 24),
-            // Action Buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pushReplacement(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => const CameraScreen(),
-                            transitionDuration: Duration.zero,
-                            reverseTransitionDuration: Duration.zero,
-                          ),
-                        ),
-                        child: Container(width: 50, height: 50, decoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.white, size: 32)),
-                      ),
-                    ),
-                  ),
-                  Hero(
-                    tag: 'capture_to_send_button',
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: GestureDetector(
-                        onTap: () {},
-                        child: Container(
-                          width: 100, height: 100,
-                          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.transparent, width: 0)),
-                          child: Center(child: Container(width: 84, height: 84, decoration: const BoxDecoration(color: Color(0xFF333333), shape: BoxShape.circle), child: const Center(child: Icon(Icons.send_rounded, color: Colors.white, size: 36)))),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: _showCaptionBottomSheet,
-                        child: Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(color: Colors.transparent, shape: BoxShape.circle, border: Border.all(color: Colors.white54, width: 2)),
-                          child: const Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: [
-                              Text('Aa', style: TextStyle(fontFamily: 'SF Pro Text', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-                              Positioned(top: -2, right: -6, child: Icon(Icons.auto_awesome, color: Colors.white, size: 16))
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Danh sách người nhận
-            SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _friends.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: Column(
+                const Spacer(flex: 1),
+                // Image Preview
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: AspectRatio(
+                    aspectRatio: 1 / 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(40),
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Container(
-                            width: 54, height: 54,
-                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.amber, width: 2)),
-                            child: Container(margin: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[800]), child: const Icon(Icons.people_alt, color: Colors.white, size: 24)),
+                          Image.file(
+                            File(widget.imagePath),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800], child: const Center(child: Icon(Icons.image, size: 60, color: Colors.white54))),
                           ),
-                          const SizedBox(height: 6),
-                          const Text('Tất cả', style: TextStyle(fontFamily: 'SF Pro Text', color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600)),
+
+                          // GPS proof badge
+                          Positioned(
+                            top: 16,
+                            left: 16,
+                            child: _buildGpsBadge(),
+                          ),
+
+                          // Caption Carousel
+                          Positioned(
+                            bottom: 24,
+                            left: 0,
+                            right: 0,
+                            height: 60,
+                            child: PageView(
+                              controller: _pageController,
+                              onPageChanged: (index) {
+                                setState(() {
+                                  _currentIndex = index;
+                                  _isEditingMessage = false;
+                                });
+                              },
+                              children: [
+                                _buildTextCaption(), // 0: Văn bản
+                                _buildStaticCaption(icon: Icons.location_on_rounded, label: _locationString), // 1: Vị trí
+                                _buildStaticCaption(icon: _weatherIcon, label: _weatherString, icnColor: _weatherColor, bg: Colors.blue.withValues(alpha: 0.6)), // 2: Thời tiết
+                                _buildStaticCaption(icon: Icons.access_time_filled_rounded, label: _timeString), // 3: Thời gian
+                                _buildStaticCaption(icon: '🪩', label: 'Quẩy thôi!', isEmoji: true, bg: const Color(0xFFC0FF61).withValues(alpha: 0.8), txt: Colors.black), // 4: Quẩy thôi
+                                _buildStaticCaption(icon: '🎆', label: 'Boombayah', isEmoji: true), // 5: Boombayah
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    );
-                  }
-                  final friendName = _friends[index - 1];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Column(
+                    ),
+                  ),
+                ),
+                const Spacer(flex: 1),
+                // Pagination Dots
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_totalCaptions, (index) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(color: index == _currentIndex ? Colors.white : Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle)
+                  )),
+                ),
+                const SizedBox(height: 24),
+                // Action Buttons
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: GestureDetector(
+                            onTap: () => Navigator.pushReplacement(
+                              context,
+                              PageRouteBuilder<void>(
+                                pageBuilder: (context, animation, secondaryAnimation) => const CameraScreen(),
+                                transitionDuration: Duration.zero,
+                                reverseTransitionDuration: Duration.zero,
+                              ),
+                            ),
+                            child: Container(width: 50, height: 50, decoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.white, size: 32)),
+                          ),
+                        ),
+                      ),
+                      Hero(
+                        tag: 'capture_to_send_button',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: GestureDetector(
+                            onTap: _uploadStatus == _UploadStatus.pending ? null : _handleSend,
+                            child: Container(
+                              width: 100, height: 100,
+                              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.transparent, width: 0)),
+                              child: Center(
+                                child: Container(
+                                  width: 84, height: 84,
+                                  decoration: BoxDecoration(
+                                    color: _uploadStatus == _UploadStatus.error
+                                        ? const Color(0xFF8B0000)
+                                        : const Color(0xFF333333),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: _uploadStatus == _UploadStatus.pending
+                                      ? const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                                      : Center(child: Icon(
+                                          _uploadStatus == _UploadStatus.error ? Icons.error_outline : Icons.send_rounded,
+                                          color: Colors.white,
+                                          size: 36,
+                                        )),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: _showCaptionBottomSheet,
+                            child: Container(
+                              width: 50, height: 50,
+                              decoration: BoxDecoration(color: Colors.transparent, shape: BoxShape.circle, border: Border.all(color: Colors.white54, width: 2)),
+                              child: const Stack(
+                                alignment: Alignment.center,
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Text('Aa', style: TextStyle(fontFamily: 'SF Pro Text', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+                                  Positioned(top: -2, right: -6, child: Icon(Icons.auto_awesome, color: Colors.white, size: 16))
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Danh sách người nhận
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _friends.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 54, height: 54,
+                                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.amber, width: 2)),
+                                child: Container(margin: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[800]), child: const Icon(Icons.people_alt, color: Colors.white, size: 24)),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text('Tất cả', style: TextStyle(fontFamily: 'SF Pro Text', color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        );
+                      }
+                      final friendName = _friends[index - 1];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: Column(
+                          children: [
+                            Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[900]), child: const Icon(Icons.person, color: Colors.white54, size: 24)),
+                            const SizedBox(height: 6),
+                            Text(friendName, style: const TextStyle(fontFamily: 'SF Pro Text', color: Colors.white54, fontSize: 12)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+
+            // Pending upload overlay
+            if (_uploadStatus == _UploadStatus.pending)
+              Container(
+                color: Colors.black.withValues(alpha: 0.5),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF252020),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[900]), child: const Icon(Icons.person, color: Colors.white54, size: 24)),
-                        const SizedBox(height: 6),
-                        Text(friendName, style: const TextStyle(fontFamily: 'SF Pro Text', color: Colors.white54, fontSize: 12)),
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF484F)),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Đang tải lên...',
+                          style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.w500),
+                        ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGpsBadge() {
+    final gps = widget.gpsCoordinates;
+    if (gps != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.gps_fixed, color: Colors.greenAccent, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  '${gps[0].toStringAsFixed(4)}, ${gps[1].toStringAsFixed(4)}',
+                  style: const TextStyle(color: Colors.greenAccent, fontFamily: 'SF Pro', fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.6), width: 1),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.gps_off, color: Colors.redAccent, size: 14),
+              SizedBox(width: 4),
+              Text(
+                'Không có GPS',
+                style: TextStyle(color: Colors.redAccent, fontFamily: 'SF Pro', fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
       ),
     );

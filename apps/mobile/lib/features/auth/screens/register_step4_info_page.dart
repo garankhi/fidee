@@ -1,11 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
 import '../login_design.dart';
+import '../profile_draft_provider.dart';
 import '../widgets/auth_wizard_layout.dart';
 import 'register_step5_username_page.dart';
 
-class RegisterStep4InfoPage extends StatefulWidget {
+class RegisterStep4InfoPage extends ConsumerStatefulWidget {
   final String firstName;
   final String lastName;
 
@@ -16,17 +19,17 @@ class RegisterStep4InfoPage extends StatefulWidget {
   });
 
   @override
-  State<RegisterStep4InfoPage> createState() => _RegisterStep4State();
+  ConsumerState<RegisterStep4InfoPage> createState() => _RegisterStep4State();
 }
 
-class _RegisterStep4State extends State<RegisterStep4InfoPage> {
+class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
   String _gender = 'Nam';
   DateTime? _selectedDate;
 
   void _submit() {
     if (_selectedDate == null) return;
     
-    // TODO: Save to temp state/provider
+    ref.read(profileDraftControllerProvider.notifier).updateInfo(_gender, _selectedDate!);
     Navigator.push(
       context,
       MaterialPageRoute<void>(builder: (_) => RegisterStep5UsernamePage(
