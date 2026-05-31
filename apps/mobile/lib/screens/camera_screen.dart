@@ -535,68 +535,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
   }
 }
 
-/// Skeleton giữ nguyên layout camera trong lúc CameraController khởi động.
-/// Không dùng spinner trắng fullscreen — tránh visual jump khi camera ready.
-class _CameraSkeleton extends StatelessWidget {
-  const _CameraSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          // Top Bar placeholder
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(width: 40, height: 40, decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle)),
-                Container(width: 120, height: 32, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20))),
-                Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle)),
-              ],
-            ),
-          ),
-          const Spacer(flex: 1),
-          // Camera preview placeholder
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: AspectRatio(
-              aspectRatio: 1 / 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFEF484F),
-                    strokeWidth: 2,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const Spacer(flex: 1),
-          // Bottom controls placeholder
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(width: 55, height: 55, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(10))),
-                Container(width: 86, height: 86, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFEF484F), width: 5), color: Colors.transparent)),
-                Container(width: 38, height: 38, decoration: const BoxDecoration(color: Colors.transparent)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 130),
-        ],
-      ),
-    );
-  }
-}
-
 class GalleryGpsNoticeDialog extends StatefulWidget {
   const GalleryGpsNoticeDialog({super.key});
 
@@ -671,3 +609,247 @@ class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
     );
   }
 }
+
+class _CameraSkeleton extends StatelessWidget {
+  const _CameraSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Top Bar Placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Map button placeholder
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Color(0x1AFFFFFF), // 10% white
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                // Friends pill placeholder
+                Container(
+                  width: 130,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0x1AFFFFFF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                // Profile button placeholder
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Color(0x1AFFFFFF),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Spacer(flex: 1),
+
+          // Camera Viewfinder Placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: AspectRatio(
+              aspectRatio: 1 / 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0x0DFFFFFF), // 5% white
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: const Color(0x1AFFFFFF),
+                    width: 1,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.photo_camera,
+                    color: Color(0x33FFFFFF), // 20% white
+                    size: 48,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const Spacer(flex: 1),
+          const SizedBox(height: 12),
+
+          // Bottom Controls Placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Gallery placeholder
+                SizedBox(
+                  width: 55,
+                  height: 55,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 0,
+                        top: 5,
+                        child: Container(
+                          width: 45,
+                          height: 45,
+                          decoration: BoxDecoration(
+                            color: const Color(0x0DFFFFFF),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 6,
+                        top: 8,
+                        child: Transform.rotate(
+                          angle: 17 * math.pi / 180,
+                          child: Container(
+                            width: 45,
+                            height: 45,
+                            decoration: BoxDecoration(
+                              color: const Color(0x1AFFFFFF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Capture Button placeholder
+                Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0x1AFFFFFF),
+                      width: 5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: const BoxDecoration(
+                        color: Color(0x33FFFFFF),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Flip button placeholder
+                SizedBox(
+                  width: 55,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0x1AFFFFFF),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Bottom Bar Placeholders
+          SizedBox(
+            height: 120,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0x1AFFFFFF),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 60,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: const Color(0x1AFFFFFF),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Color(0x33FFFFFF),
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  margin: const EdgeInsets.only(left: 110, right: 110),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0x0DFFFFFF),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const Icon(
+                        Icons.grid_view_rounded,
+                        color: Color(0x33FFFFFF),
+                        size: 28,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0x1AFFFFFF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.home_filled,
+                          color: Color(0x33FFFFFF),
+                          size: 24,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chat_bubble_rounded,
+                        color: Color(0x33FFFFFF),
+                        size: 28,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+}
