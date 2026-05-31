@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/location_service.dart';
 
 part 'auth_providers.g.dart';
 
@@ -66,6 +67,16 @@ class AuthUiState {
 @Riverpod(keepAlive: true)
 AuthService authService(AuthServiceRef ref) {
   return AuthService();
+}
+
+/// Khởi động LocationService song song với AuthController ngay từ lúc app start.
+/// keepAlive = true → không bị dispose, HomeScreen nhận instance đã sẵn sàng,
+/// không cần chạy _initLocation() lại → loại bỏ hoàn toàn spinner trắng.
+@Riverpod(keepAlive: true)
+Future<LocationService> locationController(LocationControllerRef ref) async {
+  final service = LocationService();
+  await service.initialize();
+  return service;
 }
 
 @Riverpod(keepAlive: true)

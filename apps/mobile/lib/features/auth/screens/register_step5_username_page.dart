@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../screens/home_screen.dart';
+import '../../../services/location_service.dart';
 import '../auth_providers.dart';
 import '../login_design.dart';
 import '../widgets/auth_wizard_layout.dart';
@@ -42,9 +43,12 @@ class _RegisterStep5State extends ConsumerState<RegisterStep5UsernamePage> {
     );
 
     if (result.success && mounted) {
+      // Lấy LocationService đã cached từ provider (keepAlive), không init lại.
+      final locationService = ref.read(locationControllerProvider).valueOrNull
+          ?? LocationService();
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+        MaterialPageRoute<void>(builder: (_) => HomeScreen(locationService: locationService)),
         (route) => false,
       );
     } else if (mounted) {

@@ -8,8 +8,14 @@ import '../services/location_service.dart';
 import 'camera_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
+///
+/// [locationService] được truyền vào từ main.dart đã resolve sẵn thông qua
+/// [locationControllerProvider]. HomeScreen không cần tự khởi động location
+/// và không hiển thị spinner trắng — map render ngay lập tức.
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final LocationService locationService;
+
+  const HomeScreen({super.key, required this.locationService});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -17,32 +23,17 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with TickerProviderStateMixin {
-  final LocationService _locationService = LocationService();
+  late final LocationService _locationService;
   final MapController _mapController = MapController();
-  bool _isLoading = true;
   bool _showLocationBanner = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initLocation();
-    });
-  }
-
-  Future<void> _initLocation() async {
-    try {
-      await _locationService.initialize();
-    } catch (e) {
-      debugPrint('Error initializing location: $e');
-    }
-    
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _showLocationBanner = _locationService.status != LocationStatus.granted;
-      });
-    }
+    // LocationService đã được khởi động song song với auth trong main.dart.
+    // Không cần _initLocation() hay spinner — dùng thẳng kết quả đã có.
+    _locationService = widget.locationService;
+    _showLocationBanner = _locationService.status != LocationStatus.granted;
   }
 
   void _animateToLocation(LatLng target) {
@@ -75,15 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFFF3B30)),
-        ),
-      );
-    }
-
+    // Không còn _isLoading guard — map render ngay từ frame đầu tiên.
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -288,7 +271,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       assetPath: 'assets/icons/Camera.png',
                       onTap: _onCheckIn,
                       size: 76,
-                      iconSize: 32,
+                      iconSize: 74,
                     ),
                     const SizedBox(width: 24),
                     // Messages (Right)
