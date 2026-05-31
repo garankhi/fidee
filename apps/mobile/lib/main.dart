@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/auth_providers.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/screens/register_step3_name_page.dart';
-import 'screens/camera_screen.dart';
+
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
 

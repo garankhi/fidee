@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:geolocator/geolocator.dart';
+
 import 'camera_screen.dart';
 
 class SendImageScreen extends StatefulWidget {
@@ -67,7 +69,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
 
   Future<void> _fetchLocationAndWeather() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) setState(() => _locationString = 'Không có GPS');
         return;
@@ -98,7 +100,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
         setState(() {
           final address = jsonGeo['address'];
           if (address != null) {
-            _locationString = address['city'] ?? address['state'] ?? address['country'] ?? 'Vị trí';
+            _locationString = (address['city'] ?? address['state'] ?? address['country'] ?? 'Vị trí') as String;
           } else {
             _locationString = 'Vị trí';
           }
@@ -112,7 +114,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
       final stringDataWeather = await responseWeather.transform(utf8.decoder).join();
       final jsonWeather = json.decode(stringDataWeather);
       
-      final code = jsonWeather['current']['weather_code'];
+      final code = jsonWeather['current']['weather_code'] as int;
       _parseWeatherCode(code);
       
     } catch (e) {
@@ -167,7 +169,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
   }
 
   void _showCaptionBottomSheet() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -252,9 +254,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
     );
   }
 
-  Widget _buildColorDot(Color color) {
-    return Container(width: 20, height: 20, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
-  }
+
 
   Widget _buildBottomSheetPill({
     required dynamic icon, required String label, bool isTextIcon = false, bool isEmoji = false,
@@ -456,7 +456,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
                       child: GestureDetector(
                         onTap: () => Navigator.pushReplacement(
                           context,
-                          PageRouteBuilder(
+                          PageRouteBuilder<void>(
                             pageBuilder: (context, animation, secondaryAnimation) => const CameraScreen(),
                             transitionDuration: Duration.zero,
                             reverseTransitionDuration: Duration.zero,

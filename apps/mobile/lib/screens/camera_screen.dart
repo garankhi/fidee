@@ -1,18 +1,19 @@
 import 'dart:math' as math;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:native_exif/native_exif.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../services/auth_service.dart';
-import 'send_image_screen.dart';
-import 'premium_upgrade_sheet.dart';
 import '../utils/error.dart';
+import 'premium_upgrade_sheet.dart';
+import 'send_image_screen.dart';
 
 List<CameraDescription>? globalCameras;
 
@@ -103,6 +104,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     final hideNotice = prefs.getBool('hide_gallery_gps_notice') ?? false;
 
     if (!hideNotice) {
+      if (!mounted) return;
       final shouldContinue = await showDialog<bool>(
         context: context,
         builder: (context) => const GalleryGpsNoticeDialog(),
@@ -133,7 +135,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          PageRouteBuilder(
+          PageRouteBuilder<void>(
             transitionDuration: const Duration(milliseconds: 300),
             pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
               imagePath: pickedFile.path,
@@ -151,7 +153,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
   }
 
   void _showProFeatureDialog() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -330,18 +332,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                             onTap: () async {
                               if (!_controller!.value.isInitialized || _animationController.isAnimating) return;
 
+                              final navigator = Navigator.of(context);
+
                               _animationController.forward();
                               _setLoading(true);
 
                                 final image = await _controller!.takePicture();
-                                if (_animationController.isAnimating) await Future.delayed(const Duration(milliseconds: 500));
+                                if (_animationController.isAnimating) await Future<void>.delayed(const Duration(milliseconds: 500));
 
                                 _setLoading(false);
 
                                 if (!mounted) return;
-                                Navigator.pushReplacement(
-                                  context,
-                                  PageRouteBuilder(
+                                navigator.pushReplacement(
+                                  PageRouteBuilder<void>(
                                     transitionDuration: const Duration(milliseconds: 300),
                                     pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(imagePath: image.path),
                                     transitionsBuilder: (context, animation, secondaryAnimation, child) {

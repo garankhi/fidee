@@ -25,7 +25,7 @@ class PremiumUpgradeSheet extends StatelessWidget {
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       image: DecorationImage(
-                        image: AssetImage("assets/images/Fidee_Red_Round.png"),
+                        image: AssetImage('assets/images/Fidee_Red_Round.png'),
                         fit: BoxFit.cover,
                       ),
                     ),

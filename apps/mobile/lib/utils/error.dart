@@ -3,7 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 class ErrorDialogs {
   static void showMissingGpsError(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF252020),
@@ -31,7 +31,7 @@ class ErrorDialogs {
   }
 
   static void showPermissionDeniedError(BuildContext context, String permissionType) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF252020),
@@ -66,7 +66,7 @@ class ErrorDialogs {
   }
 
   static void showBadAccuracyError(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF252020),
@@ -100,7 +100,7 @@ class ErrorDialogs {
   }
 
   static void showUploadError(BuildContext context, VoidCallback onRetry) {
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
