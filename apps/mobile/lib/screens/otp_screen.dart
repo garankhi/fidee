@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 import 'home_screen.dart';
 
 /// Screen for entering OTP code with 60s resend cooldown.
@@ -76,8 +77,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (!mounted) return;
 
     if (result.success) {
+      // Lấy LocationService đã cached từ provider (keepAlive), không init lại.
+      final locationService = ref.read(locationControllerProvider).valueOrNull
+          ?? LocationService();
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+        MaterialPageRoute<void>(builder: (_) => HomeScreen(locationService: locationService)),
         (route) => false,
       );
     } else {

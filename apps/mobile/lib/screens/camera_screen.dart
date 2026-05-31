@@ -230,9 +230,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     if (_controller == null || !_controller!.value.isInitialized) {
+      // Skeleton thay cho spinner fullscreen — giữ layout camera quen thuộc
+      // để tránh visual jump khi camera sẵn sàng.
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+        body: _CameraSkeleton(),
       );
     }
 
@@ -527,6 +529,68 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Skeleton giữ nguyên layout camera trong lúc CameraController khởi động.
+/// Không dùng spinner trắng fullscreen — tránh visual jump khi camera ready.
+class _CameraSkeleton extends StatelessWidget {
+  const _CameraSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Top Bar placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(width: 40, height: 40, decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle)),
+                Container(width: 120, height: 32, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20))),
+                Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle)),
+              ],
+            ),
+          ),
+          const Spacer(flex: 1),
+          // Camera preview placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: AspectRatio(
+              aspectRatio: 1 / 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFFEF484F),
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const Spacer(flex: 1),
+          // Bottom controls placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(width: 55, height: 55, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(10))),
+                Container(width: 86, height: 86, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFEF484F), width: 5), color: Colors.transparent)),
+                Container(width: 38, height: 38, decoration: const BoxDecoration(color: Colors.transparent)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 130),
         ],
       ),
     );
