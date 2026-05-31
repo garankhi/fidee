@@ -271,7 +271,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       assetPath: 'assets/icons/Camera.png',
                       onTap: _onCheckIn,
                       size: 76,
-                      iconSize: 32,
+                      iconSize: 74,
                     ),
                     const SizedBox(width: 24),
                     // Messages (Right)
