@@ -6,10 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:native_exif/native_exif.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import '../features/auth/auth_providers.dart';
 import '../services/auth_service.dart';
 import 'send_image_screen.dart';
 import 'premium_upgrade_sheet.dart';
+import '../utils/error.dart';
 
 List<CameraDescription>? globalCameras;
 
@@ -25,6 +28,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
   List<CameraDescription>? _cameras;
   int _selectedCameraIndex = 0;
   bool _isFlashOn = false;
+  bool _isLoading = false;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -44,7 +48,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     );
   }
 
+  void _setLoading(bool value) {
+    if (mounted) {
+      setState(() {
+        _isLoading = value;
+      });
+    }
+  }
+
   Future<void> _initCamera() async {
+    var status = await Permission.camera.status;
+    if (status.isDenied) {
+      status = await Permission.camera.request();
+      if (status.isPermanentlyDenied || status.isDenied) {
+        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Camera');
+        return;
+      }
+    }
+
     _cameras = await availableCameras();
     if (_cameras != null && _cameras!.isNotEmpty) {
       _setCamera(_selectedCameraIndex);
@@ -93,30 +114,29 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
+      _setLoading(true); // Bật loading khi bắt đầu xử lý ảnh
       try {
         final exif = await Exif.fromPath(pickedFile.path);
         final latLong = await exif.getLatLong();
         await exif.close();
 
-        // Nếu ảnh không có tọa độ GPS -> Hiện lỗi chặn lại
         if (latLong == null) {
+          _setLoading(false);
           debugPrint('Missing EXIF GPS data');
-          _showMissingGpsError();
+          if (mounted) ErrorDialogs.showMissingGpsError(context);
           return;
         }
 
         debugPrint('Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}');
 
+        _setLoading(false);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 300),
-            // Giả sử SendImageScreen của bạn có thể nhận thêm lat/long
             pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
               imagePath: pickedFile.path,
-              // latitude: latLong.latitude,
-              // longitude: latLong.longitude,
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
@@ -124,6 +144,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
           ),
         );
       } catch (e) {
+        _setLoading(false);
         debugPrint('Lỗi đọc EXIF: $e');
       }
     }
@@ -154,34 +175,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     });
   }
 
-  void _showMissingGpsError() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF252020),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Không tìm thấy vị trí',
-          style: TextStyle(color: Color(0xFFEF484F), fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Bức ảnh này không chứa dữ liệu vị trí (GPS). Vui lòng chọn một bức ảnh khác được chụp bằng camera gốc của máy với tính năng gắn thẻ vị trí đã được bật.',
-          style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', height: 1.5),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF484F),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            ),
-            child: const Text('Đã hiểu', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _animationController.dispose();
@@ -200,304 +193,288 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.people, color: Colors.white, size: 16),
-                        SizedBox(width: 8),
-                        Text('24 người bạn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: Colors.blueAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text('Me', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Spacer(flex: 1),
-
-            // Camera Preview (Square, Centered)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: AspectRatio(
-                aspectRatio: 1 / 1, // Tỷ lệ vuông 1:1
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: Stack(
-                    fit: StackFit.expand,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      CameraPreview(_controller!),
-
-                      // Flash Button
-                      Positioned(
-                        top: 16,
-                        left: 16,
-                        child: GestureDetector(
-                          onTap: _toggleFlash,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Zoom Button (Mock)
-                      Positioned(
-                        top: 16,
-                        right: 16,
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Text('1x', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                          child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.people, color: Colors.white, size: 16),
+                            SizedBox(width: 8),
+                            Text('24 người bạn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
+                        child: const Center(
+                          child: Text('Me', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
 
-            const Spacer(flex: 1),
+                const Spacer(flex: 1),
 
-            // Pagination Dots Spacer
-            const SizedBox(height: 6),
-            const SizedBox(height: 6),
-
-            // Bottom Controls (Gallery, Capture, Flip)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Gallery Button
-                  GestureDetector(
-                    onTap: _pickFromGallery, // Khi bấm sẽ check quyền và gọi PremiumUI nếu chưa mua
-                    child: SizedBox(
-                      width: 55,
-                      height: 55,
+                // Camera Preview (Square, Centered)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: AspectRatio(
+                    aspectRatio: 1 / 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
                       child: Stack(
+                        fit: StackFit.expand,
                         children: [
+                          CameraPreview(_controller!),
+                          // Flash Button
                           Positioned(
-                            left: 0,
-                            top: 5,
-                            child: Container(
-                              width: 45,
-                              height: 45,
-                              decoration: BoxDecoration(color: const Color(0xFFDB8787), borderRadius: BorderRadius.circular(10)),
+                            top: 16,
+                            left: 16,
+                            child: GestureDetector(
+                              onTap: _toggleFlash,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), shape: BoxShape.circle),
+                                child: Icon(_isFlashOn ? Icons.flash_on : Icons.flash_off, color: Colors.white, size: 24),
+                              ),
                             ),
                           ),
+                          // Zoom Button
                           Positioned(
-                            left: 6,
-                            top: 8,
-                            child: Transform.rotate(
-                              angle: 17 * math.pi / 180,
-                              child: Container(
-                                width: 45,
-                                height: 45,
-                                decoration: BoxDecoration(color: const Color(0xFFE0E0E0), borderRadius: BorderRadius.circular(10)),
-                              ),
+                            top: 16,
+                            right: 16,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), shape: BoxShape.circle),
+                              child: const Text('1x', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
+                ),
 
-                  // Capture Button
-                  AnimatedBuilder(
-                    animation: _animationController,
-                    builder: (context, child) {
-                      final shrinkValue = _shrinkAnimation.value;
-                      final double currentInnerSize = 68.0 * shrinkValue;
+                const Spacer(flex: 1),
+                const SizedBox(height: 12),
 
-                      return GestureDetector(
-                        onTap: () async {
-                          if (!_controller!.value.isInitialized || _animationController.isAnimating) return;
-
-                          _animationController.forward();
-                          try {
-                            final image = await _controller!.takePicture();
-                            if (_animationController.isAnimating) await Future.delayed(const Duration(milliseconds: 500));
-                            if (!mounted) return;
-                            Navigator.pushReplacement(
-                              context,
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(milliseconds: 300),
-                                pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(imagePath: image.path),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                  return FadeTransition(opacity: animation, child: child);
-                                },
+                // Bottom Controls (Gallery, Capture, Flip)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Gallery Button
+                      GestureDetector(
+                        onTap: _pickFromGallery,
+                        child: SizedBox(
+                          width: 55,
+                          height: 55,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: 0,
+                                top: 5,
+                                child: Container(
+                                  width: 45, height: 45,
+                                  decoration: BoxDecoration(color: const Color(0xFFDB8787), borderRadius: BorderRadius.circular(10)),
+                                ),
                               ),
-                            );
-                          } catch (e) {
-                            debugPrint('Capture error: $e');
-                            _animationController.reverse();
-                          }
-                        },
-                        child: Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFEF484F), width: 5)),
-                          child: Center(
+                              Positioned(
+                                left: 6,
+                                top: 8,
+                                child: Transform.rotate(
+                                  angle: 17 * math.pi / 180,
+                                  child: Container(
+                                    width: 45, height: 45,
+                                    decoration: BoxDecoration(color: const Color(0xFFE0E0E0), borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Capture Button
+                      AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          final shrinkValue = _shrinkAnimation.value;
+                          final double currentInnerSize = 68.0 * shrinkValue;
+
+                          return GestureDetector(
+                            onTap: () async {
+                              if (!_controller!.value.isInitialized || _animationController.isAnimating) return;
+
+                              _animationController.forward();
+                              _setLoading(true);
+
+                                final image = await _controller!.takePicture();
+                                if (_animationController.isAnimating) await Future.delayed(const Duration(milliseconds: 500));
+
+                                _setLoading(false);
+
+                                if (!mounted) return;
+                                Navigator.pushReplacement(
+                                  context,
+                                  PageRouteBuilder(
+                                    transitionDuration: const Duration(milliseconds: 300),
+                                    pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(imagePath: image.path),
+                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                      return FadeTransition(opacity: animation, child: child);
+                                    },
+                                  ),
+                                );
+                            },
                             child: Container(
-                              width: currentInnerSize,
-                              height: currentInnerSize,
-                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                              width: 86,
+                              height: 86,
+                              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFEF484F), width: 5)),
+                              child: Center(
+                                child: Container(
+                                  width: currentInnerSize,
+                                  height: currentInnerSize,
+                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                      // Flip Camera Button
+                      SizedBox(
+                        width: 55,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: _switchCamera,
+                            child: Transform.rotate(
+                              angle: -36 * math.pi / 180,
+                              child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 38),
                             ),
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
+                ),
 
-                  // Flip Camera Button
-                  SizedBox(
-                    width: 55,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: _switchCamera,
-                        child: Transform.rotate(
-                          angle: -36 * math.pi / 180,
-                          child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 38),
+                // Bottom Section Height Match
+                SizedBox(
+                  height: 120,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(color: Colors.transparent, borderRadius: BorderRadius.circular(20)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 24, height: 24,
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[700]),
+                              child: const Icon(Icons.person, size: 16, color: Colors.white),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Lịch sử', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Bottom Section Height Match
-            SizedBox(
-              height: 120,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey[700],
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('Lịch sử', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-                  Container(
-                    margin: const EdgeInsets.only(left: 110, right: 110),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[900],
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        const Icon(Icons.grid_view_rounded, color: Colors.grey, size: 28),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800],
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.home_filled, color: Colors.white, size: 24),
-                        ),
-                        Stack(
-                          clipBehavior: Clip.none,
+                      const SizedBox(height: 8),
+                      Container(
+                        margin: const EdgeInsets.only(left: 110, right: 110),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(30)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            const Icon(Icons.chat_bubble_rounded, color: Colors.grey, size: 28),
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.amber,
-                                  shape: BoxShape.circle,
+                            const Icon(Icons.grid_view_rounded, color: Colors.grey, size: 28),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: Colors.grey[800], shape: BoxShape.circle),
+                              child: const Icon(Icons.home_filled, color: Colors.white, size: 24),
+                            ),
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const Icon(Icons.chat_bubble_rounded, color: Colors.grey, size: 28),
+                                Positioned(
+                                  right: -4, top: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle),
+                                    child: const Text('1', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ),
                                 ),
-                                child: const Text('1', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
-                              ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+
+          if (_isLoading)
+            Container(
+              color: Colors.black.withValues(alpha: 0.6), // Làm mờ nền
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF252020),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF484F)),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Đang xử lý...',
+                        style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.w500),
+                      )
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -514,12 +491,10 @@ class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
   bool _dontShowAgain = false;
 
   void _onContinue() async {
-    // Nếu user tick vào "Không hiện lại", lưu trạng thái xuống máy
     if (_dontShowAgain) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('hide_gallery_gps_notice', true);
     }
-    // Trả về true báo hiệu user đồng ý đi tiếp
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -564,7 +539,7 @@ class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false), // Trả về false nếu Hủy
+          onPressed: () => Navigator.pop(context, false),
           child: const Text('Hủy', style: TextStyle(color: Colors.white54, fontFamily: 'SF Pro')),
         ),
         ElevatedButton(
