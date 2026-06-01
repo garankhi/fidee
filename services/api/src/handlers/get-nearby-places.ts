@@ -8,7 +8,6 @@ const CORS_HEADERS = {
 
 const DEFAULT_RADIUS = 100;
 const MAX_RADIUS = 300;
-const MIN_LOCAL_RESULTS = 3;
 
 type Confidence = 'high' | 'medium' | 'low';
 

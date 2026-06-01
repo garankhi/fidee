@@ -557,6 +557,32 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── GET /places/nearby (protected) ─────────────────────────
+    const getNearbyPlacesFn = new nodejs.NodejsFunction(this, 'GetNearbyPlacesFunction', {
+      functionName: resourceName(stage, 'get-nearby-places'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-nearby-places.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+    });
+    dbCluster.secret!.grantRead(getNearbyPlacesFn);
+
+    const placesResource = api.root.addResource('places');
+    const nearbyResource = placesResource.addResource('nearby');
+    nearbyResource.addMethod('GET', new apigateway.LambdaIntegration(getNearbyPlacesFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const mediaUploadObjectCreatedRule = new events.Rule(this, 'MediaUploadObjectCreatedRule', {
       ruleName: resourceName(stage, 'media-upload-object-created'),
       eventPattern: {
