@@ -51,6 +51,7 @@ dependencies:
   camera: ^0.12.0+1
   lucide_icons: ^0.257.0
   native_exif: ^0.8.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

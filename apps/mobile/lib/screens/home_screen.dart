@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
+import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
@@ -41,6 +43,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Không cần _initLocation() hay spinner — dùng thẳng kết quả đã có.
     _locationService = widget.locationService;
     _showLocationBanner = _locationService.status != LocationStatus.granted;
+    if (_locationService.hasRealLocation) {
+      // Need to defer the fetch slightly so Riverpod ref is ready, or just do it after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchFeed();
+      });
+    }
   }
 
   @override
@@ -64,6 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
     if (_locationService.hasRealLocation) {
       _animateToLocation(_locationService.currentPosition);
+      _fetchFeed();
     }
   }
 
@@ -90,6 +99,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _animateToLocation(_locationService.currentPosition);
       _fetchFeed();
     }
+  }
+
+  Future<void> _fetchFeed() async {
+    if (_isLimitedMode || !_locationService.hasRealLocation) return;
+    try {
+      final authService = ref.read(authServiceProvider);
+      final mapFeedService = MapFeedService(authService);
+      final position = _locationService.currentPosition;
+      final items = await mapFeedService.getMapFeed(
+        position.latitude,
+        position.longitude,
+      );
+      if (mounted) {
+        setState(() {
+          _feedItems = items;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching feed: $e');
+    }
+  }
+
+  void _showFeedItemDetails(BuildContext context, MapFeedItem item) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _FeedItemSheet(item: item),
+    );
   }
 
   void _showLimitedModeSnack(String message) {
@@ -202,6 +240,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         child: const _PulsingLocationMarker(),
                       ),
                     ],
+                  ),
+
+                // Feed markers
+                if (_feedItems.isNotEmpty)
+                  MarkerLayer(
+                    markers: _feedItems
+                        .map(
+                          (item) => Marker(
+                            point: LatLng(item.lat, item.lng),
+                            width: 48,
+                            height: 48,
+                            child: GestureDetector(
+                              onTap: () => _showFeedItemDetails(context, item),
+                              child: _FeedMarker(item: item),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
               ],
             ),
@@ -397,7 +453,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showProfileMenu(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -555,15 +611,6 @@ class _BottomNavIcon extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _showFeedItemDetails(BuildContext context, MapFeedItem item) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => _FeedItemSheet(item: item),
     );
   }
 }
@@ -916,10 +963,7 @@ class _FeedItemSheet extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               item.caption,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ],
           const SizedBox(height: 16),

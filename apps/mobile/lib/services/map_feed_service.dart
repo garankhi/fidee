@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/map_feed_item.dart';
 import 'auth_service.dart';
@@ -25,14 +26,14 @@ class MapFeedService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List<dynamic> items = data['data'] ?? [];
-        return items.map((e) => MapFeedItem.fromJson(e)).toList();
+        final List<dynamic> items = (data['data'] as List<dynamic>?) ?? [];
+        return items.map((e) => MapFeedItem.fromJson(e as Map<String, dynamic>)).toList();
       } else {
         // Fallback to mock data for now during development if API is not fully deployed
         return _getMockData(lat, lng);
       }
     } catch (e) {
-      print('Error fetching map feed: $e');
+      debugPrint('Error fetching map feed: $e');
       return _getMockData(lat, lng);
     }
   }
