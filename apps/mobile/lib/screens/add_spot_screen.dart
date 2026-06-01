@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/friend_service.dart';
@@ -278,7 +279,7 @@ class _AddSpotHeader extends StatelessWidget {
   }
 }
 
-class _StepOne extends StatelessWidget {
+class _StepOne extends StatefulWidget {
   final TextEditingController nameController;
   final TextEditingController openController;
   final TextEditingController closeController;
@@ -310,17 +311,111 @@ class _StepOne extends StatelessWidget {
   });
 
   @override
+  State<_StepOne> createState() => _StepOneState();
+}
+
+class _StepOneState extends State<_StepOne> {
+  String? _nameError;
+  String? _vibeError;
+  String? _hoursError;
+  String? _priceError;
+  String? _addressError;
+  String? _serviceError;
+
+  int? _parseTime(String value) {
+    final parts = value.trim().split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+    return h * 60 + m;
+  }
+
+  bool _validate() {
+    String? nameError;
+    String? vibeError;
+    String? hoursError;
+    String? priceError;
+    String? addressError;
+    String? serviceError;
+
+    if (widget.nameController.text.trim().isEmpty) {
+      nameError = 'Vui lòng nhập tên địa điểm';
+    }
+    if (widget.selectedVibes.isEmpty) {
+      vibeError = 'Vui lòng chọn ít nhất một không khí';
+    }
+    if (widget.addressController.text.trim().isEmpty) {
+      addressError = 'Vui lòng nhập địa chỉ';
+    }
+    if (widget.selectedServices.isEmpty) {
+      serviceError = 'Vui lòng chọn ít nhất một tiện ích';
+    }
+
+    final openVal = widget.openController.text.trim();
+    final closeVal = widget.closeController.text.trim();
+    if (openVal.isNotEmpty || closeVal.isNotEmpty) {
+      final open = _parseTime(openVal);
+      final close = _parseTime(closeVal);
+      if (open == null) {
+        hoursError = 'Giờ mở cửa không hợp lệ';
+      } else if (close == null) {
+        hoursError = 'Giờ đóng cửa không hợp lệ';
+      } else if (close <= open) {
+        hoursError = 'Giờ đóng cửa phải sau giờ mở cửa';
+      }
+    }
+
+    final fromVal = widget.priceFromController.text.trim();
+    final toVal = widget.priceToController.text.trim();
+    if (fromVal.isNotEmpty || toVal.isNotEmpty) {
+      final from = double.tryParse(fromVal);
+      final to = double.tryParse(toVal);
+      if (from == null) {
+        priceError = 'Giá từ không hợp lệ';
+      } else if (to == null) {
+        priceError = 'Giá đến không hợp lệ';
+      } else if (to <= from) {
+        priceError = 'Giá đến phải lớn hơn giá từ';
+      }
+    }
+
+    setState(() {
+      _nameError = nameError;
+      _vibeError = vibeError;
+      _hoursError = hoursError;
+      _priceError = priceError;
+      _addressError = addressError;
+      _serviceError = serviceError;
+    });
+    return nameError == null &&
+        vibeError == null &&
+        hoursError == null &&
+        priceError == null &&
+        addressError == null &&
+        serviceError == null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _StepScaffold(
-      action: _PrimaryButton(label: 'Tiếp theo', onTap: onNext),
+      action: _PrimaryButton(
+        label: 'Tiếp theo',
+        onTap: () {
+          if (_validate()) widget.onNext();
+        },
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Label('Tên địa điểm', isRequired: true),
           _SoftTextField(
-            controller: nameController,
+            controller: widget.nameController,
             hint: 'Ví dụ: TikTak Coffee',
+            hasError: _nameError != null,
           ),
+          if (_nameError != null) _ErrorText(_nameError!),
           const SizedBox(height: 20),
           const _Label('Không khí', isRequired: true),
           _ChipWrap(
@@ -335,100 +430,125 @@ class _StepOne extends StatelessWidget {
               'Đồ ngọt',
               'Khác',
             ],
-            selected: selectedVibes,
-            onToggle: onToggleVibe,
+            selected: widget.selectedVibes,
+            onToggle: widget.onToggleVibe,
           ),
+          if (_vibeError != null) _ErrorText(_vibeError!),
           const SizedBox(height: 20),
           const _Label('Khung giờ hoạt động', isRequired: true),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(
                 width: 62,
-                child: Text(
-                  'Mở cửa',
-                  style: TextStyle(
-                    color: _AddSpotScreenState._text,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: Text(
+                    'Mở cửa',
+                    style: TextStyle(
+                      color: _AddSpotScreenState._text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
               Expanded(
                 child: _SoftTextField(
-                  controller: openController,
+                  controller: widget.openController,
                   hint: '08:00',
-                  keyboardType: TextInputType.datetime,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [_TimeInputFormatter()],
+                  hasError: _hoursError != null,
                 ),
               ),
               const SizedBox(width: 14),
               const SizedBox(
                 width: 68,
-                child: Text(
-                  'Đóng cửa',
-                  style: TextStyle(
-                    color: _AddSpotScreenState._text,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: Text(
+                    'Đóng cửa',
+                    style: TextStyle(
+                      color: _AddSpotScreenState._text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
               Expanded(
                 child: _SoftTextField(
-                  controller: closeController,
+                  controller: widget.closeController,
                   hint: '22:00',
-                  keyboardType: TextInputType.datetime,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [_TimeInputFormatter()],
+                  hasError: _hoursError != null,
                 ),
               ),
             ],
           ),
+          if (_hoursError != null) _ErrorText(_hoursError!),
           const SizedBox(height: 20),
           const _Label('Giá tiền', isRequired: true),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'từ',
-                style: TextStyle(color: _AddSpotScreenState._text),
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: Text(
+                  'từ',
+                  style: TextStyle(color: _AddSpotScreenState._text),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _SoftTextField(
-                  controller: priceFromController,
-                  hint: '20k',
+                  controller: widget.priceFromController,
+                  hint: '20000',
                   keyboardType: TextInputType.number,
+                  hasError: _priceError != null,
                 ),
               ),
               const SizedBox(width: 18),
-              const Text(
-                'đến',
-                style: TextStyle(color: _AddSpotScreenState._text),
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: Text(
+                  'đến',
+                  style: TextStyle(color: _AddSpotScreenState._text),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _SoftTextField(
-                  controller: priceToController,
-                  hint: '120k',
+                  controller: widget.priceToController,
+                  hint: '120000',
                   keyboardType: TextInputType.number,
+                  hasError: _priceError != null,
                 ),
               ),
             ],
           ),
+          if (_priceError != null) _ErrorText(_priceError!),
           const SizedBox(height: 20),
           const _Label('Địa chỉ', isRequired: true),
           _SoftTextField(
-            controller: addressController,
+            controller: widget.addressController,
             hint: '123 Đường Abc, Phường Bến Thành',
+            hasError: _addressError != null,
           ),
+          if (_addressError != null) _ErrorText(_addressError!),
           const SizedBox(height: 20),
           const _Label('Số điện thoại'),
           _SoftTextField(
-            controller: phoneController,
+            controller: widget.phoneController,
             hint: '0912 345 678',
             keyboardType: TextInputType.phone,
           ),
           const SizedBox(height: 20),
           const _Label('Mô tả'),
           _SoftTextField(
-            controller: descriptionController,
+            controller: widget.descriptionController,
             hint: 'Không gian chill, view đẹp, acoustic mỗi tối thứ 7...',
             minLines: 3,
             maxLines: 4,
@@ -450,9 +570,10 @@ class _StepOne extends StatelessWidget {
               'Không có chỗ ngồi',
               '+ Thêm',
             ],
-            selected: selectedServices,
-            onToggle: onToggleService,
+            selected: widget.selectedServices,
+            onToggle: widget.onToggleService,
           ),
+          if (_serviceError != null) _ErrorText(_serviceError!),
         ],
       ),
     );
@@ -950,6 +1071,45 @@ class _Label extends StatelessWidget {
   }
 }
 
+class _TimeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(':', '');
+    if (digits.length > 4) return oldValue;
+    String formatted = digits;
+    if (digits.length >= 3) {
+      formatted = '${digits.substring(0, 2)}:${digits.substring(2)}';
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class _ErrorText extends StatelessWidget {
+  final String message;
+  const _ErrorText(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: _AddSpotScreenState._accent,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class _SoftTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -958,6 +1118,8 @@ class _SoftTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final IconData? prefixIcon;
   final ValueChanged<String>? onChanged;
+  final bool hasError;
+  final List<TextInputFormatter>? inputFormatters;
 
   const _SoftTextField({
     required this.controller,
@@ -967,6 +1129,8 @@ class _SoftTextField extends StatelessWidget {
     this.keyboardType,
     this.prefixIcon,
     this.onChanged,
+    this.hasError = false,
+    this.inputFormatters,
   });
 
   @override
@@ -974,6 +1138,7 @@ class _SoftTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       minLines: minLines,
       maxLines: maxLines,
       onChanged: onChanged,
@@ -1001,7 +1166,9 @@ class _SoftTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: _AddSpotScreenState._border),
+          borderSide: BorderSide(
+            color: hasError ? _AddSpotScreenState._accent : _AddSpotScreenState._border,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
