@@ -188,7 +188,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   userAgentPackageName: 'com.fidee.fidee_mobile',
                   maxZoom: 20,
                 ),
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _locationService.currentPosition,
+                initialZoom: _locationService.hasRealLocation ? 16.0 : 12.0,
+                maxZoom: 18.0,
+                minZoom: 3.0,
+              ),
+              children: [
+                // Light-style tile layer (Voyager)
+                TileLayer(
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.fidee.fidee_mobile',
+                  maxZoom: 20,
+                ),
 
+                // Current location marker
+                if (_locationService.hasRealLocation)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _locationService.currentPosition,
+                        width: 60,
+                        height: 60,
+                        child: const _PulsingLocationMarker(),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
                 // Current location marker
                 if (_locationService.hasRealLocation)
                   MarkerLayer(
@@ -460,7 +490,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 label: const Text('Dang xuat', style: TextStyle(fontSize: 16)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(
+                    
                     0xFFEF4444,
+                  ,
                   ).withValues(alpha: 0.1),
                   foregroundColor: const Color(0xFFEF4444),
                   elevation: 0,
@@ -593,39 +625,41 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: AnimatedBuilder(
-        animation: _animation,
-        builder: (_, _) => Stack(
-          alignment: Alignment.center,
-          children: [
-            // Outer pulse
-            Container(
-              width: 60 * _animation.value,
-              height: 60 * _animation.value,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(
+          animation: _animation,
+          builder: (_, _) => Stack(
+            alignment: Alignment.center,
+            children: [
+              // Outer pulse
+              Container(
+                width: 60 * _animation.value,
+                height: 60 * _animation.value,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(
+                  
                   0xFF3B82F6,
+                ,
                 ).withValues(alpha: 0.2 * (1 - _animation.value)),
+                ),
               ),
-            ),
-            // Inner dot
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6),
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.5),
-                    blurRadius: 8,
-                  ),
-                ],
+              // Inner dot
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF3B82F6),
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.5),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ),
     );
   }
