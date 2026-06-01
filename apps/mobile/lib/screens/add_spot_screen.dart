@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/nearby_place.dart';
 import '../services/friend_service.dart';
 
 class AddSpotScreen extends StatefulWidget {
-  const AddSpotScreen({super.key});
+  final List<NearbyPlace> spotSuggestions;
+
+  const AddSpotScreen({super.key, this.spotSuggestions = const []});
 
   @override
   State<AddSpotScreen> createState() => _AddSpotScreenState();
@@ -20,6 +23,8 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
   static const Color _muted = Color(0xFF8D8D8D);
   static const Color _field = Color(0xFFF8F8F8);
   static const Color _border = Color(0xFFE9E9E9);
+
+  String? _selectedSpotName;
 
   final PageController _pageController = PageController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -150,6 +155,9 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
                 children: [
                   _StepOne(
                     nameController: _nameController,
+                    spotSuggestions: widget.spotSuggestions,
+                    selectedSpotName: _selectedSpotName,
+                    onSpotNameChanged: (v) => setState(() => _selectedSpotName = v),
                     openController: _openController,
                     closeController: _closeController,
                     priceFromController: _priceFromController,
@@ -281,6 +289,9 @@ class _AddSpotHeader extends StatelessWidget {
 
 class _StepOne extends StatefulWidget {
   final TextEditingController nameController;
+  final List<NearbyPlace> spotSuggestions;
+  final String? selectedSpotName;
+  final ValueChanged<String> onSpotNameChanged;
   final TextEditingController openController;
   final TextEditingController closeController;
   final TextEditingController priceFromController;
@@ -296,6 +307,9 @@ class _StepOne extends StatefulWidget {
 
   const _StepOne({
     required this.nameController,
+    required this.spotSuggestions,
+    required this.selectedSpotName,
+    required this.onSpotNameChanged,
     required this.openController,
     required this.closeController,
     required this.priceFromController,
@@ -340,8 +354,8 @@ class _StepOneState extends State<_StepOne> {
     String? addressError;
     String? serviceError;
 
-    if (widget.nameController.text.trim().isEmpty) {
-      nameError = 'Vui lòng nhập tên địa điểm';
+    if (widget.selectedSpotName == null || widget.selectedSpotName!.trim().isEmpty) {
+      nameError = 'Vui lòng chọn tên địa điểm';
     }
     if (widget.selectedVibes.isEmpty) {
       vibeError = 'Vui lòng chọn ít nhất một không khí';
@@ -414,9 +428,10 @@ class _StepOneState extends State<_StepOne> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Label('Tên địa điểm', isRequired: true),
-          _SoftTextField(
-            controller: widget.nameController,
-            hint: 'Ví dụ: TikTak Coffee',
+          _SpotNameDropdown(
+            suggestions: widget.spotSuggestions,
+            value: widget.selectedSpotName,
+            onChanged: widget.onSpotNameChanged,
             hasError: _nameError != null,
           ),
           if (_nameError != null) _ErrorText(_nameError!),
@@ -1129,6 +1144,187 @@ class _TimeInputFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class _SpotNameDropdown extends StatefulWidget {
+  final List<NearbyPlace> suggestions;
+  final String? value;
+  final ValueChanged<String> onChanged;
+  final bool hasError;
+
+  const _SpotNameDropdown({
+    required this.suggestions,
+    required this.value,
+    required this.onChanged,
+    this.hasError = false,
+  });
+
+  @override
+  State<_SpotNameDropdown> createState() => _SpotNameDropdownState();
+}
+
+class _SpotNameDropdownState extends State<_SpotNameDropdown> {
+  final TextEditingController _customController = TextEditingController();
+  bool _isCustom = false;
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isCustom) {
+      return Row(
+        children: [
+          Expanded(
+            child: _SoftTextField(
+              controller: _customController,
+              hint: 'Nhập tên địa điểm...',
+              hasError: widget.hasError,
+              onChanged: widget.onChanged,
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => setState(() {
+              _isCustom = false;
+              _customController.clear();
+            }),
+            child: const Icon(
+              Icons.close_rounded,
+              color: _AddSpotScreenState._muted,
+              size: 20,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final items = [
+      ...widget.suggestions.map((p) => p.displayName),
+      '+ Nhập tên khác',
+    ];
+
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet<String>(
+          context: context,
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (_) => Padding(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E2E2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Chọn địa điểm',
+                  style: TextStyle(
+                    color: _AddSpotScreenState._text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...items.map(
+                  (name) => GestureDetector(
+                    onTap: () => Navigator.pop(context, name),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: widget.value == name
+                            ? _AddSpotScreenState._softAccent
+                            : _AddSpotScreenState._field,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: widget.value == name
+                              ? _AddSpotScreenState._accent
+                              : _AddSpotScreenState._border,
+                        ),
+                      ),
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          color: name.startsWith('+')
+                              ? _AddSpotScreenState._accent
+                              : _AddSpotScreenState._text,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ).then((selected) {
+          if (selected == null) return;
+          if (selected.startsWith('+')) {
+            setState(() => _isCustom = true);
+          } else {
+            widget.onChanged(selected);
+          }
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: _AddSpotScreenState._field,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: widget.hasError
+                ? _AddSpotScreenState._accent
+                : _AddSpotScreenState._border,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.value ?? 'Chọn địa điểm...',
+                style: TextStyle(
+                  color: widget.value != null
+                      ? _AddSpotScreenState._text
+                      : const Color(0xFFC9C9C9),
+                  fontSize: widget.value != null ? 14 : 13,
+                  fontWeight: widget.value != null
+                      ? FontWeight.w600
+                      : FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: _AddSpotScreenState._muted,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
