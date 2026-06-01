@@ -355,7 +355,9 @@ class _StepOneState extends State<_StepOne> {
 
     final openVal = widget.openController.text.trim();
     final closeVal = widget.closeController.text.trim();
-    if (openVal.isNotEmpty || closeVal.isNotEmpty) {
+    if (openVal.isEmpty || closeVal.isEmpty) {
+      hoursError = 'Vui lòng nhập đầy đủ giờ mở và đóng cửa';
+    } else {
       final open = _parseTime(openVal);
       final close = _parseTime(closeVal);
       if (open == null) {
@@ -369,7 +371,9 @@ class _StepOneState extends State<_StepOne> {
 
     final fromVal = widget.priceFromController.text.trim();
     final toVal = widget.priceToController.text.trim();
-    if (fromVal.isNotEmpty || toVal.isNotEmpty) {
+    if (fromVal.isEmpty || toVal.isEmpty) {
+      priceError = 'Vui lòng nhập đầy đủ giá từ và giá đến';
+    } else {
       final from = double.tryParse(fromVal);
       final to = double.tryParse(toVal);
       if (from == null) {
@@ -580,7 +584,7 @@ class _StepOneState extends State<_StepOne> {
   }
 }
 
-class _StepTwo extends StatelessWidget {
+class _StepTwo extends StatefulWidget {
   final XFile? menuImage;
   final XFile? vibeImage;
   final XFile? dishImage;
@@ -598,32 +602,50 @@ class _StepTwo extends StatelessWidget {
   });
 
   @override
+  State<_StepTwo> createState() => _StepTwoState();
+}
+
+class _StepTwoState extends State<_StepTwo> {
+  String? _menuError;
+
+  bool _validate() {
+    final error = widget.menuImage == null ? 'Vui lòng thêm ảnh thực đơn' : null;
+    setState(() => _menuError = error);
+    return error == null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _StepScaffold(
-      action: _PrimaryButton(label: 'Tiếp theo', onTap: onNext),
+      action: _PrimaryButton(
+        label: 'Tiếp theo',
+        onTap: () { if (_validate()) widget.onNext(); },
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Label('Ảnh thực đơn', isRequired: true),
           _ImageDropBox(
-            image: menuImage,
-            onTap: () => onPickImage(_SpotImageSlot.menu),
+            image: widget.menuImage,
+            onTap: () => widget.onPickImage(_SpotImageSlot.menu),
+            hasError: _menuError != null,
           ),
+          if (_menuError != null) _ErrorText(_menuError!),
           const SizedBox(height: 22),
           const _Label('Ảnh không khí địa điểm'),
           _ImageDropBox(
-            image: vibeImage,
-            onTap: () => onPickImage(_SpotImageSlot.vibe),
+            image: widget.vibeImage,
+            onTap: () => widget.onPickImage(_SpotImageSlot.vibe),
           ),
           const SizedBox(height: 22),
           const _Label('Món đặc trưng'),
           _ImageDropBox(
-            image: dishImage,
-            onTap: () => onPickImage(_SpotImageSlot.dishes),
+            image: widget.dishImage,
+            onTap: () => widget.onPickImage(_SpotImageSlot.dishes),
           ),
           const SizedBox(height: 14),
           _SoftTextField(
-            controller: dishNoteController,
+            controller: widget.dishNoteController,
             hint: 'Chia sẻ gì đó về những món này...',
             minLines: 2,
             maxLines: 3,
@@ -634,7 +656,7 @@ class _StepTwo extends StatelessWidget {
   }
 }
 
-class _StepThree extends StatelessWidget {
+class _StepThree extends StatefulWidget {
   final XFile? checkInImage;
   final int rating;
   final Set<String> selectedTags;
@@ -656,14 +678,35 @@ class _StepThree extends StatelessWidget {
   });
 
   @override
+  State<_StepThree> createState() => _StepThreeState();
+}
+
+class _StepThreeState extends State<_StepThree> {
+  String? _checkInError;
+
+  bool _validate() {
+    final error = widget.checkInImage == null ? 'Vui lòng thêm ảnh check-in' : null;
+    setState(() => _checkInError = error);
+    return error == null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _StepScaffold(
-      action: _PrimaryButton(label: 'Tiếp theo', onTap: onNext),
+      action: _PrimaryButton(
+        label: 'Tiếp theo',
+        onTap: () { if (_validate()) widget.onNext(); },
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Label('Ảnh check-in của bạn', isRequired: true),
-          _ImageDropBox(image: checkInImage, onTap: onPickImage),
+          _ImageDropBox(
+            image: widget.checkInImage,
+            onTap: widget.onPickImage,
+            hasError: _checkInError != null,
+          ),
+          if (_checkInError != null) _ErrorText(_checkInError!),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -673,11 +716,11 @@ class _StepThree extends StatelessWidget {
                 children: List.generate(5, (int index) {
                   final int star = index + 1;
                   return GestureDetector(
-                    onTap: () => onRate(star),
+                    onTap: () => widget.onRate(star),
                     child: Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: Icon(
-                        star <= rating
+                        star <= widget.rating
                             ? Icons.star_rounded
                             : Icons.star_border_rounded,
                         color: _AddSpotScreenState._accent,
@@ -696,12 +739,12 @@ class _StepThree extends StatelessWidget {
               'Phục vụ nhanh',
               'Xứng đáng giá tiền',
             ],
-            selected: selectedTags,
-            onToggle: onToggleTag,
+            selected: widget.selectedTags,
+            onToggle: widget.onToggleTag,
           ),
           const SizedBox(height: 18),
           _SoftTextField(
-            controller: reviewController,
+            controller: widget.reviewController,
             hint: 'Chia sẻ cảm nhận của bạn...',
             minLines: 3,
             maxLines: 4,
@@ -1265,8 +1308,9 @@ class _ChipWrap extends StatelessWidget {
 class _ImageDropBox extends StatelessWidget {
   final XFile? image;
   final VoidCallback onTap;
+  final bool hasError;
 
-  const _ImageDropBox({required this.image, required this.onTap});
+  const _ImageDropBox({required this.image, required this.onTap, this.hasError = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1278,7 +1322,10 @@ class _ImageDropBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: _AddSpotScreenState._field,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _AddSpotScreenState._border),
+          border: Border.all(
+            color: hasError ? _AddSpotScreenState._accent : _AddSpotScreenState._border,
+            width: hasError ? 1.5 : 1,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: image == null
