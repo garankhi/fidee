@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:native_exif/native_exif.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -270,15 +269,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                         onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            LucideIcons.map,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                          child: const Icon(Icons.map_rounded, color: Colors.white, size: 24),
                         ),
                       ),
                       Container(
@@ -533,11 +525,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                             onTap: _switchCamera,
                             child: Transform.rotate(
                               angle: -36 * math.pi / 180,
-                              child: const Icon(
-                                LucideIcons.refreshCcw,
-                                color: Colors.white,
-                                size: 38,
-                              ),
+                              child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 38),
                             ),
                           ),
                         ),
