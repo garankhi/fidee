@@ -24,7 +24,7 @@ class LocationService {
     } catch (e) {
       serviceEnabled = false;
     }
-    
+
     if (!serviceEnabled) {
       _status = LocationStatus.serviceDisabled;
       return;
@@ -70,5 +70,10 @@ class LocationService {
   /// Open app settings (for "permanently denied" case).
   Future<void> openSettings() async {
     await openAppSettings();
+  }
+
+  /// Open device location settings (when GPS is disabled).
+  Future<void> openLocationSettings() async {
+    await Geolocator.openLocationSettings();
   }
 }

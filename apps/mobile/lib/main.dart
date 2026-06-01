@@ -6,6 +6,7 @@ import 'features/auth/login_page.dart';
 import 'features/auth/screens/register_step3_name_page.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 
@@ -70,6 +71,12 @@ class FideeApp extends ConsumerWidget {
     if (state.authState == AuthState.authenticated) {
       // Location đã resolve (hoặc lỗi được bỏ qua với fallback mặc định)
       final locationService = locationState.valueOrNull ?? LocationService();
+
+      // Nếu location chưa được cấp phép → hiển thị gate screen trước khi vào map
+      if (locationService.status != LocationStatus.granted) {
+        return LocationGateScreen(locationService: locationService);
+      }
+
       return HomeScreen(locationService: locationService);
     } else if (state.authState == AuthState.incompleteProfile) {
       // BEST PRACTICE: Bắt lỗi đăng ký dở dang, ép vào màn nhập Tên

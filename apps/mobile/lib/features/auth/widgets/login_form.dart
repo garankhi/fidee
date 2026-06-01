@@ -39,7 +39,10 @@ class LoginForm extends StatelessWidget {
             Text(
               'Chào mừng bạn quay lại!',
               textAlign: TextAlign.center,
-              style: LoginTextStyles.title().copyWith(fontFamily: 'SF Pro', fontSize: 26),
+              style: LoginTextStyles.title().copyWith(
+                fontFamily: 'SF Pro',
+                fontSize: 26,
+              ),
             ),
             const SizedBox(height: 66),
             AuthTextField(
@@ -83,7 +86,9 @@ class LoginForm extends StatelessWidget {
                 onPressed: () {},
                 child: Text(
                   'Quên mật khẩu?',
-                  style: LoginTextStyles.action().copyWith(fontFamily: 'SF Pro'),
+                  style: LoginTextStyles.action().copyWith(
+                    fontFamily: 'SF Pro',
+                  ),
                 ),
               ),
             ),
@@ -102,17 +107,19 @@ class LoginForm extends StatelessWidget {
                 onPressed: isSubmitting ? null : onSubmit,
                 child: isSubmitting
                     ? const SizedBox(
-                  width: 20,
-                  height: 30,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
+                        width: 20,
+                        height: 30,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : Text(
-                  'Đăng nhập',
-                  style: LoginTextStyles.button().copyWith(fontFamily: 'SF Pro'),
-                ),
+                        'Đăng nhập',
+                        style: LoginTextStyles.button().copyWith(
+                          fontFamily: 'SF Pro',
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 34),
@@ -146,7 +153,9 @@ class LoginForm extends StatelessWidget {
                       Flexible(
                         child: Text(
                           'Tiếp tục với Google',
-                          style: LoginTextStyles.googleButton().copyWith(fontFamily: 'SF Pro'),
+                          style: LoginTextStyles.googleButton().copyWith(
+                            fontFamily: 'SF Pro',
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -168,12 +177,16 @@ class LoginForm extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute<void>(builder: (_) => const RegisterStep1EmailPage()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const RegisterStep1EmailPage(),
+                    ),
                   );
                 },
                 child: Text(
                   'Tạo tài khoản mới',
-                  style: LoginTextStyles.action().copyWith(fontFamily: 'SF Pro'),
+                  style: LoginTextStyles.action().copyWith(
+                    fontFamily: 'SF Pro',
+                  ),
                 ),
               ),
             ),
