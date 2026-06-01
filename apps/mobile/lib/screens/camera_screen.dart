@@ -270,15 +270,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                         onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            LucideIcons.map,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                          child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
                         ),
                       ),
                       Container(
@@ -533,11 +526,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                             onTap: _switchCamera,
                             child: Transform.rotate(
                               angle: -36 * math.pi / 180,
-                              child: const Icon(
-                                LucideIcons.refreshCcw,
-                                color: Colors.white,
-                                size: 38,
-                              ),
+                              child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 38),
                             ),
                           ),
                         ),

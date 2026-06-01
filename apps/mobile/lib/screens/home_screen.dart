@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../models/nearby_place.dart';
 import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
+import '../services/nearby_service.dart';
+import 'add_spot_screen.dart';
 import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
 
@@ -202,6 +205,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+  void _onDiscover() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DiscoverSheet(
+        lat: _locationService.currentPosition.latitude,
+        lng: _locationService.currentPosition.longitude,
+        onAddSpot: (spots) {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => AddSpotScreen(spotSuggestions: spots),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Không còn _isLoading guard — map render ngay từ frame đầu tiên.
@@ -220,7 +244,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 minZoom: 3.0,
               ),
               children: [
-                // Light-style tile layer (Voyager)
                 TileLayer(
                   urlTemplate:
                       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
@@ -228,8 +251,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   userAgentPackageName: 'com.fidee.fidee_mobile',
                   maxZoom: 20,
                 ),
-
-                // Current location marker
                 if (_locationService.hasRealLocation)
                   MarkerLayer(
                     markers: [
@@ -241,8 +262,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ],
                   ),
-
-                // Feed markers
                 if (_feedItems.isNotEmpty)
                   MarkerLayer(
                     markers: _feedItems
@@ -271,112 +290,112 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: RepaintBoundary(
               child: Column(
                 children: [
-                  // Logo & Avatar Row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(width: 40), // Balance the avatar
-                        Image.asset(
-                          'assets/images/logo_red.png',
-                          height: 25,
-                          cacheHeight: 96,
-                        ),
-                        GestureDetector(
-                          onTap: () => _showProfileMenu(context),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF5A8DEE),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    'AA',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: -2,
-                                right: -2,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF3B30),
+                    // Logo & Avatar Row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _TopAddSpotButton(onTap: _onDiscover),
+                          Image.asset(
+                            'assets/images/logo_red.png',
+                            height: 25,
+                            cacheHeight: 96,
+                          ),
+                          GestureDetector(
+                            onTap: () => _showProfileMenu(context),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF5A8DEE),
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
                                   ),
                                   child: const Center(
                                     child: Text(
-                                      '1',
+                                      'AA',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 8,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Search Bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search, color: Color(0xFFFF3B30)),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Want something today?',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              ),
+                                Positioned(
+                                  top: -2,
+                                  right: -2,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFF3B30),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        '1',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Icon(Icons.mic, color: Colors.grey.shade600),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    // Search Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.search, color: Color(0xFFFF3B30)),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'Want something today?',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.mic, color: Colors.grey.shade600),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ),
           // === LOCATION DENIED BANNER ===
           if (_showLocationBanner)
@@ -387,7 +406,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: RepaintBoundary(
                 child: _LocationDeniedBanner(
                   status: _locationService.status,
-                  onAllow: _handleEnableLocation,
+                  onAllow: () async {
+                    if (_locationService.status ==
+                        LocationStatus.deniedForever) {
+                      await _locationService.openSettings();
+                    } else {
+                      await _locationService.initialize();
+                    }
+                    if (!mounted) return;
+                    setState(() {
+                      _showLocationBanner =
+                          _locationService.status != LocationStatus.granted;
+                    });
+                    if (_locationService.hasRealLocation) {
+                      _animateToLocation(_locationService.currentPosition);
+                    }
+                  },
                   onDismiss: () => setState(() => _showLocationBanner = false),
                 ),
               ),
@@ -417,7 +451,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // Compass (Left)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Discovery.png',
-                    onTap: _goToMyLocation,
+                    onTap: _onDiscover,
                     size: 60,
                     iconSize: 42,
                     locked: _isLimitedMode,
@@ -517,9 +551,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.logout, size: 20),
                 label: const Text('Dang xuat', style: TextStyle(fontSize: 16)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(
-                    0xFFEF4444,
-                  ).withValues(alpha: 0.1),
+                  backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.1),
                   foregroundColor: const Color(0xFFEF4444),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -530,6 +562,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             const SizedBox(height: 8),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopAddSpotButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _TopAddSpotButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.96),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add_location_alt_rounded,
+          color: Color(0xFFEF4050),
+          size: 22,
         ),
       ),
     );
@@ -684,6 +749,201 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// === DISCOVER SHEET ===
+class _DiscoverSheet extends StatefulWidget {
+  final double lat;
+  final double lng;
+  final void Function(List<NearbyPlace> spots) onAddSpot;
+
+  const _DiscoverSheet({
+    required this.lat,
+    required this.lng,
+    required this.onAddSpot,
+  });
+
+  @override
+  State<_DiscoverSheet> createState() => _DiscoverSheetState();
+}
+
+class _DiscoverSheetState extends State<_DiscoverSheet> {
+  final NearbyService _nearbyService = NearbyService();
+  List<NearbyPlace> _spots = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await _nearbyService.fetchNearby(
+        lat: widget.lat,
+        lng: widget.lng,
+        mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _spots = res.data.where((p) => !p.isCustomFallback).toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E2E2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Banner "Chưa tìm được quán yêu thích?"
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFE9EC), Color(0xFFFFF0F2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'CHƯA TÌM ĐƯỢC\nQUÁN YÊU THÍCH?',
+                  style: TextStyle(
+                    color: Color(0xFFEF4050),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
+                  style: TextStyle(
+                    color: Color(0xFF8D8D8D),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => widget.onAddSpot(_spots),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4050),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4050).withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'Thêm ngay vào bản đồ!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: CircularProgressIndicator(
+                  color: Color(0xFFEF4050),
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else if (_spots.isNotEmpty) ...
+            [
+              const Text(
+                'Địa điểm gần bạn',
+                style: TextStyle(
+                  color: Color(0xFF151515),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._spots.take(5).map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.place_rounded,
+                        color: Color(0xFFEF4050),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          p.displayName,
+                          style: const TextStyle(
+                            color: Color(0xFF151515),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${p.distanceMeters}m',
+                        style: const TextStyle(
+                          color: Color(0xFF8D8D8D),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+        ],
       ),
     );
   }

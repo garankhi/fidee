@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../features/auth/auth_providers.dart';
@@ -592,11 +593,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                         alignment: Alignment.centerRight,
                         child: GestureDetector(
                           onTap: () {},
-                          child: const Icon(
-                            LucideIcons.download,
-                            color: Colors.white54,
-                            size: 24,
-                          ),
+                          child: const Icon(LucideIcons.download, color: Colors.white54, size: 24),
                         ),
                       ),
                     ],
