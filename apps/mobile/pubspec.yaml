@@ -19,6 +19,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
+
   sdk: ^3.10.8
 
 # Dependencies specify other packages that your package needs in order to work.
@@ -49,6 +50,7 @@ dependencies:
   google_sign_in: ^7.2.0
   intl: ^0.20.2
   camera: ^0.12.0+1
+  lucide_icons: ^0.257.0
   native_exif: ^0.8.0
 
 dev_dependencies:
