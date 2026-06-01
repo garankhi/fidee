@@ -4,12 +4,15 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as rds from 'aws-cdk-lib/aws-rds';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
@@ -243,6 +246,80 @@ export class FideeStack extends cdk.Stack {
       sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
     });
 
+    placesTable.addGlobalSecondaryIndex({
+      indexName: 'GSI2',
+      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
+    });
+
+    // ─── VPC (Private Isolated for Aurora — no NAT = $0) ────────
+    const vpc = new ec2.Vpc(this, 'Vpc', {
+      vpcName: resourceName(stage, 'vpc'),
+      maxAzs: 2,
+      natGateways: 0,
+      subnetConfiguration: [
+        {
+          name: 'isolated',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+          cidrMask: 24,
+        },
+      ],
+    });
+
+    // VPC Endpoints — required for Lambda in isolated subnets
+    vpc.addGatewayEndpoint('DynamoDbEndpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+    });
+    vpc.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+    });
+    vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+    });
+
+    // ─── Aurora Serverless v2 (PostgreSQL 16.4) ─────────────────
+    const dbSecurityGroup = new ec2.SecurityGroup(this, 'DbSecurityGroup', {
+      securityGroupName: resourceName(stage, 'db-sg'),
+      vpc,
+      description: 'Security group for Aurora PostgreSQL',
+      allowAllOutbound: false,
+    });
+
+    const dbCluster = new rds.DatabaseCluster(this, 'Database', {
+      clusterIdentifier: resourceName(stage, 'db'),
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: rds.AuroraPostgresEngineVersion.VER_16_4,
+      }),
+      serverlessV2MinCapacity: 0.5,
+      serverlessV2MaxCapacity: isProd(stage) ? 8 : 2,
+      writer: rds.ClusterInstance.serverlessV2('writer', {
+        publiclyAccessible: false,
+      }),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [dbSecurityGroup],
+      defaultDatabaseName: 'fidee',
+      removalPolicy,
+      storageEncrypted: true,
+      backup: {
+        retention: isProd(stage) ? cdk.Duration.days(7) : cdk.Duration.days(1),
+      },
+    });
+
+    // Lambda security group — allows Lambda to connect to Aurora
+    const lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
+      securityGroupName: resourceName(stage, 'lambda-sg'),
+      vpc,
+      description: 'Security group for Lambda functions accessing Aurora',
+      allowAllOutbound: true,
+    });
+
+    dbSecurityGroup.addIngressRule(
+      lambdaSecurityGroup,
+      ec2.Port.tcp(5432),
+      'Allow Lambda to connect to Aurora PostgreSQL',
+    );
+
     const mediaBucket = new s3.Bucket(this, 'MediaBucket', {
       bucketName: `${resourceName(stage, 'media')}-${cdk.Aws.ACCOUNT_ID}-${MAIN_REGION}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -408,6 +485,78 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── POST /place-candidates (protected) ─────────────────────
+    const createPlaceCandidateFn = new lambda.Function(this, 'CreatePlaceCandidateFunction', {
+      functionName: resourceName(stage, 'create-place-candidate'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handlers/create-place-candidate.handler',
+      code: lambda.Code.fromAsset('../../services/api/dist'),
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(15),
+      environment: {
+        STAGE: stage,
+        PLACES_TABLE: placesTable.tableName,
+        MEDIA_BUCKET: mediaBucket.bucketName,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+      },
+    });
+    placesTable.grantReadWriteData(createPlaceCandidateFn);
+    userProfilesTable.grantReadData(createPlaceCandidateFn);
+    mediaBucket.grantRead(createPlaceCandidateFn, 'uploads/*');
+
+    const placeCandidatesResource = api.root.addResource('place-candidates');
+    placeCandidatesResource.addMethod('POST',
+      new apigateway.LambdaIntegration(createPlaceCandidateFn), {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
+    // ─── DB Migration Lambda (VPC, connects to Aurora) ──────────
+    const migrateFn = new nodejs.NodejsFunction(this, 'MigrateFunction', {
+      functionName: resourceName(stage, 'db-migrate'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/db/migrate.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(60),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+    });
+    dbCluster.secret!.grantRead(migrateFn);
+
+    // ─── GET /map/feed (protected) ──────────────────────────────
+    const getMapFeedFn = new nodejs.NodejsFunction(this, 'GetMapFeedFunction', {
+      functionName: resourceName(stage, 'get-map-feed'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-map-feed.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+    });
+    dbCluster.secret!.grantRead(getMapFeedFn);
+
+    const mapResource = api.root.addResource('map');
+    const mapFeedResource = mapResource.addResource('feed');
+    mapFeedResource.addMethod('GET', new apigateway.LambdaIntegration(getMapFeedFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const mediaUploadObjectCreatedRule = new events.Rule(this, 'MediaUploadObjectCreatedRule', {
       ruleName: resourceName(stage, 'media-upload-object-created'),
       eventPattern: {
@@ -469,5 +618,8 @@ export class FideeStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'ApiWebAclArn', { value: apiWebAcl.attrArn });
     new cdk.CfnOutput(this, 'MediaWebAclArn', { value: props.mediaWebAclArn });
+    new cdk.CfnOutput(this, 'VpcId', { value: vpc.vpcId });
+    new cdk.CfnOutput(this, 'DbClusterEndpoint', { value: dbCluster.clusterEndpoint.hostname });
+    new cdk.CfnOutput(this, 'DbSecretArn', { value: dbCluster.secret!.secretArn });
   }
 }

@@ -5,9 +5,11 @@ import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../models/nearby_place.dart';
+import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
+import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
@@ -31,6 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final LocationService _locationService;
   final MapController _mapController = MapController();
   bool _showLocationBanner = false;
+  List<MapFeedItem> _feedItems = [];
 
   /// True nếu user đang ở chế độ giới hạn (không có GPS).
   bool get _isLimitedMode => _locationService.status != LocationStatus.granted;
@@ -43,6 +46,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Không cần _initLocation() hay spinner — dùng thẳng kết quả đã có.
     _locationService = widget.locationService;
     _showLocationBanner = _locationService.status != LocationStatus.granted;
+    if (_locationService.hasRealLocation) {
+      // Need to defer the fetch slightly so Riverpod ref is ready, or just do it after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchFeed();
+      });
+    }
   }
 
   @override
@@ -66,6 +75,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
     if (_locationService.hasRealLocation) {
       _animateToLocation(_locationService.currentPosition);
+      _fetchFeed();
     }
   }
 
@@ -90,7 +100,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
     if (_locationService.hasRealLocation) {
       _animateToLocation(_locationService.currentPosition);
+      _fetchFeed();
     }
+  }
+
+  Future<void> _fetchFeed() async {
+    if (_isLimitedMode || !_locationService.hasRealLocation) return;
+    try {
+      final authService = ref.read(authServiceProvider);
+      final mapFeedService = MapFeedService(authService);
+      final position = _locationService.currentPosition;
+      final items = await mapFeedService.getMapFeed(
+        position.latitude,
+        position.longitude,
+      );
+      if (mounted) {
+        setState(() {
+          _feedItems = items;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching feed: $e');
+    }
+  }
+
+  void _showFeedItemDetails(BuildContext context, MapFeedItem item) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _FeedItemSheet(item: item),
+    );
   }
 
   void _showLimitedModeSnack(String message) {
@@ -204,7 +244,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 minZoom: 3.0,
               ),
               children: [
-                // Light-style tile layer (Voyager)
                 TileLayer(
                   urlTemplate:
                       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
@@ -212,24 +251,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   userAgentPackageName: 'com.fidee.fidee_mobile',
                   maxZoom: 20,
                 ),
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: _locationService.currentPosition,
-                initialZoom: _locationService.hasRealLocation ? 16.0 : 12.0,
-                maxZoom: 18.0,
-                minZoom: 3.0,
-              ),
-              children: [
-                // Light-style tile layer (Voyager)
-                TileLayer(
-                  urlTemplate:
-                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.fidee.fidee_mobile',
-                  maxZoom: 20,
-                ),
-
-                // Current location marker
                 if (_locationService.hasRealLocation)
                   MarkerLayer(
                     markers: [
@@ -241,19 +262,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ],
                   ),
-              ],
-            ),
-                // Current location marker
-                if (_locationService.hasRealLocation)
+                if (_feedItems.isNotEmpty)
                   MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: _locationService.currentPosition,
-                        width: 60,
-                        height: 60,
-                        child: const _PulsingLocationMarker(),
-                      ),
-                    ],
+                    markers: _feedItems
+                        .map(
+                          (item) => Marker(
+                            point: LatLng(item.lat, item.lng),
+                            width: 48,
+                            height: 48,
+                            child: GestureDetector(
+                              onTap: () => _showFeedItemDetails(context, item),
+                              child: _FeedMarker(item: item),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
               ],
             ),
@@ -311,12 +334,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       color: const Color(0xFFFF3B30),
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                      
-                                      color: Colors.white,
-                                     
-                                      width: 2,
-                                    ,
-                                    ),
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
                                     ),
                                     child: const Center(
                                       child: Text(
@@ -431,7 +451,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // Compass (Left)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Discovery.png',
-                    onTap: _goToMyLocation,
+                    onTap: _onDiscover,
                     size: 60,
                     iconSize: 42,
                     locked: _isLimitedMode,
@@ -471,7 +491,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
@@ -531,13 +551,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.logout, size: 20),
                 label: const Text('Dang xuat', style: TextStyle(fontSize: 16)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(
-                    
-                    
-                    0xFFEF4444,
-                
-                  
-                  ).withValues(alpha: 0.1),
+                  backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.1),
                   foregroundColor: const Color(0xFFEF4444),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -1085,6 +1099,142 @@ class _LimitedModeBanner extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedMarker extends StatelessWidget {
+  final MapFeedItem item;
+
+  const _FeedMarker({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3B82F6),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          item.userName.substring(0, 1).toUpperCase(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedItemSheet extends StatelessWidget {
+  final MapFeedItem item;
+
+  const _FeedItemSheet({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1F2E),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    item.userName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.placeName,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${item.createdAt.hour}:${item.createdAt.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          if (item.caption.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              item.caption,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0E17),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: Icon(Icons.image, color: Colors.white24, size: 48),
             ),
           ),
         ],

@@ -116,6 +116,18 @@ class AuthService {
   UserTier get tier => _tier;
   String? get destination => _destination;
 
+  String? get username => _username;
+
+  Future<String?> getToken() async {
+    if (_cognitoUser == null) return null;
+    try {
+      final session = await _cognitoUser!.getSession();
+      return session?.getIdToken().getJwtToken();
+    } catch (_) {
+      return null;
+    }
+  }
+
   int get resendCooldownRemaining {
     if (_lastOtpSent == null) return 0;
     final elapsed = DateTime.now().difference(_lastOtpSent!).inSeconds;
