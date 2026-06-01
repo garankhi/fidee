@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../utils/error.dart';
 import 'camera_screen.dart';
 
@@ -421,7 +423,7 @@ class _SendImageScreenState extends State<SendImageScreen> {
                         alignment: Alignment.centerRight,
                         child: GestureDetector(
                           onTap: () {},
-                          child: const Icon(Icons.download_rounded, color: Colors.white54, size: 24),
+                          child: const Icon(LucideIcons.download, color: Colors.white54, size: 24),
                         ),
                       ),
                     ],
