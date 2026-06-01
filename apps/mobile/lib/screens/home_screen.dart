@@ -28,6 +28,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final LocationService _locationService;
   final MapController _mapController = MapController();
   bool _showLocationBanner = false;
+  List<MapFeedItem> _feedItems = [];
 
   /// True nếu user đang ở chế độ giới hạn (không có GPS).
   bool get _isLimitedMode => _locationService.status != LocationStatus.granted;
@@ -87,6 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
     if (_locationService.hasRealLocation) {
       _animateToLocation(_locationService.currentPosition);
+      _fetchFeed();
     }
   }
 
@@ -395,11 +397,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showProfileMenu(BuildContext context) {
-    showModalBottomSheet<void>(
+    showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
@@ -553,6 +555,15 @@ class _BottomNavIcon extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showFeedItemDetails(BuildContext context, MapFeedItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _FeedItemSheet(item: item),
     );
   }
 }
@@ -781,6 +792,145 @@ class _LimitedModeBanner extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedMarker extends StatelessWidget {
+  final MapFeedItem item;
+
+  const _FeedMarker({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3B82F6),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          item.userName.substring(0, 1).toUpperCase(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedItemSheet extends StatelessWidget {
+  final MapFeedItem item;
+
+  const _FeedItemSheet({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1F2E),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    item.userName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.placeName,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${item.createdAt.hour}:${item.createdAt.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          if (item.caption.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              item.caption,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0E17),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: Icon(Icons.image, color: Colors.white24, size: 48),
             ),
           ),
         ],
