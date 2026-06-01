@@ -4,15 +4,18 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../features/auth/auth_providers.dart';
+import '../services/upload_service.dart';
 import '../utils/error.dart';
 import 'camera_screen.dart';
 
-class SendImageScreen extends StatefulWidget {
+class SendImageScreen extends ConsumerStatefulWidget {
   final String imagePath;
 
   /// GPS coordinates captured at photo time.
@@ -28,12 +31,12 @@ class SendImageScreen extends StatefulWidget {
   });
 
   @override
-  State<SendImageScreen> createState() => _SendImageScreenState();
+  ConsumerState<SendImageScreen> createState() => _SendImageScreenState();
 }
 
 enum _UploadStatus { idle, pending, error }
 
-class _SendImageScreenState extends State<SendImageScreen> {
+class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   final List<String> _friends = ['ahn', 'giang', 'huy', 'linh'];
 
   _UploadStatus _uploadStatus = _UploadStatus.idle;
@@ -202,14 +205,35 @@ class _SendImageScreenState extends State<SendImageScreen> {
     setState(() => _uploadStatus = _UploadStatus.pending);
 
     try {
-      // Simulate upload — replace with real API call when backend is ready.
-      await Future<void>.delayed(const Duration(seconds: 2));
+      final authService = ref.read(authServiceProvider);
+      final uploadService = UploadService(authService: authService);
 
-      // TODO: POST /media/uploads with imagePath + gpsCoordinates
-      // On success, navigate to home/map.
+      final latitude = widget.gpsCoordinates?[0] ?? 0.0;
+      final longitude = widget.gpsCoordinates?[1] ?? 0.0;
+      
+      // Determine source based on whether GPS was provided via camera or EXIF
+      // (This is a simplified logic, you might want to adjust 'source' based on actual camera vs gallery usage)
+      final source = widget.gpsCoordinates != null ? 'IN_APP_CAMERA' : 'EXIF_GALLERY';
 
-      // For now: reset to idle after simulated success.
-      if (mounted) setState(() => _uploadStatus = _UploadStatus.idle);
+      await uploadService.upload(
+        imagePath: widget.imagePath,
+        latitude: latitude,
+        longitude: longitude,
+        source: source,
+      );
+
+      if (mounted) {
+        setState(() => _uploadStatus = _UploadStatus.idle);
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder<void>(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const CameraScreen(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _uploadStatus = _UploadStatus.error);
