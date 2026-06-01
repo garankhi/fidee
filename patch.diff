@@ -1,0 +1,37 @@
+--- apps/mobile/lib/screens/home_screen.dart
++++ apps/mobile/lib/screens/home_screen.dart
+@@ -122,6 +122,7 @@
+                 ),
+             ],
+           ),
++          ),
+ 
+           // === TOP UI (Logo, Avatar, Search) ===
+           Positioned(
+@@ -234,8 +235,7 @@
+               ],
+             ),
+           ),
+-          ),
+           // === LOCATION DENIED BANNER ===
+           if (_showLocationBanner)
+             Positioned(
+@@ -243,7 +243,7 @@
+               left: 16,
+               right: 16,
+               child: RepaintBoundary(
+-                child: _LocationDeniedBanner(
++                child: _LocationDeniedBanner(
+                 status: _locationService.status,
+                 onAllow: () async {
+                   if (_locationService.status == LocationStatus.deniedForever) {
+@@ -260,8 +260,8 @@
+                   }
+                 },
+                 onDismiss: () => setState(() => _showLocationBanner = false),
+-                ),
+                 ),
++              ),
+             ),
+ 
+             // === BOTTOM BUTTONS ===

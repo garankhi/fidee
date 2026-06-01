@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/location_service.dart';
 
 part 'auth_providers.g.dart';
 
@@ -66,6 +67,16 @@ class AuthUiState {
 @Riverpod(keepAlive: true)
 AuthService authService(AuthServiceRef ref) {
   return AuthService();
+}
+
+/// Khởi động LocationService song song với AuthController ngay từ lúc app start.
+/// keepAlive = true → không bị dispose, HomeScreen nhận instance đã sẵn sàng,
+/// không cần chạy _initLocation() lại → loại bỏ hoàn toàn spinner trắng.
+@Riverpod(keepAlive: true)
+Future<LocationService> locationController(LocationControllerRef ref) async {
+  final service = LocationService();
+  await service.initialize();
+  return service;
 }
 
 @Riverpod(keepAlive: true)
@@ -156,6 +167,25 @@ class AuthController extends _$AuthController {
     state = AsyncData(AuthUiState.fromService(service));
   }
 
+  Future<AuthResult> completeProfile(
+    String firstName,
+    String lastName,
+    String username,
+  ) async {
+    final current = _currentState();
+    state = AsyncData(current.copyWith(isSubmitting: true, clearError: true));
+
+    final service = ref.read(authServiceProvider);
+    final result = await service.completeProfile(firstName, lastName, username);
+    state = AsyncData(
+      AuthUiState.fromService(
+        service,
+        errorMessage: result.success ? null : result.errorMessage,
+      ),
+    );
+    return result;
+  }
+
   void setError(String message) {
     state = AsyncData(_currentState().copyWith(errorMessage: message));
   }
@@ -169,4 +199,3 @@ class AuthController extends _$AuthController {
         const AuthUiState(authState: AuthState.unauthenticated);
   }
 }
-

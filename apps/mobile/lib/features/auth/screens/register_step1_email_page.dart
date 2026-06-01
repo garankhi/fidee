@@ -100,12 +100,17 @@ class _RegisterStep1State extends ConsumerState<RegisterStep1EmailPage> {
                 color: LoginColors.iconMuted,
                 size: 20,
               ),
-              onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+              onPressed: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
             ),
           ),
           if (errorMessage != null) ...[
             const SizedBox(height: 12),
-            Text(errorMessage, style: LoginTextStyles.error(), textAlign: TextAlign.center),
+            Text(
+              errorMessage,
+              style: LoginTextStyles.error(),
+              textAlign: TextAlign.center,
+            ),
           ],
           const SizedBox(height: 32),
           SizedBox(
@@ -124,7 +129,10 @@ class _RegisterStep1State extends ConsumerState<RegisterStep1EmailPage> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text('Đăng kí', style: LoginTextStyles.button()),
             ),
@@ -143,13 +151,24 @@ class _RegisterStep1State extends ConsumerState<RegisterStep1EmailPage> {
                   borderRadius: BorderRadius.circular(LoginRadii.googleButton),
                 ),
               ),
-              onPressed: isSubmitting ? null : () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+              onPressed: isSubmitting
+                  ? null
+                  : () => ref
+                        .read(authControllerProvider.notifier)
+                        .signInWithGoogle(),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SvgPicture.asset(LoginAssets.googleIcon, width: 21, height: 21),
+                  SvgPicture.asset(
+                    LoginAssets.googleIcon,
+                    width: 21,
+                    height: 21,
+                  ),
                   const SizedBox(width: 18),
-                  Text('Tiếp tục với Google', style: LoginTextStyles.googleButton()),
+                  Text(
+                    'Tiếp tục với Google',
+                    style: LoginTextStyles.googleButton(),
+                  ),
                 ],
               ),
             ),
@@ -158,7 +177,10 @@ class _RegisterStep1State extends ConsumerState<RegisterStep1EmailPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Đã có tài khoản?', style: LoginTextStyles.fieldText().copyWith(fontSize: 13)),
+              Text(
+                'Đã có tài khoản?',
+                style: LoginTextStyles.fieldText().copyWith(fontSize: 13),
+              ),
               TextButton(
                 style: TextButton.styleFrom(
                   foregroundColor: LoginColors.red,
@@ -183,4 +205,3 @@ class _RegisterStep1State extends ConsumerState<RegisterStep1EmailPage> {
     );
   }
 }
-

@@ -30,14 +30,14 @@ class AuthTextField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: obscureText,
       textAlign: textAlign,
-      style: LoginTextStyles.fieldText(),
+      style: const TextStyle(fontFamily: 'SF Pro', color: Colors.black),
       decoration: InputDecoration(
         labelText: label.isEmpty ? null : label,
         hintText: hintText,
         floatingLabelBehavior: FloatingLabelBehavior.always,
-        labelStyle: LoginTextStyles.fieldLabel(),
+        labelStyle: const TextStyle(fontFamily: 'SF Pro'),
         floatingLabelStyle: LoginTextStyles.fieldLabel(),
-        hintStyle: LoginTextStyles.fieldText(),
+        hintStyle: const TextStyle(fontFamily: 'SF Pro'),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 26,
           vertical: 17,

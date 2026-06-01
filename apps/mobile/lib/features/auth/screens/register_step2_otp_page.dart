@@ -44,7 +44,7 @@ class _RegisterStep2State extends ConsumerState<RegisterStep2OtpPage> {
 
     final controller = ref.read(authControllerProvider.notifier);
     final result = await controller.verifyOtp(code);
-    
+
     if (!mounted || !result.success) return;
 
     // After OTP is verified, Cognito session is valid, but profile is empty.
@@ -81,7 +81,11 @@ class _RegisterStep2State extends ConsumerState<RegisterStep2OtpPage> {
                   keyboardType: TextInputType.number,
                   maxLength: 1,
                   cursorColor: LoginColors.red,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87), // Fix white text on white bg
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ), // Fix white text on white bg
                   decoration: InputDecoration(
                     counterText: '',
                     contentPadding: EdgeInsets.zero,
@@ -96,7 +100,11 @@ class _RegisterStep2State extends ConsumerState<RegisterStep2OtpPage> {
           ),
           if (errorMessage != null) ...[
             const SizedBox(height: 16),
-            Text(errorMessage, style: LoginTextStyles.error(), textAlign: TextAlign.center),
+            Text(
+              errorMessage,
+              style: LoginTextStyles.error(),
+              textAlign: TextAlign.center,
+            ),
           ],
           const SizedBox(height: 32),
           Row(
@@ -104,7 +112,8 @@ class _RegisterStep2State extends ConsumerState<RegisterStep2OtpPage> {
             children: [
               Text('Chưa nhận được mã? ', style: LoginTextStyles.fieldText()),
               TextButton(
-                onPressed: () => ref.read(authControllerProvider.notifier).resendOtp(),
+                onPressed: () =>
+                    ref.read(authControllerProvider.notifier).resendOtp(),
                 style: TextButton.styleFrom(
                   foregroundColor: LoginColors.red,
                   padding: EdgeInsets.zero,
@@ -129,7 +138,14 @@ class _RegisterStep2State extends ConsumerState<RegisterStep2OtpPage> {
                     Text('Tiếp tục', style: LoginTextStyles.button()),
                     const SizedBox(width: 8),
                     if (isVerifying)
-                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: LoginColors.red))
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: LoginColors.red,
+                        ),
+                      )
                     else
                       const Icon(Icons.arrow_forward_ios, size: 16),
                   ],
@@ -145,9 +161,8 @@ class _RegisterStep2State extends ConsumerState<RegisterStep2OtpPage> {
 
 class OutlineBorder extends OutlineInputBorder {
   OutlineBorder({required Color color})
-      : super(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: color, width: 1.5),
-        );
+    : super(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: color, width: 1.5),
+      );
 }
-

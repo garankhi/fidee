@@ -1,0 +1,106 @@
+*** Begin Patch
+*** Update File: D:\Project\mapvibe\apps\mobile\lib\screens\home_screen.dart
+@@ -128,7 +128,8 @@
+         body: Stack(
+           children: [
+             // === MAP ===
+-            FlutterMap(
++            RepaintBoundary(
++              child: FlutterMap(
+               mapController: _mapController,
+               options: MapOptions(
+                 initialCenter: _locationService.currentPosition,
+@@ -165,11 +166,13 @@
+                   ),
+               ],
+             ),
++            ),
+   
+           // === TOP UI (Logo, Avatar, Search) ===
+           Positioned(
+             top: MediaQuery.of(context).padding.top + 16,
+             left: 0,
+             right: 0,
+-            child: Column(
++            child: RepaintBoundary(
++              child: Column(
+               children: [
+                 // Logo & Avatar Row
+@@ -180,6 +183,7 @@
+                       Image.asset(
+                         'assets/images/logo.png',
+                         height: 32,
++                        cacheHeight: 96,
+                       ),
+                       GestureDetector(
+@@ -239,12 +243,14 @@
+                 ),
+               ],
+             ),
++            ),
+           ),
+ 
+           // === LOCATION BANNER ===
+           if (_showLocationBanner)
+             Positioned(
+               top: MediaQuery.of(context).padding.top + 140,
+               left: 16,
+               right: 16,
+-              child: _LocationDeniedBanner(
++              child: RepaintBoundary(
++                child: _LocationDeniedBanner(
+                 status: _locationService.status,
+                 onAllow: () async {
+@@ -265,13 +271,15 @@
+                 },
+                 onDismiss: () => setState(() => _showLocationBanner = false),
+               ),
++              ),
+             ),
+   
+           // === BOTTOM BUTTONS ===
+           Positioned(
+             bottom: 40,
+             left: 0,
+             right: 0,
+-            child: Row(
++            child: RepaintBoundary(
++              child: Row(
+               mainAxisAlignment: MainAxisAlignment.center,
+               crossAxisAlignment: CrossAxisAlignment.end,
+@@ -298,6 +306,7 @@
+                 ],
+               ),
+             ),
++            ),
+           ],
+         ),
+       );
+@@ -428,8 +437,12 @@
+             child: Image.asset(
+               assetPath,
+               width: iconSize,
+               height: iconSize,
+               fit: BoxFit.contain,
++              cacheWidth: 152,
+               errorBuilder: (context, error, stackTrace) =>
+                   const Icon(Icons.error, color: Colors.grey),
+             ),
+@@ -470,7 +483,8 @@
+   @override
+   Widget build(BuildContext context) {
+-    return AnimatedBuilder(
++    return RepaintBoundary(
++      child: AnimatedBuilder(
+       animation: _animation,
+       builder: (_, _) => Stack(
+         alignment: Alignment.center,
+@@ -499,6 +513,7 @@
+           ),
+         ],
+       ),
++      ),
+     );
+   }
+ }
+*** End Patch
