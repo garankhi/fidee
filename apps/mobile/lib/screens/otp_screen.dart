@@ -78,10 +78,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     if (result.success) {
       // Lấy LocationService đã cached từ provider (keepAlive), không init lại.
-      final locationService = ref.read(locationControllerProvider).valueOrNull
-          ?? LocationService();
+      final locationService =
+          ref.read(locationControllerProvider).valueOrNull ?? LocationService();
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => HomeScreen(locationService: locationService)),
+        MaterialPageRoute<void>(
+          builder: (_) => HomeScreen(locationService: locationService),
+        ),
         (route) => false,
       );
     } else {

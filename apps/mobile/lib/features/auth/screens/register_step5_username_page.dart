@@ -21,7 +21,8 @@ class RegisterStep5UsernamePage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<RegisterStep5UsernamePage> createState() => _RegisterStep5State();
+  ConsumerState<RegisterStep5UsernamePage> createState() =>
+      _RegisterStep5State();
 }
 
 class _RegisterStep5State extends ConsumerState<RegisterStep5UsernamePage> {
@@ -35,20 +36,24 @@ class _RegisterStep5State extends ConsumerState<RegisterStep5UsernamePage> {
 
   void _submit() async {
     if (_usernameCtrl.text.trim().isEmpty) return;
-    
-    final result = await ref.read(authControllerProvider.notifier).completeProfile(
-      widget.firstName,
-      widget.lastName,
-      _usernameCtrl.text.trim(),
-    );
+
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .completeProfile(
+          widget.firstName,
+          widget.lastName,
+          _usernameCtrl.text.trim(),
+        );
 
     if (result.success && mounted) {
       // Lấy LocationService đã cached từ provider (keepAlive), không init lại.
-      final locationService = ref.read(locationControllerProvider).valueOrNull
-          ?? LocationService();
+      final locationService =
+          ref.read(locationControllerProvider).valueOrNull ?? LocationService();
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute<void>(builder: (_) => HomeScreen(locationService: locationService)),
+        MaterialPageRoute<void>(
+          builder: (_) => HomeScreen(locationService: locationService),
+        ),
         (route) => false,
       );
     } else if (mounted) {
@@ -71,10 +76,18 @@ class _RegisterStep5State extends ConsumerState<RegisterStep5UsernamePage> {
             controller: _usernameCtrl,
             textAlign: TextAlign.center,
             cursorColor: LoginColors.red,
-            style: LoginTextStyles.title().copyWith(fontSize: 32, fontWeight: FontWeight.w400, color: LoginColors.textPrimary),
+            style: LoginTextStyles.title().copyWith(
+              fontSize: 32,
+              fontWeight: FontWeight.w400,
+              color: LoginColors.textPrimary,
+            ),
             decoration: InputDecoration(
               hintText: 'username',
-              hintStyle: LoginTextStyles.title().copyWith(fontSize: 32, fontWeight: FontWeight.w400, color: LoginColors.border),
+              hintStyle: LoginTextStyles.title().copyWith(
+                fontSize: 32,
+                fontWeight: FontWeight.w400,
+                color: LoginColors.border,
+              ),
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
             ),
@@ -83,7 +96,10 @@ class _RegisterStep5State extends ConsumerState<RegisterStep5UsernamePage> {
           Text(
             'Tạo tên đăng nhập duy nhất.\nĐây là tên hiển thị của bạn với mọi người.',
             textAlign: TextAlign.center,
-            style: LoginTextStyles.fieldText().copyWith(fontStyle: FontStyle.italic, height: 1.5),
+            style: LoginTextStyles.fieldText().copyWith(
+              fontStyle: FontStyle.italic,
+              height: 1.5,
+            ),
           ),
           const Spacer(),
           Padding(
@@ -109,4 +125,3 @@ class _RegisterStep5State extends ConsumerState<RegisterStep5UsernamePage> {
     );
   }
 }
-

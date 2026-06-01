@@ -25,7 +25,8 @@ class CameraScreen extends ConsumerStatefulWidget {
   ConsumerState<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerProviderStateMixin {
+class _CameraScreenState extends ConsumerState<CameraScreen>
+    with SingleTickerProviderStateMixin {
   CameraController? _controller;
   List<CameraDescription>? _cameras;
   int _selectedCameraIndex = 0;
@@ -68,7 +69,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Vị trí (GPS đang tắt)');
+        if (mounted) {
+          ErrorDialogs.showPermissionDeniedError(
+            context,
+            'Vị trí (GPS đang tắt)',
+          );
+        }
+
         return null;
       }
 
@@ -76,13 +83,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Vị trí');
         return null;
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       if (position.accuracy > _kGpsAccuracyThreshold) {
@@ -169,7 +179,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
           return;
         }
 
-        debugPrint('Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}');
+        debugPrint(
+          'Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}',
+        );
 
         _setLoading(false);
         if (!mounted) return;
@@ -177,14 +189,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
           context,
           PageRouteBuilder<void>(
             transitionDuration: const Duration(milliseconds: 300),
-            pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
-              imagePath: pickedFile.path,
-              // AC2: pass EXIF GPS to preview screen
-              gpsCoordinates: [latLong.latitude, latLong.longitude],
-            ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                SendImageScreen(
+                  imagePath: pickedFile.path,
+                  // AC2: pass EXIF GPS to preview screen
+                  gpsCoordinates: [latLong.latitude, latLong.longitude],
+                ),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
           ),
         );
       } catch (e) {
@@ -214,9 +228,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
     if (_controller == null || !_controller!.value.isInitialized) return;
     setState(() {
       _isFlashOn = !_isFlashOn;
-      _controller!.setFlashMode(
-        _isFlashOn ? FlashMode.torch : FlashMode.off,
-      );
+      _controller!.setFlashMode(_isFlashOn ? FlashMode.torch : FlashMode.off);
     });
   }
 
@@ -247,7 +259,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
               children: [
                 // Top Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 60.0,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -255,27 +270,56 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                         onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                          child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            LucideIcons.map,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         child: const Row(
                           children: [
                             Icon(Icons.people, color: Colors.white, size: 16),
                             SizedBox(width: 8),
-                            Text('24 người bạn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            Text(
+                              '24 người bạn',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       Container(
                         width: 36,
                         height: 36,
-                        decoration: const BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
+                        decoration: const BoxDecoration(
+                          color: Colors.blueAccent,
+                          shape: BoxShape.circle,
+                        ),
                         child: const Center(
-                          child: Text('Me', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          child: Text(
+                            'Me',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -303,8 +347,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                               onTap: _toggleFlash,
                               child: Container(
                                 padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), shape: BoxShape.circle),
-                                child: Icon(_isFlashOn ? Icons.flash_on : Icons.flash_off, color: Colors.white, size: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
                               ),
                             ),
                           ),
@@ -314,8 +365,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                             right: 16,
                             child: Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), shape: BoxShape.circle),
-                              child: const Text('1x', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Text(
+                                '1x',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -329,7 +389,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
 
                 // Bottom Controls (Gallery, Capture, Flip)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40.0,
+                    vertical: 24.0,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -346,8 +409,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                                 left: 0,
                                 top: 5,
                                 child: Container(
-                                  width: 45, height: 45,
-                                  decoration: BoxDecoration(color: const Color(0xFFDB8787), borderRadius: BorderRadius.circular(10)),
+                                  width: 45,
+                                  height: 45,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDB8787),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
                               ),
                               Positioned(
@@ -356,8 +423,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                                 child: Transform.rotate(
                                   angle: 17 * math.pi / 180,
                                   child: Container(
-                                    width: 45, height: 45,
-                                    decoration: BoxDecoration(color: const Color(0xFFE0E0E0), borderRadius: BorderRadius.circular(10)),
+                                    width: 45,
+                                    height: 45,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE0E0E0),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -375,45 +446,77 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
 
                           return GestureDetector(
                             onTap: () async {
-                              if (!_controller!.value.isInitialized || _animationController.isAnimating) return;
+                              if (!_controller!.value.isInitialized ||
+                                  _animationController.isAnimating) {
+                                return;
+                              }
 
                               final navigator = Navigator.of(context);
 
                               _animationController.forward();
                               _setLoading(true);
 
-                                final image = await _controller!.takePicture();
+                              final image = await _controller!.takePicture();
 
-                                // AC1: capture GPS proof at shoot time
-                                final gpsCoords = await _captureGpsProof();
+                              // AC1: capture GPS proof at shoot time
+                              final gpsCoords = await _captureGpsProof();
 
-                                if (_animationController.isAnimating) await Future<void>.delayed(const Duration(milliseconds: 500));
-
-                                _setLoading(false);
-
-                                if (!mounted) return;
-                                navigator.pushReplacement(
-                                  PageRouteBuilder<void>(
-                                    transitionDuration: const Duration(milliseconds: 300),
-                                    pageBuilder: (context, animation, secondaryAnimation) => SendImageScreen(
-                                      imagePath: image.path,
-                                      gpsCoordinates: gpsCoords,
-                                    ),
-                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                      return FadeTransition(opacity: animation, child: child);
-                                    },
-                                  ),
+                              if (_animationController.isAnimating) {
+                                await Future<void>.delayed(
+                                  const Duration(milliseconds: 500),
                                 );
+                              }
+
+                              _setLoading(false);
+
+                              if (!mounted) return;
+                              navigator.pushReplacement(
+                                PageRouteBuilder<void>(
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => SendImageScreen(
+                                        imagePath: image.path,
+                                        gpsCoordinates: gpsCoords,
+                                      ),
+                                  transitionsBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                        child,
+                                      ) {
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: child,
+                                        );
+                                      },
+                                ),
+                              );
                             },
                             child: Container(
                               width: 86,
                               height: 86,
-                              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFEF484F), width: 5)),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFEF484F),
+                                  width: 5,
+                                ),
+                              ),
                               child: Center(
                                 child: Container(
                                   width: currentInnerSize,
                                   height: currentInnerSize,
-                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
                             ),
@@ -430,7 +533,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                             onTap: _switchCamera,
                             child: Transform.rotate(
                               angle: -36 * math.pi / 180,
-                              child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 38),
+                              child: const Icon(
+                                LucideIcons.refreshCcw,
+                                color: Colors.white,
+                                size: 38,
+                              ),
                             ),
                           ),
                         ),
@@ -447,47 +554,104 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        decoration: BoxDecoration(color: Colors.transparent, borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              width: 24, height: 24,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[700]),
-                              child: const Icon(Icons.person, size: 16, color: Colors.white),
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[700],
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            const Text('Lịch sử', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            const Text(
+                              'Lịch sử',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                             const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                            const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
                       Container(
                         margin: const EdgeInsets.only(left: 110, right: 110),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(30)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            const Icon(Icons.grid_view_rounded, color: Colors.grey, size: 28),
+                            const Icon(
+                              Icons.grid_view_rounded,
+                              color: Colors.grey,
+                              size: 28,
+                            ),
                             Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: Colors.grey[800], shape: BoxShape.circle),
-                              child: const Icon(Icons.home_filled, color: Colors.white, size: 24),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.home_filled,
+                                color: Colors.white,
+                                size: 24,
+                              ),
                             ),
                             Stack(
                               clipBehavior: Clip.none,
                               children: [
-                                const Icon(Icons.chat_bubble_rounded, color: Colors.grey, size: 28),
+                                const Icon(
+                                  Icons.chat_bubble_rounded,
+                                  color: Colors.grey,
+                                  size: 28,
+                                ),
                                 Positioned(
-                                  right: -4, top: -4,
+                                  right: -4,
+                                  top: -4,
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle),
-                                    child: const Text('1', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.amber,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Text(
+                                      '1',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -517,13 +681,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with SingleTickerPr
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF484F)),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFFEF484F),
+                        ),
                       ),
                       SizedBox(height: 16),
                       Text(
                         'Đang xử lý...',
-                        style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.w500),
-                      )
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'SF Pro',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -560,27 +730,39 @@ class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text(
         'Lưu ý về vị trí',
-        style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: Colors.white,
+          fontFamily: 'SF Pro',
+          fontWeight: FontWeight.bold,
+        ),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             'Ảnh tải lên từ thư viện bắt buộc phải được bật Vị trí (GPS) lúc chụp để xác thực điểm check-in.',
-            style: TextStyle(color: Colors.white70, fontFamily: 'SF Pro', fontSize: 16),
+            style: TextStyle(
+              color: Colors.white70,
+              fontFamily: 'SF Pro',
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 16),
           Theme(
-            data: Theme.of(context).copyWith(
-              unselectedWidgetColor: Colors.white54,
-            ),
+            data: Theme.of(
+              context,
+            ).copyWith(unselectedWidgetColor: Colors.white54),
             child: CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
               activeColor: const Color(0xFFEF484F),
               title: const Text(
                 'Không hiện lại',
-                style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontSize: 15),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'SF Pro',
+                  fontSize: 15,
+                ),
               ),
               value: _dontShowAgain,
               onChanged: (value) {
@@ -595,15 +777,27 @@ class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Hủy', style: TextStyle(color: Colors.white54, fontFamily: 'SF Pro')),
+          child: const Text(
+            'Hủy',
+            style: TextStyle(color: Colors.white54, fontFamily: 'SF Pro'),
+          ),
         ),
         ElevatedButton(
           onPressed: _onContinue,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFEF484F),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
           ),
-          child: const Text('Tiếp tục', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro', fontWeight: FontWeight.bold)),
+          child: const Text(
+            'Tiếp tục',
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'SF Pro',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );
@@ -620,7 +814,10 @@ class _CameraSkeleton extends StatelessWidget {
         children: [
           // Top Bar Placeholder
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 60.0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -666,10 +863,7 @@ class _CameraSkeleton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0x0DFFFFFF), // 5% white
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: const Color(0x1AFFFFFF),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0x1AFFFFFF), width: 1),
                 ),
                 child: const Center(
                   child: Icon(
@@ -687,7 +881,10 @@ class _CameraSkeleton extends StatelessWidget {
 
           // Bottom Controls Placeholder
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 40.0,
+              vertical: 24.0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -778,7 +975,10 @@ class _CameraSkeleton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -811,7 +1011,10 @@ class _CameraSkeleton extends StatelessWidget {
                 const SizedBox(height: 8),
                 Container(
                   margin: const EdgeInsets.only(left: 110, right: 110),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0x0DFFFFFF),
                     borderRadius: BorderRadius.circular(30),
@@ -852,4 +1055,4 @@ class _CameraSkeleton extends StatelessWidget {
       ),
     );
   }
-}
+}

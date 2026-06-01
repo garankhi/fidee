@@ -72,7 +72,13 @@ class SecureCognitoStorage extends CognitoStorage {
 }
 
 // Auth state and result.
-enum AuthState { loading, unauthenticated, otpSent, authenticated, incompleteProfile }
+enum AuthState {
+  loading,
+  unauthenticated,
+  otpSent,
+  authenticated,
+  incompleteProfile,
+}
 
 enum UserTier { free, pro }
 
@@ -151,16 +157,17 @@ class AuthService {
 
       if (session != null && session.isValid()) {
         _username = user.getUsername();
-        
+
         // Fetch attributes to check if profile is complete
         final attributes = await user.getUserAttributes();
         bool hasName = false;
-        
+
         if (attributes != null) {
           for (var attr in attributes) {
             // Check for a custom attribute or standard attribute that indicates completion
             // For example, checking if 'given_name' or 'name' or 'preferred_username' is set
-            if (attr.getName() == 'given_name' && (attr.getValue()?.isNotEmpty ?? false)) {
+            if (attr.getName() == 'given_name' &&
+                (attr.getValue()?.isNotEmpty ?? false)) {
               hasName = true;
             }
             if (attr.getName() == 'custom:tier') {
@@ -194,7 +201,7 @@ class AuthService {
 
   Future<AuthResult> signIn(String email, String password) async {
     _username = email.trim();
-    
+
     if (isTestMode) {
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
@@ -212,30 +219,21 @@ class AuthService {
         _state = AuthState.authenticated;
         return const AuthResult(success: true);
       } else {
-        return const AuthResult(
-          success: false,
-          errorMessage: 'Login failed',
-        );
+        return const AuthResult(success: false, errorMessage: 'Login failed');
       }
     } on CognitoUserConfirmationNecessaryException {
       _state = AuthState.otpSent;
       _lastOtpSent = DateTime.now();
       _destination = _maskDestination(_username!);
       // Cần verify email
-      return AuthResult(
-        success: true,
-        destination: _destination,
-      );
+      return AuthResult(success: true, destination: _destination);
     } on CognitoClientException catch (e) {
       return AuthResult(
         success: false,
         errorMessage: e.message ?? 'Sai tài khoản hoặc mật khẩu',
       );
     } catch (e) {
-      return const AuthResult(
-        success: false,
-        errorMessage: 'Lỗi kết nối.',
-      );
+      return const AuthResult(success: false, errorMessage: 'Lỗi kết nối.');
     }
   }
 
@@ -250,15 +248,9 @@ class AuthService {
     }
 
     try {
-      final attributes = [
-        AttributeArg(name: 'email', value: _username),
-      ];
+      final attributes = [AttributeArg(name: 'email', value: _username)];
 
-      await _userPool.signUp(
-        _username!,
-        password,
-        userAttributes: attributes,
-      );
+      await _userPool.signUp(_username!, password, userAttributes: attributes);
 
       _cognitoUser = CognitoUser(_username, _userPool);
       _state = AuthState.otpSent;
@@ -268,13 +260,11 @@ class AuthService {
     } on CognitoClientException catch (e) {
       return AuthResult(
         success: false,
-        errorMessage: e.message ?? 'Không thể đăng ký. Email có thể đã tồn tại.',
+        errorMessage:
+            e.message ?? 'Không thể đăng ký. Email có thể đã tồn tại.',
       );
     } catch (e) {
-      return const AuthResult(
-        success: false,
-        errorMessage: 'Lỗi hệ thống.',
-      );
+      return const AuthResult(success: false, errorMessage: 'Lỗi hệ thống.');
     }
   }
 
@@ -316,10 +306,7 @@ class AuthService {
         errorMessage: e.message ?? 'Mã xác thực sai',
       );
     } catch (e) {
-      return const AuthResult(
-        success: false,
-        errorMessage: 'Lỗi kết nối.',
-      );
+      return const AuthResult(success: false, errorMessage: 'Lỗi kết nối.');
     }
   }
 
@@ -337,7 +324,7 @@ class AuthService {
         errorMessage: 'Không tìm thấy phiên đăng ký',
       );
     }
-    
+
     try {
       await _cognitoUser?.resendConfirmationCode();
       _lastOtpSent = DateTime.now();
@@ -361,7 +348,11 @@ class AuthService {
     _destination = null;
   }
 
-  Future<AuthResult> completeProfile(String firstName, String lastName, String username) async {
+  Future<AuthResult> completeProfile(
+    String firstName,
+    String lastName,
+    String username,
+  ) async {
     if (isTestMode) {
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
@@ -379,7 +370,7 @@ class AuthService {
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
     } catch (e) {
-      // If it fails (e.g. backend error), we can still just pretend success locally 
+      // If it fails (e.g. backend error), we can still just pretend success locally
       // or return error. Let's set to authenticated anyway for UX or return error.
       _state = AuthState.authenticated; // fallback so user is not stuck
       return const AuthResult(success: true);
@@ -399,9 +390,3 @@ class AuthService {
         '${input.substring(input.length - 3)}';
   }
 }
-
-
-
-
-
-

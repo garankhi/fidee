@@ -22,14 +22,18 @@ class _RegisterStep3State extends State<RegisterStep3NamePage> {
   }
 
   void _submit() {
-    if (_firstNameCtrl.text.trim().isEmpty || _lastNameCtrl.text.trim().isEmpty) return;
-    
+    if (_firstNameCtrl.text.trim().isEmpty || _lastNameCtrl.text.trim().isEmpty) {
+      return;
+    }
+
     Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => RegisterStep4InfoPage(
-        firstName: _firstNameCtrl.text.trim(),
-        lastName: _lastNameCtrl.text.trim(),
-      )),
+      MaterialPageRoute<void>(
+        builder: (_) => RegisterStep4InfoPage(
+          firstName: _firstNameCtrl.text.trim(),
+          lastName: _lastNameCtrl.text.trim(),
+        ),
+      ),
     );
   }
 
@@ -46,10 +50,18 @@ class _RegisterStep3State extends State<RegisterStep3NamePage> {
             controller: _firstNameCtrl,
             textAlign: TextAlign.center,
             cursorColor: LoginColors.red,
-            style: LoginTextStyles.title().copyWith(fontSize: 32, fontWeight: FontWeight.w400, color: LoginColors.textPrimary),
+            style: LoginTextStyles.title().copyWith(
+              fontSize: 32,
+              fontWeight: FontWeight.w400,
+              color: LoginColors.textPrimary,
+            ),
             decoration: InputDecoration(
               hintText: 'Họ',
-              hintStyle: LoginTextStyles.title().copyWith(fontSize: 32, fontWeight: FontWeight.w400, color: LoginColors.border),
+              hintStyle: LoginTextStyles.title().copyWith(
+                fontSize: 32,
+                fontWeight: FontWeight.w400,
+                color: LoginColors.border,
+              ),
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
             ),
@@ -59,10 +71,18 @@ class _RegisterStep3State extends State<RegisterStep3NamePage> {
             controller: _lastNameCtrl,
             textAlign: TextAlign.center,
             cursorColor: LoginColors.red,
-            style: LoginTextStyles.title().copyWith(fontSize: 32, fontWeight: FontWeight.w400, color: LoginColors.textPrimary),
+            style: LoginTextStyles.title().copyWith(
+              fontSize: 32,
+              fontWeight: FontWeight.w400,
+              color: LoginColors.textPrimary,
+            ),
             decoration: InputDecoration(
               hintText: 'Tên',
-              hintStyle: LoginTextStyles.title().copyWith(fontSize: 32, fontWeight: FontWeight.w400, color: LoginColors.border),
+              hintStyle: LoginTextStyles.title().copyWith(
+                fontSize: 32,
+                fontWeight: FontWeight.w400,
+                color: LoginColors.border,
+              ),
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
             ),
@@ -91,4 +111,3 @@ class _RegisterStep3State extends State<RegisterStep3NamePage> {
     );
   }
 }
-

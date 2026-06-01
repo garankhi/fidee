@@ -15,7 +15,12 @@ class PremiumUpgradeSheet extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 80, left: 22, right: 22, bottom: 20),
+              padding: const EdgeInsets.only(
+                top: 80,
+                left: 22,
+                right: 22,
+                bottom: 20,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -35,43 +40,109 @@ class PremiumUpgradeSheet extends StatelessWidget {
                   const Text(
                     'FIDEE Pro',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFFEF484F), fontSize: 50, fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Color(0xFFEF484F),
+                      fontSize: 50,
+                      fontFamily: 'SF Pro',
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   RichText(
                     textAlign: TextAlign.center,
                     text: const TextSpan(
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontFamily: 'SF Pro', height: 1.3, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontFamily: 'SF Pro',
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                      ),
                       children: [
                         TextSpan(text: 'Nâng cao trải nghiệm với gói '),
-                        TextSpan(text: 'Pro\n', style: TextStyle(color: Color(0xFFEF484F), fontWeight: FontWeight.bold, fontSize: 22)),
+                        TextSpan(
+                          text: 'Pro\n',
+                          style: TextStyle(
+                            color: Color(0xFFEF484F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                          ),
+                        ),
                         TextSpan(text: 'khi sử dụng '),
-                        TextSpan(text: 'FIDEE', style: TextStyle(color: Color(0xFFEF484F), fontWeight: FontWeight.bold, fontSize: 22)),
+                        TextSpan(
+                          text: 'FIDEE',
+                          style: TextStyle(
+                            color: Color(0xFFEF484F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 36),
 
-                  _buildFeatureItem('🚫', 'Tắt quảng cáo', 'Không hiện quảng cáo trong ứng dụng!'),
-                  _buildFeatureItem('🎥', 'FIDEE Videos', 'Quay video check-in ngắn'),
-                  _buildFeatureItem('🖼️', 'Đăng ảnh từ thư viện', 'Chia sẻ khoảnh khắc từ thư viện của bạn'),
-                  _buildFeatureItem('🗺️', 'Bản đồ nhóm', 'Tạo bản đồ riêng cho nhóm bạn bè'),
-                  _buildFeatureItem('🤖', 'Thêm số lượt hỏi AI', '20 lượt hỏi AI mỗi ngày!'),
-                  _buildFeatureItem('👥', 'Kết nối nhiều bạn hơn', 'Không giới hạn số lượng bạn bè'),
-                  _buildFeatureItem('💬', 'Viết mô tả dài hơn', 'Câu mô tả dài hơn cho ảnh check-in!'),
-                  _buildFeatureItem('✨', 'Tùy chỉnh biểu tượng ứng dụng', 'Trang trí Màn hình chính của bạn'),
+                  _buildFeatureItem(
+                    '🚫',
+                    'Tắt quảng cáo',
+                    'Không hiện quảng cáo trong ứng dụng!',
+                  ),
+                  _buildFeatureItem(
+                    '🎥',
+                    'FIDEE Videos',
+                    'Quay video check-in ngắn',
+                  ),
+                  _buildFeatureItem(
+                    '🖼️',
+                    'Đăng ảnh từ thư viện',
+                    'Chia sẻ khoảnh khắc từ thư viện của bạn',
+                  ),
+                  _buildFeatureItem(
+                    '🗺️',
+                    'Bản đồ nhóm',
+                    'Tạo bản đồ riêng cho nhóm bạn bè',
+                  ),
+                  _buildFeatureItem(
+                    '🤖',
+                    'Thêm số lượt hỏi AI',
+                    '20 lượt hỏi AI mỗi ngày!',
+                  ),
+                  _buildFeatureItem(
+                    '👥',
+                    'Kết nối nhiều bạn hơn',
+                    'Không giới hạn số lượng bạn bè',
+                  ),
+                  _buildFeatureItem(
+                    '💬',
+                    'Viết mô tả dài hơn',
+                    'Câu mô tả dài hơn cho ảnh check-in!',
+                  ),
+                  _buildFeatureItem(
+                    '✨',
+                    'Tùy chỉnh biểu tượng ứng dụng',
+                    'Trang trí Màn hình chính của bạn',
+                  ),
                 ],
               ),
             ),
           ),
 
           Container(
-            padding: const EdgeInsets.only(top: 20, left: 20, right: 20, bottom: 30),
+            padding: const EdgeInsets.only(
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: 30,
+            ),
             decoration: const BoxDecoration(
               color: Color(0xFF252020),
               boxShadow: [
-                BoxShadow(color: Color(0xFF252020), blurRadius: 20, offset: Offset(0, -10)),
+                BoxShadow(
+                  color: Color(0xFF252020),
+                  blurRadius: 20,
+                  offset: Offset(0, -10),
+                ),
               ],
             ),
             child: Column(
@@ -92,7 +163,12 @@ class PremiumUpgradeSheet extends StatelessWidget {
                     ),
                     child: const Text(
                       'Nâng cấp ngay!',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontFamily: 'SF Pro',
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -110,7 +186,12 @@ class PremiumUpgradeSheet extends StatelessWidget {
                     ),
                     child: const Text(
                       'Không, cảm ơn!',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontFamily: 'SF Pro',
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -140,12 +221,22 @@ class PremiumUpgradeSheet extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontFamily: 'SF Pro', fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontFamily: 'SF Pro',
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 14, fontFamily: 'SF Pro', fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 14,
+                    fontFamily: 'SF Pro',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
