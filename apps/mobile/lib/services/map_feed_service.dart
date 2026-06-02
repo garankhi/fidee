@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../models/map_feed_item.dart';
 import 'auth_service.dart';
 
 class MapFeedService {
   final AuthService _authService;
-  // TODO: Update with actual API gateway URL when deployed
-  static const String _baseUrl = 'https://api.mapvibe.example.com'; 
+  static const String _baseUrl = Config.apiBaseUrl; 
 
   MapFeedService(this._authService);
 
@@ -20,7 +20,7 @@ class MapFeedService {
       final response = await http.get(
         uri,
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': token,
         },
       );
 

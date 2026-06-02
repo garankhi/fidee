@@ -192,6 +192,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             pageBuilder: (context, animation, secondaryAnimation) =>
                 SendImageScreen(
                   imagePath: pickedFile.path,
+                  source: 'EXIF_GALLERY',
                   // AC2: pass EXIF GPS to preview screen
                   gpsCoordinates: [latLong.latitude, latLong.longitude],
                 ),
@@ -475,6 +476,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                         secondaryAnimation,
                                       ) => SendImageScreen(
                                         imagePath: image.path,
+                                        source: 'IN_APP_CAMERA',
                                         gpsCoordinates: gpsCoords,
                                       ),
                                   transitionsBuilder:

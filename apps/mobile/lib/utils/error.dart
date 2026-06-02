@@ -156,7 +156,7 @@ class ErrorDialogs {
     );
   }
 
-  static void showUploadError(BuildContext context, VoidCallback onRetry) {
+  static void showUploadError(BuildContext context, VoidCallback onRetry, {String? errorMessage}) {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -171,9 +171,9 @@ class ErrorDialogs {
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: const Text(
-          'Đã có lỗi xảy ra trong quá trình tải ảnh lên. Vui lòng kiểm tra kết nối mạng và thử lại.',
-          style: TextStyle(
+        content: Text(
+          errorMessage ?? 'Đã có lỗi xảy ra trong quá trình tải ảnh lên. Vui lòng kiểm tra kết nối mạng và thử lại.',
+          style: const TextStyle(
             color: Colors.white,
             fontFamily: 'SF Pro',
             height: 1.5,

@@ -57,7 +57,7 @@ class _PresignedPost {
     final upload = json['upload'] as Map<String, dynamic>;
 
     return _PresignedPost(
-      mediaId: upload['mediaId'] as String,
+      mediaId: json['mediaId'] as String,
       url: upload['url'] as String,
       fields: Map<String, String>.from(upload['fields'] as Map),
     );
@@ -118,12 +118,13 @@ class UploadService {
     final token = await _authService.getToken();
 
     if (token == null) {
+      print('DEBUG [UploadService]: auth token is null');
       throw UploadException('Phiên đăng nhập đã hết hạn');
     }
 
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/media/upload',
+        '/media/uploads',
         data: {
           'source': source,
           'contentType': contentType,
@@ -134,7 +135,7 @@ class UploadService {
             'capturedAt': DateTime.now().toIso8601String(),
           },
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(headers: {'Authorization': token}),
       );
 
       return _PresignedPost.fromJson(response.data!);
@@ -207,9 +208,12 @@ class UploadService {
 
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
+        final responseData = e.response?.data;
+        print('DEBUG [UploadService]: HTTP Bad Response Status: $status, Data: $responseData');
         if (status == 401) throw UploadException('Phiên đăng nhập đã hết hạn');
         if (status == 403) {
-          throw UploadException('Tài khoản không có quyền upload');
+          final errorData = e.response?.data?.toString() ?? 'Lỗi 403 ẩn';
+          throw UploadException('Tài khoản không có quyền upload: $errorData');
         }
         if (status == 400) throw UploadException('Dữ liệu không hợp lệ');
         throw UploadException('Lỗi server: HTTP $status');

@@ -17,6 +17,7 @@ import 'camera_screen.dart';
 
 class SendImageScreen extends ConsumerStatefulWidget {
   final String imagePath;
+  final String source; // 'IN_APP_CAMERA' or 'EXIF_GALLERY'
 
   /// GPS coordinates captured at photo time.
   /// For camera: [latitude, longitude] from Geolocator at capture.
@@ -27,6 +28,7 @@ class SendImageScreen extends ConsumerStatefulWidget {
   const SendImageScreen({
     super.key,
     required this.imagePath,
+    required this.source,
     this.gpsCoordinates,
   });
 
@@ -210,10 +212,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
 
       final latitude = widget.gpsCoordinates?[0] ?? 0.0;
       final longitude = widget.gpsCoordinates?[1] ?? 0.0;
-      
-      // Determine source based on whether GPS was provided via camera or EXIF
-      // (This is a simplified logic, you might want to adjust 'source' based on actual camera vs gallery usage)
-      final source = widget.gpsCoordinates != null ? 'IN_APP_CAMERA' : 'EXIF_GALLERY';
+      final source = widget.source;
 
       await uploadService.upload(
         imagePath: widget.imagePath,
@@ -235,9 +234,11 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Upload failed: $e');
       if (mounted) {
         setState(() => _uploadStatus = _UploadStatus.error);
-        ErrorDialogs.showUploadError(context, _handleSend);
+        final errorMessage = e is UploadException ? e.message : e.toString();
+        ErrorDialogs.showUploadError(context, _handleSend, errorMessage: errorMessage);
       }
     }
   }

@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -13,6 +14,8 @@ import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
@@ -444,12 +447,34 @@ export class FideeStack extends cdk.Stack {
       new lambdaEventSources.SqsEventSource(mediaUploadEventsQueue, { batchSize: 10 }),
     );
 
+    const rootDomain = 'fidee.site';
+    const apiDomainName = `api.${rootDomain}`;
+
+    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+      domainName: rootDomain,
+    });
+
+    const apiCertificate = new acm.Certificate(this, 'ApiCertificate', {
+      domainName: apiDomainName,
+      validation: acm.CertificateValidation.fromDns(hostedZone),
+    });
+
     const api = new apigateway.RestApi(this, 'Api', {
       restApiName: resourceName(stage, 'api'),
       deployOptions: {
         stageName: stage,
         metricsEnabled: true,
       },
+      domainName: {
+        domainName: apiDomainName,
+        certificate: apiCertificate,
+      },
+    });
+
+    new route53.ARecord(this, 'ApiAliasRecord', {
+      zone: hostedZone,
+      recordName: apiDomainName,
+      target: route53.RecordTarget.fromAlias(new route53Targets.ApiGateway(api)),
     });
 
     // ─── Cognito JWT Authorizer ─────────────────────────────────
@@ -528,6 +553,9 @@ export class FideeStack extends cdk.Stack {
         DB_SECRET_ARN: dbCluster.secret!.secretArn,
         DB_NAME: 'fidee',
       },
+      bundling: {
+        nodeModules: ['pg'],
+      },
     });
     dbCluster.secret!.grantRead(migrateFn);
 
@@ -546,6 +574,9 @@ export class FideeStack extends cdk.Stack {
         STAGE: stage,
         DB_SECRET_ARN: dbCluster.secret!.secretArn,
         DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
       },
     });
     dbCluster.secret!.grantRead(getMapFeedFn);
@@ -572,6 +603,9 @@ export class FideeStack extends cdk.Stack {
         STAGE: stage,
         DB_SECRET_ARN: dbCluster.secret!.secretArn,
         DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
       },
     });
     dbCluster.secret!.grantRead(getNearbyPlacesFn);
@@ -631,6 +665,7 @@ export class FideeStack extends cdk.Stack {
     }
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
+    new cdk.CfnOutput(this, 'CustomApiUrl', { value: `https://${apiDomainName}/` });
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
     new cdk.CfnOutput(this, 'PlacesTableName', { value: placesTable.tableName });
