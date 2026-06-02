@@ -307,6 +307,7 @@ class AuthService {
 
       _username = email.trim();
       _cognitoUser = CognitoUser(_username, _userPool);
+      _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
 
       try {
         final randomPassword = 'GoogleAuth_${const Uuid().v4().replaceAll('-', '')}';
