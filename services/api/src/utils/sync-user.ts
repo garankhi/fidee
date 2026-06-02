@@ -11,6 +11,7 @@ export interface SyncUserParams {
   givenName?: string;
   familyName?: string;
   preferredUsername?: string;
+  picture?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export async function syncUserToDatabases({
   givenName,
   familyName,
   preferredUsername,
+  picture,
 }: SyncUserParams): Promise<void> {
   // Skip DB syncing in test environment
   if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
@@ -35,22 +37,25 @@ export async function syncUserToDatabases({
 
   // 1. Sync to PostgreSQL
   const sql = `
-    INSERT INTO users (id, display_name, username, email, phone, plan)
-    VALUES ($1, $2, $3, $4, $5, 'FREE')
+    INSERT INTO users (id, display_name, username, email, phone, avatar_url, plan)
+    VALUES ($1, $2, $3, $4, $5, $6, 'FREE')
     ON CONFLICT (id) DO UPDATE
     SET 
       display_name = EXCLUDED.display_name,
       username = COALESCE(EXCLUDED.username, users.username),
       email = EXCLUDED.email,
-      phone = COALESCE(EXCLUDED.phone, users.phone)
+      phone = COALESCE(EXCLUDED.phone, users.phone),
+      avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
     WHERE users.display_name != EXCLUDED.display_name
        OR (users.username IS NULL AND EXCLUDED.username IS NOT NULL)
        OR users.email != EXCLUDED.email
-       OR (users.phone IS NULL AND EXCLUDED.phone IS NOT NULL);
+       OR (users.phone IS NULL AND EXCLUDED.phone IS NOT NULL)
+       OR (users.avatar_url IS NULL AND EXCLUDED.avatar_url IS NOT NULL)
+       OR users.avatar_url != EXCLUDED.avatar_url;
   `;
   
   try {
-    await query(sql, [sub, displayName, username, email || null, phone || null]);
+    await query(sql, [sub, displayName, username, email || null, phone || null, picture || null]);
   } catch (err) {
     console.error(`[Sync User] PostgreSQL upsert failed for sub ${sub}:`, err);
     throw err;
