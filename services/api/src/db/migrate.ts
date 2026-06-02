@@ -69,11 +69,22 @@ export async function runMigrations(): Promise<string[]> {
 }
 
 /** Lambda handler — invoke to run pending migrations. */
-export async function handler(): Promise<{
+export async function handler(event?: any): Promise<{
   statusCode: number;
   body: string;
 }> {
   try {
+    if (event && event.action === 'reseed') {
+      console.log('Reseeding database with test data (migration 003)...');
+      const pool = await getPool();
+      const sql = migrations['003_seed_test_data'];
+      await pool.query(sql);
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'ok', message: 'Test data reseeded successfully!' }),
+      };
+    }
+
     const results = await runMigrations();
 
     console.log('Migration results:', results);

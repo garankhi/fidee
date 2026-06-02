@@ -11,7 +11,9 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:migrate": "aws lambda invoke --function-name fidee-dev-db-migrate --payload \"{}\" --cli-binary-format raw-in-base64-out response.json && type response.json",
+    "db:reseed": "aws lambda invoke --function-name fidee-dev-db-migrate --payload eyJhY3Rpb24iOiJyZXNlZWQifQ== response.json && type response.json"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",

@@ -762,6 +762,155 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── Admin Places Review APIs ────────────────────────────────
+
+    // Shared Lambda config for admin place handlers
+    const adminLambdaProps = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    };
+
+    // GET /admin/places/pending
+    const getPendingPlacesFn = new nodejs.NodejsFunction(this, 'GetPendingPlacesFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'get-pending-places'),
+      entry: '../../services/api/src/handlers/admin/get-pending-places.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(getPendingPlacesFn);
+
+    // GET /admin/places/candidates/{id}
+    const getCandidateDetailFn = new nodejs.NodejsFunction(this, 'GetCandidateDetailFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'get-candidate-detail'),
+      entry: '../../services/api/src/handlers/admin/get-candidate-detail.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(getCandidateDetailFn);
+
+    // POST /admin/places/candidates/{id}/approve
+    const approveCandidateFn = new nodejs.NodejsFunction(this, 'ApproveCandidateFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'approve-candidate'),
+      entry: '../../services/api/src/handlers/admin/approve-candidate.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(approveCandidateFn);
+
+    // POST /admin/places/candidates/{id}/reject
+    const rejectCandidateFn = new nodejs.NodejsFunction(this, 'RejectCandidateFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'reject-candidate'),
+      entry: '../../services/api/src/handlers/admin/reject-candidate.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(rejectCandidateFn);
+
+    // POST /admin/places/candidates/{id}/merge
+    const mergeCandidateFn = new nodejs.NodejsFunction(this, 'MergeCandidateFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'merge-candidate'),
+      entry: '../../services/api/src/handlers/admin/merge-candidate.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(mergeCandidateFn);
+
+    // ─── Admin Places API Resources ─────────────────────────────
+    const adminPlacesResource = adminResource.addResource('places');
+
+    // /admin/places/pending
+    const adminPendingResource = adminPlacesResource.addResource('pending');
+    adminPendingResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminPendingResource.addMethod('GET', new apigateway.LambdaIntegration(getPendingPlacesFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // /admin/places/candidates/{id}
+    const adminCandidatesResource = adminPlacesResource.addResource('candidates');
+    const adminCandidateDetailResource = adminCandidatesResource.addResource('{id}');
+    adminCandidateDetailResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminCandidateDetailResource.addMethod('GET', new apigateway.LambdaIntegration(getCandidateDetailFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // /admin/places/candidates/{id}/approve
+    const adminApproveResource = adminCandidateDetailResource.addResource('approve');
+    adminApproveResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminApproveResource.addMethod('POST', new apigateway.LambdaIntegration(approveCandidateFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // /admin/places/candidates/{id}/reject
+    const adminRejectResource = adminCandidateDetailResource.addResource('reject');
+    adminRejectResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminRejectResource.addMethod('POST', new apigateway.LambdaIntegration(rejectCandidateFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // /admin/places/candidates/{id}/merge
+    const adminMergeResource = adminCandidateDetailResource.addResource('merge');
+    adminMergeResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminMergeResource.addMethod('POST', new apigateway.LambdaIntegration(mergeCandidateFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // POST /admin/places/candidates/{id}/request-info
+    const requestInfoCandidateFn = new nodejs.NodejsFunction(this, 'RequestInfoCandidateFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'request-info-candidate'),
+      entry: '../../services/api/src/handlers/admin/request-info-candidate.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(requestInfoCandidateFn);
+
+    const adminRequestInfoResource = adminCandidateDetailResource.addResource('request-info');
+    adminRequestInfoResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminRequestInfoResource.addMethod('POST', new apigateway.LambdaIntegration(requestInfoCandidateFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const mediaUploadObjectCreatedRule = new events.Rule(this, 'MediaUploadObjectCreatedRule', {
       ruleName: resourceName(stage, 'media-upload-object-created'),
       eventPattern: {
