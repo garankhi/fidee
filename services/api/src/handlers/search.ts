@@ -1,35 +1,39 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import {
+  listPublishedPlaces,
+  parseSearchRequest,
+  searchPlaces,
+  SearchRequestError,
+} from './search-core';
 
-/**
- * Search handler — accepts a natural language prompt and returns matching places.
- *
- * Flow:
- *  1. Sanitize & validate the prompt
- *  2. Check 24h cache in DynamoDB
- *  3. If cache miss → call Amazon Bedrock to extract structured filters
- *  4. Query DynamoDB geo-index with extracted filters
- *  5. Return ranked results
- */
+const PLACES_TABLE = process.env.PLACES_TABLE ?? '';
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-  const prompt = body.prompt as string | undefined;
-
-  if (!prompt || prompt.trim().length === 0) {
-    return {
-      statusCode: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing required field: prompt' }),
-    };
+  let body: unknown;
+  try {
+    body = event.body ? JSON.parse(event.body) : {};
+  } catch {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Invalid JSON body' }) };
   }
 
-  // TODO: Implement search logic
+  let request;
+  try {
+    request = parseSearchRequest(body);
+  } catch (error) {
+    if (error instanceof SearchRequestError) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: error.message }) };
+    }
+    throw error;
+  }
+
+  const places = await listPublishedPlaces(PLACES_TABLE);
+  const results = searchPlaces(places, request);
+
   return {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: 'Search endpoint ready',
-      prompt: prompt.trim(),
-      results: [],
-    }),
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ results, total: results.length }),
   };
 };
