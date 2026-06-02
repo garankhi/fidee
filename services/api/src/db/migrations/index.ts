@@ -495,5 +495,28 @@ ON CONFLICT DO NOTHING;
 ALTER TABLE place_moderation
   ALTER COLUMN place_id DROP NOT NULL,
   ADD COLUMN candidate_id UUID;
+`,
+  '005_sync_candidate_fields': `-- ============================================================================
+-- 005_sync_candidate_fields
+-- Sync place_candidates schema with places so Approve is a clean copy.
+-- Fields added: address, metadata (vibes, services, media arrays)
+-- ============================================================================
+
+ALTER TABLE place_candidates
+  ADD COLUMN IF NOT EXISTS address TEXT,
+  ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+`,
+  '006_candidate_status': `-- ============================================================================
+-- 006_candidate_status
+-- Add status + rejection_reason directly on place_candidates.
+-- Status lifecycle: PENDING_REVIEW → APPROVED / REJECTED / NEEDS_MORE_INFO
+-- ============================================================================
+
+ALTER TABLE place_candidates
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'PENDING_REVIEW'
+    CHECK (status IN ('PENDING_REVIEW', 'APPROVED', 'REJECTED', 'NEEDS_MORE_INFO')),
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS reviewed_by TEXT,
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 `
 };

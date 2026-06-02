@@ -891,6 +891,26 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // POST /admin/places/candidates/{id}/request-info
+    const requestInfoCandidateFn = new nodejs.NodejsFunction(this, 'RequestInfoCandidateFunction', {
+      ...adminLambdaProps,
+      functionName: resourceName(stage, 'request-info-candidate'),
+      entry: '../../services/api/src/handlers/admin/request-info-candidate.ts',
+      handler: 'handler',
+    });
+    dbCluster.secret!.grantRead(requestInfoCandidateFn);
+
+    const adminRequestInfoResource = adminCandidateDetailResource.addResource('request-info');
+    adminRequestInfoResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminRequestInfoResource.addMethod('POST', new apigateway.LambdaIntegration(requestInfoCandidateFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const mediaUploadObjectCreatedRule = new events.Rule(this, 'MediaUploadObjectCreatedRule', {
       ruleName: resourceName(stage, 'media-upload-object-created'),
       eventPattern: {

@@ -37,17 +37,17 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
     const c = fetchResult.rows[0];
 
-    // 2. Insert into places
+    // 2. Insert into places (all fields synced with place_candidates)
     const insertPlaceSql = `
       INSERT INTO places (
-        name, normalized_name, category, location, source, created_by,
+        name, normalized_name, category, address, location, source, created_by,
         open_time, close_time, price_min, price_max, phone_number, description, metadata
       )
-      VALUES ($1, $2, $3, $4, 'custom', $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, 'custom', $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id;
     `;
     const placeResult = await query(insertPlaceSql, [
-      c.name, c.normalized_name, c.category, c.location,
+      c.name, c.normalized_name, c.category, c.address || null, c.location,
       c.created_by, c.open_time, c.close_time,
       c.price_min, c.price_max, c.phone_number, c.description,
       c.metadata || '{}',
