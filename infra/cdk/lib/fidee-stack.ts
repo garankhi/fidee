@@ -680,6 +680,106 @@ export class FideeStack extends cdk.Stack {
     });
     dbCluster.secret!.grantRead(getNearbyPlacesFn);
 
+    const placesResource = api.root.getResource('places') || api.root.addResource('places');
+    const nearbyPlacesResource = placesResource.getResource('nearby') || placesResource.addResource('nearby');
+    nearbyPlacesResource.addMethod('GET', new apigateway.LambdaIntegration(getNearbyPlacesFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── GET /places/{id} (protected) ───────────────────────────
+    const getPlaceDetailFn = new nodejs.NodejsFunction(this, 'GetPlaceDetailFunction', {
+      functionName: resourceName(stage, 'get-place-detail'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-place-detail.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getPlaceDetailFn);
+
+    const placeIdResource = placesResource.addResource('{id}');
+    placeIdResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    placeIdResource.addMethod('GET', new apigateway.LambdaIntegration(getPlaceDetailFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── POST /check-ins (protected) ────────────────────────────
+    const createCheckinFn = new nodejs.NodejsFunction(this, 'CreateCheckinFunction', {
+      functionName: resourceName(stage, 'create-checkin'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/create-checkin.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(createCheckinFn);
+
+    const checkinsResource = api.root.addResource('check-ins');
+    checkinsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    checkinsResource.addMethod('POST', new apigateway.LambdaIntegration(createCheckinFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── GET /friends (protected) ───────────────────────────────
+    const getFriendsFn = new nodejs.NodejsFunction(this, 'GetFriendsFunction', {
+      functionName: resourceName(stage, 'get-friends'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-friends.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getFriendsFn);
+
+    const friendsResource = api.root.addResource('friends');
+    friendsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    friendsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // ─── GET /admin/users (VPC, connects to Aurora) ────────────
     const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {
       functionName: resourceName(stage, 'get-users'),
@@ -726,12 +826,6 @@ export class FideeStack extends cdk.Stack {
     dbCluster.secret!.grantRead(updateUserFn);
     userProfilesTable.grantReadWriteData(updateUserFn);
 
-    const placesResource = api.root.addResource('places');
-    const nearbyResource = placesResource.addResource('nearby');
-    nearbyResource.addMethod('GET', new apigateway.LambdaIntegration(getNearbyPlacesFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
 
     // ─── Admin Users Resources (protected) ──────────────────────
     const adminResource = api.root.addResource('admin');

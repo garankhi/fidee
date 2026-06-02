@@ -1,4 +1,9 @@
-import 'dart:math';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../config.dart';
+import 'auth_service.dart';
 
 /// Response from POST /place-candidates
 class PlaceCandidateResponse {
@@ -35,6 +40,17 @@ class PlaceCandidateData {
     required this.visibility,
     required this.createdAt,
   });
+
+  factory PlaceCandidateData.fromJson(Map<String, dynamic> json) {
+    return PlaceCandidateData(
+      candidateId: json['candidate_id'] as String,
+      name: json['name'] as String,
+      category: json['category'] as String,
+      status: json['status'] as String,
+      visibility: json['visibility'] as String,
+      createdAt: json['created_at'] as String,
+    );
+  }
 }
 
 class PlaceCandidateError {
@@ -49,6 +65,15 @@ class PlaceCandidateError {
     this.dailyLimit,
     this.used,
   });
+
+  factory PlaceCandidateError.fromJson(Map<String, dynamic> json) {
+    return PlaceCandidateError(
+      code: json['code'] as String,
+      message: json['message'] as String,
+      dailyLimit: (json['daily_limit'] as num?)?.toInt(),
+      used: (json['used'] as num?)?.toInt(),
+    );
+  }
 }
 
 class ConflictCandidate {
@@ -61,15 +86,22 @@ class ConflictCandidate {
     required this.name,
     required this.distanceMeters,
   });
+
+  factory ConflictCandidate.fromJson(Map<String, dynamic> json) {
+    return ConflictCandidate(
+      candidateId: json['candidate_id'] as String,
+      name: json['name'] as String,
+      distanceMeters: (json['distance_meters'] as num).toInt(),
+    );
+  }
 }
 
-/// Service for creating custom place candidates.
-/// Currently returns mock data. Will call POST /place-candidates when BE is ready.
 class PlaceCandidateService {
-  static int _mockCallCount = 0;
+  final AuthService _authService;
 
-  /// Create a new place candidate.
-  static Future<PlaceCandidateResponse> createCandidate({
+  const PlaceCandidateService(this._authService);
+
+  Future<PlaceCandidateResponse> createCandidate({
     required String name,
     required String category,
     required String mediaId,
@@ -77,59 +109,62 @@ class PlaceCandidateService {
     required double lng,
     bool force = false,
   }) async {
-    // Simulate network delay
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-
-    _mockCallCount++;
-
-    // Simulate quota exceeded after 5 calls
-    if (_mockCallCount > 5 && !force) {
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
       return const PlaceCandidateResponse(
         status: 'error',
         error: PlaceCandidateError(
-          code: 'QUOTA_EXCEEDED',
-          message: 'Bạn đã đạt giới hạn 5 địa điểm/ngày',
-          dailyLimit: 5,
-          used: 5,
+          code: 'UNAUTHORIZED',
+          message: 'Bạn cần đăng nhập lại',
         ),
       );
     }
 
-    // Simulate near-duplicate on 3rd call (unless force)
-    if (_mockCallCount == 3 && !force) {
+    final response = await http.post(
+      Uri.parse('${Config.apiBaseUrl}/place-candidates'),
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'category': category,
+        'mediaId': mediaId,
+        'coordinates': {'lat': lat, 'lng': lng},
+        'force': force,
+      }),
+    );
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 201) {
       return PlaceCandidateResponse(
-        status: 'conflict',
-        error: const PlaceCandidateError(
-          code: 'NEAR_DUPLICATE',
-          message: 'Tìm thấy địa điểm tương tự gần đây',
-        ),
-        candidates: [
-          ConflictCandidate(
-            candidateId: 'cand_existing_001',
-            name: '$name (đã tạo trước đó)',
-            distanceMeters: 45,
-          ),
-        ],
+        status: decoded['status'] as String? ?? 'created',
+        data: PlaceCandidateData.fromJson(decoded['data'] as Map<String, dynamic>),
       );
     }
 
-    // Success
-    final id = 'cand_${Random().nextInt(999999).toString().padLeft(6, '0')}';
+    if (response.statusCode == 409) {
+      return PlaceCandidateResponse(
+        status: decoded['status'] as String? ?? 'conflict',
+        error: PlaceCandidateError.fromJson(decoded['error'] as Map<String, dynamic>),
+        candidates: (decoded['candidates'] as List<dynamic>?)
+            ?.whereType<Map<String, dynamic>>()
+            .map(ConflictCandidate.fromJson)
+            .toList(growable: false),
+      );
+    }
+
     return PlaceCandidateResponse(
-      status: 'created',
-      data: PlaceCandidateData(
-        candidateId: id,
-        name: name,
-        category: category,
-        status: 'PENDING_REVIEW',
-        visibility: 'FRIENDS',
-        createdAt: DateTime.now().toIso8601String(),
-      ),
+      status: decoded['status'] as String? ?? 'error',
+      error: PlaceCandidateError.fromJson(decoded['error'] as Map<String, dynamic>),
     );
   }
 
   /// Reset mock state (for testing)
   static void resetMock() {
-    _mockCallCount = 0;
+    // no-op after real API wiring
   }
 }
+
+
+
