@@ -1,1 +1,1 @@
-{"statusCode":200,"body":"{\"status\":\"ok\",\"results\":[\"SKIP 001_initial (already applied)\",\"SKIP 002_add_place_fields (already applied)\",\"OK 003_seed_test_data\"]}"}
+{"statusCode":200,"body":"{\"status\":\"ok\",\"results\":[\"SKIP 001_initial (already applied)\",\"SKIP 002_add_place_fields (already applied)\",\"SKIP 003_seed_test_data (already applied)\",\"OK 004_update_moderation_schema\"]}"}

@@ -486,5 +486,14 @@ VALUES
   ('test-user-003', 'a1000001-0001-0001-0001-000000000004', 'mock_media_ci_003', 10.7760, 106.7030, 3.1, 'Katinat chưa bao giờ làm thất vọng', 5, 'PUBLIC'),
   ('test-user-001', 'a1000001-0001-0001-0001-000000000005', 'mock_media_ci_004', 10.7728, 106.6978, 6.5, 'Pizza 4Ps luôn đỉnh', 4, 'PUBLIC')
 ON CONFLICT DO NOTHING;
+`,
+  '004_update_moderation_schema': `-- ============================================================================
+-- 004_update_moderation_schema
+-- Relax place_id constraint and add candidate_id to support candidate rejection
+-- ============================================================================
+
+ALTER TABLE place_moderation
+  ALTER COLUMN place_id DROP NOT NULL,
+  ADD COLUMN candidate_id UUID;
 `
 };
