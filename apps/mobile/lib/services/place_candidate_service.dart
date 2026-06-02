@@ -108,6 +108,13 @@ class PlaceCandidateService {
     required double lat,
     required double lng,
     bool force = false,
+    String? address,
+    String? openTime,
+    String? closeTime,
+    int? priceMin,
+    int? priceMax,
+    String? phoneNumber,
+    String? description,
   }) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
@@ -132,6 +139,13 @@ class PlaceCandidateService {
         'mediaId': mediaId,
         'coordinates': {'lat': lat, 'lng': lng},
         'force': force,
+        if (address != null) 'address': address,
+        if (openTime != null) 'openTime': openTime,
+        if (closeTime != null) 'closeTime': closeTime,
+        if (priceMin != null) 'priceMin': priceMin,
+        if (priceMax != null) 'priceMax': priceMax,
+        if (phoneNumber != null) 'phoneNumber': phoneNumber,
+        if (description != null) 'description': description,
       }),
     );
 

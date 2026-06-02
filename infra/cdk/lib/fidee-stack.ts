@@ -175,6 +175,9 @@ export class FideeStack extends cdk.Stack {
         RESEND_SENDER_EMAIL: process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev',
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
       },
+      bundling: {
+        nodeModules: ['resend'],
+      },
     });
 
     // Grant SES send email
