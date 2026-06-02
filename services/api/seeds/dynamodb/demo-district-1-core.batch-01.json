@@ -1,0 +1,1204 @@
+{
+  "mapvibe-dev-places": [
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-001"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-001"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#lantern-courtyard-pho#demo-d1-001"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-001"
+          },
+          "name": {
+            "S": "Lantern Courtyard Pho"
+          },
+          "normalizedName": {
+            "S": "lantern-courtyard-pho"
+          },
+          "category": {
+            "S": "pho"
+          },
+          "lat": {
+            "N": "10.772600"
+          },
+          "lng": {
+            "N": "106.698850"
+          },
+          "address": {
+            "S": "14 Le Loi, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-002"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-002"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#market-gate-banh-mi#demo-d1-002"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-002"
+          },
+          "name": {
+            "S": "Market Gate Banh Mi"
+          },
+          "normalizedName": {
+            "S": "market-gate-banh-mi"
+          },
+          "category": {
+            "S": "banh_mi"
+          },
+          "lat": {
+            "N": "10.772780"
+          },
+          "lng": {
+            "N": "106.698690"
+          },
+          "address": {
+            "S": "82 Phan Chu Trinh, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-003"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-003"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#saffron-saigon-kitchen#demo-d1-003"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-003"
+          },
+          "name": {
+            "S": "Saffron Saigon Kitchen"
+          },
+          "normalizedName": {
+            "S": "saffron-saigon-kitchen"
+          },
+          "category": {
+            "S": "vietnamese"
+          },
+          "lat": {
+            "N": "10.772480"
+          },
+          "lng": {
+            "N": "106.699060"
+          },
+          "address": {
+            "S": "27 Thu Khoa Huan, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-004"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-004"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#lotus-steam-house#demo-d1-004"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-004"
+          },
+          "name": {
+            "S": "Lotus Steam House"
+          },
+          "normalizedName": {
+            "S": "lotus-steam-house"
+          },
+          "category": {
+            "S": "noodle_shop"
+          },
+          "lat": {
+            "N": "10.772850"
+          },
+          "lng": {
+            "N": "106.698990"
+          },
+          "address": {
+            "S": "41 Ly Tu Trong, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-005"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-005"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#rice-paper-garden#demo-d1-005"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-005"
+          },
+          "name": {
+            "S": "Rice Paper Garden"
+          },
+          "normalizedName": {
+            "S": "rice-paper-garden"
+          },
+          "category": {
+            "S": "vietnamese"
+          },
+          "lat": {
+            "N": "10.772380"
+          },
+          "lng": {
+            "N": "106.698660"
+          },
+          "address": {
+            "S": "55 Truong Dinh, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-006"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-006"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#ben-thanh-brew-lab#demo-d1-006"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-006"
+          },
+          "name": {
+            "S": "Ben Thanh Brew Lab"
+          },
+          "normalizedName": {
+            "S": "ben-thanh-brew-lab"
+          },
+          "category": {
+            "S": "cafe"
+          },
+          "lat": {
+            "N": "10.772910"
+          },
+          "lng": {
+            "N": "106.698810"
+          },
+          "address": {
+            "S": "23 Thu Khoa Huan, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-007"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-007"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#golden-mortar-dessert-bar#demo-d1-007"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-007"
+          },
+          "name": {
+            "S": "Golden Mortar Dessert Bar"
+          },
+          "normalizedName": {
+            "S": "golden-mortar-dessert-bar"
+          },
+          "category": {
+            "S": "dessert"
+          },
+          "lat": {
+            "N": "10.772250"
+          },
+          "lng": {
+            "N": "106.698930"
+          },
+          "address": {
+            "S": "39 Phan Chu Trinh, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-008"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-008"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#tamarind-balcony-grill#demo-d1-008"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-008"
+          },
+          "name": {
+            "S": "Tamarind Balcony Grill"
+          },
+          "normalizedName": {
+            "S": "tamarind-balcony-grill"
+          },
+          "category": {
+            "S": "grill"
+          },
+          "lat": {
+            "N": "10.772680"
+          },
+          "lng": {
+            "N": "106.699140"
+          },
+          "address": {
+            "S": "18 Le Anh Xuan, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-009"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-009"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#morning-drum-tea-house#demo-d1-009"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-009"
+          },
+          "name": {
+            "S": "Morning Drum Tea House"
+          },
+          "normalizedName": {
+            "S": "morning-drum-tea-house"
+          },
+          "category": {
+            "S": "tea_house"
+          },
+          "lat": {
+            "N": "10.772510"
+          },
+          "lng": {
+            "N": "106.698540"
+          },
+          "address": {
+            "S": "11 Thu Khoa Huan, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-010"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-010"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#night-market-hotpot#demo-d1-010"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-010"
+          },
+          "name": {
+            "S": "Night Market Hotpot"
+          },
+          "normalizedName": {
+            "S": "night-market-hotpot"
+          },
+          "category": {
+            "S": "hotpot"
+          },
+          "lat": {
+            "N": "10.772870"
+          },
+          "lng": {
+            "N": "106.698580"
+          },
+          "address": {
+            "S": "71 Nguyen An Ninh, Ben Thanh, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Ben Thanh core in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-011"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-011"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#riverlight-roastery#demo-d1-011"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-011"
+          },
+          "name": {
+            "S": "Riverlight Roastery"
+          },
+          "normalizedName": {
+            "S": "riverlight-roastery"
+          },
+          "category": {
+            "S": "cafe"
+          },
+          "lat": {
+            "N": "10.773650"
+          },
+          "lng": {
+            "N": "106.703100"
+          },
+          "address": {
+            "S": "19 Nguyen Hue, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-012"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-012"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#orchid-post-brunch#demo-d1-012"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-012"
+          },
+          "name": {
+            "S": "Orchid Post Brunch"
+          },
+          "normalizedName": {
+            "S": "orchid-post-brunch"
+          },
+          "category": {
+            "S": "brunch"
+          },
+          "lat": {
+            "N": "10.773830"
+          },
+          "lng": {
+            "N": "106.702940"
+          },
+          "address": {
+            "S": "26 Nguyen Hue, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-013"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-013"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#skyline-pomelo-bistro#demo-d1-013"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-013"
+          },
+          "name": {
+            "S": "Skyline Pomelo Bistro"
+          },
+          "normalizedName": {
+            "S": "skyline-pomelo-bistro"
+          },
+          "category": {
+            "S": "rooftop_bar"
+          },
+          "lat": {
+            "N": "10.773530"
+          },
+          "lng": {
+            "N": "106.703310"
+          },
+          "address": {
+            "S": "42 Nguyen Hue, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-014"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-014"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#mango-canvas-cafe#demo-d1-014"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-014"
+          },
+          "name": {
+            "S": "Mango Canvas Cafe"
+          },
+          "normalizedName": {
+            "S": "mango-canvas-cafe"
+          },
+          "category": {
+            "S": "cafe"
+          },
+          "lat": {
+            "N": "10.773900"
+          },
+          "lng": {
+            "N": "106.703240"
+          },
+          "address": {
+            "S": "62 Nguyen Hue, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-015"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-015"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#salt-and-lemongrass-table#demo-d1-015"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-015"
+          },
+          "name": {
+            "S": "Salt And Lemongrass Table"
+          },
+          "normalizedName": {
+            "S": "salt-and-lemongrass-table"
+          },
+          "category": {
+            "S": "vietnamese"
+          },
+          "lat": {
+            "N": "10.773430"
+          },
+          "lng": {
+            "N": "106.702910"
+          },
+          "address": {
+            "S": "18 Mac Thi Buoi, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-016"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-016"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#pearl-alley-gelato#demo-d1-016"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-016"
+          },
+          "name": {
+            "S": "Pearl Alley Gelato"
+          },
+          "normalizedName": {
+            "S": "pearl-alley-gelato"
+          },
+          "category": {
+            "S": "dessert"
+          },
+          "lat": {
+            "N": "10.773960"
+          },
+          "lng": {
+            "N": "106.703060"
+          },
+          "address": {
+            "S": "22 Ngo Duc Ke, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-017"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-017"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#lantern-dock-seafood#demo-d1-017"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-017"
+          },
+          "name": {
+            "S": "Lantern Dock Seafood"
+          },
+          "normalizedName": {
+            "S": "lantern-dock-seafood"
+          },
+          "category": {
+            "S": "seafood"
+          },
+          "lat": {
+            "N": "10.773300"
+          },
+          "lng": {
+            "N": "106.703180"
+          },
+          "address": {
+            "S": "44 Ton That Thiep, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-018"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-018"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#the-banyan-juice-room#demo-d1-018"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-018"
+          },
+          "name": {
+            "S": "The Banyan Juice Room"
+          },
+          "normalizedName": {
+            "S": "the-banyan-juice-room"
+          },
+          "category": {
+            "S": "juice_bar"
+          },
+          "lat": {
+            "N": "10.773730"
+          },
+          "lng": {
+            "N": "106.703390"
+          },
+          "address": {
+            "S": "15 Hai Trieu, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-019"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-019"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#promenade-bun-bowl#demo-d1-019"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-019"
+          },
+          "name": {
+            "S": "Promenade Bun Bowl"
+          },
+          "normalizedName": {
+            "S": "promenade-bun-bowl"
+          },
+          "category": {
+            "S": "noodle_shop"
+          },
+          "lat": {
+            "N": "10.773560"
+          },
+          "lng": {
+            "N": "106.702790"
+          },
+          "address": {
+            "S": "33 Nguyen Thiep, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-020"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-020"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#moonbridge-oyster-bar#demo-d1-020"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-020"
+          },
+          "name": {
+            "S": "Moonbridge Oyster Bar"
+          },
+          "normalizedName": {
+            "S": "moonbridge-oyster-bar"
+          },
+          "category": {
+            "S": "seafood"
+          },
+          "lat": {
+            "N": "10.773920"
+          },
+          "lng": {
+            "N": "106.702830"
+          },
+          "address": {
+            "S": "12 Ho Huan Nghiep, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around Nguyen Hue promenade in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-021"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-021"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#jasmine-opera-cafe#demo-d1-021"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-021"
+          },
+          "name": {
+            "S": "Jasmine Opera Cafe"
+          },
+          "normalizedName": {
+            "S": "jasmine-opera-cafe"
+          },
+          "category": {
+            "S": "cafe"
+          },
+          "lat": {
+            "N": "10.778250"
+          },
+          "lng": {
+            "N": "106.703350"
+          },
+          "address": {
+            "S": "8 Dong Khoi, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around the Dong Khoi corridor in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-022"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-022"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#indigo-balcony-dining#demo-d1-022"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-022"
+          },
+          "name": {
+            "S": "Indigo Balcony Dining"
+          },
+          "normalizedName": {
+            "S": "indigo-balcony-dining"
+          },
+          "category": {
+            "S": "vietnamese"
+          },
+          "lat": {
+            "N": "10.778430"
+          },
+          "lng": {
+            "N": "106.703190"
+          },
+          "address": {
+            "S": "21 Dong Khoi, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around the Dong Khoi corridor in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-023"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-023"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#silk-route-supper-club#demo-d1-023"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-023"
+          },
+          "name": {
+            "S": "Silk Route Supper Club"
+          },
+          "normalizedName": {
+            "S": "silk-route-supper-club"
+          },
+          "category": {
+            "S": "rooftop_bar"
+          },
+          "lat": {
+            "N": "10.778130"
+          },
+          "lng": {
+            "N": "106.703560"
+          },
+          "address": {
+            "S": "36 Dong Khoi, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around the Dong Khoi corridor in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-024"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-024"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#saigon-studio-bakery#demo-d1-024"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-024"
+          },
+          "name": {
+            "S": "Saigon Studio Bakery"
+          },
+          "normalizedName": {
+            "S": "saigon-studio-bakery"
+          },
+          "category": {
+            "S": "bakery"
+          },
+          "lat": {
+            "N": "10.778500"
+          },
+          "lng": {
+            "N": "106.703490"
+          },
+          "address": {
+            "S": "14 Dong Du, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around the Dong Khoi corridor in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "PK": {
+            "S": "PLACE#demo-d1-025"
+          },
+          "SK": {
+            "S": "PLACE#demo-d1-025"
+          },
+          "GSI1PK": {
+            "S": "PLACE"
+          },
+          "GSI1SK": {
+            "S": "NAME#citrus-chamber-brunch#demo-d1-025"
+          },
+          "entityType": {
+            "S": "PLACE"
+          },
+          "status": {
+            "S": "PUBLISHED"
+          },
+          "id": {
+            "S": "demo-d1-025"
+          },
+          "name": {
+            "S": "Citrus Chamber Brunch"
+          },
+          "normalizedName": {
+            "S": "citrus-chamber-brunch"
+          },
+          "category": {
+            "S": "brunch"
+          },
+          "lat": {
+            "N": "10.778030"
+          },
+          "lng": {
+            "N": "106.703160"
+          },
+          "address": {
+            "S": "27 Mac Thi Buoi, Ben Nghe, District 1, Ho Chi Minh City"
+          },
+          "sourceNote": {
+            "S": "Curated fictional demo place around the Dong Khoi corridor in District 1; manually created for nearby scan density and not copied from third-party listings or licensed place databases."
+          }
+        }
+      }
+    }
+  ]
+}
