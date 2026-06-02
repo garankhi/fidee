@@ -1,4 +1,4 @@
-# Hướng dẫn phát triển MapVibe
+# Hướng dẫn phát triển Fidee
 
 > Tài liệu dành cho developer mới tham gia project. Đọc kỹ trước khi bắt đầu code.
 
@@ -31,7 +31,7 @@ aws --version
 ```bash
 # Clone repo
 git clone <repo-url>
-cd mapvibe
+cd fidee
 
 # Cài dependencies cho tất cả JS/TS workspaces (admin, api, cdk)
 npm install
@@ -49,7 +49,7 @@ cd ../..
 ## 3. Cấu trúc project
 
 ```
-mapvibe/
+fidee/
 ├── apps/
 │   ├── mobile/          # Flutter mobile app (Android)
 │   └── admin/           # React + TypeScript admin dashboard (Vite)
@@ -126,7 +126,7 @@ flutter run           # Chạy app trên emulator/device
 |-----------|---------------|-----------|-----------|
 | `apps/admin` | Vitest + Testing Library | Component render test | `src/App.test.tsx` |
 | `services/api` | Vitest | Unit test (Lambda handler) | `src/handlers/search.test.ts` |
-| `infra/cdk` | Vitest + CDK Assertions | Infrastructure test (kiểm tra CloudFormation) | `test/mapvibe-stack.test.ts` |
+| `infra/cdk` | Vitest + CDK Assertions | Infrastructure test (kiểm tra CloudFormation) | `test/fidee-stack.test.ts` |
 | `apps/mobile` | Flutter Test | Widget test | `test/widget_test.dart` |
 
 ### Cách viết test
@@ -194,7 +194,7 @@ describe('MyStack', () => {
 ```dart
 // test/my_widget_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mapvibe_mobile/my_widget.dart';
+import 'package:fidee_mobile/my_widget.dart';
 
 void main() {
   testWidgets('shows title', (WidgetTester tester) async {
@@ -339,7 +339,7 @@ main              ← production, chỉ merge qua PR
 
 | Tài liệu | Đường dẫn |
 |-----------|-----------|
-| Product Requirements | [MapVibe_PRD.md](./MapVibe_PRD.md) |
+| Product Requirements | [Fidee_PRD.md](./Fidee_PRD.md) |
 | System Architecture | [System_Architechture.png](./System_Architechture.png) |
 | Git Handbook | [git_handbook.md](./git_handbook.md) |
 | Root README | [README.md](../README.md) |

@@ -1,6 +1,6 @@
-# MapVibe Mobile
+# Fidee Mobile
 
-Flutter app for the MapVibe mobile client.
+Flutter app for the Fidee mobile client.
 
 ## SDK Setup
 

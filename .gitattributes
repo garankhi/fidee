@@ -1,0 +1,8 @@
+# Tự động xử lý line ending, chuyển thành LF khi commit
+* text=auto
+
+# Ép các file script phải luôn dùng LF (quan trọng khi chạy trên server Linux)
+*.sh text eol=lf
+
+# Ép các file batch của Windows phải dùng CRLF
+*.bat text eol=crlf

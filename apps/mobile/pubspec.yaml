@@ -1,4 +1,4 @@
-name: mapvibe_mobile
+name: fidee_mobile
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -19,7 +19,8 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.5
+
+  sdk: ^3.10.8
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -33,9 +34,11 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
   google_fonts: ^8.1.0
   flutter_svg: ^2.3.0
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
   amazon_cognito_identity_dart_2: ^4.0.0
   flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.5.5
@@ -43,6 +46,13 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^14.0.0
   permission_handler: ^12.0.0
+  image_picker: ^1.1.2
+  google_sign_in: ^7.2.0
+  intl: ^0.20.2
+  camera: ^0.12.0+1
+  lucide_icons: ^0.257.0
+  native_exif: ^0.8.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -54,6 +64,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -68,6 +80,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icons/
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -80,17 +93,9 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  fonts:
+    - family: SF Pro
+      fonts:
+        - asset: assets/fonts/SF-Pro.ttf
+        - asset: assets/fonts/SF-Pro-Italic.ttf
+          style: italic

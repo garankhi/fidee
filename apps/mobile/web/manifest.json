@@ -1,6 +1,6 @@
 {
-    "name": "mapvibe_mobile",
-    "short_name": "mapvibe_mobile",
+    "name": "fidee_mobile",
+    "short_name": "fidee_mobile",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
