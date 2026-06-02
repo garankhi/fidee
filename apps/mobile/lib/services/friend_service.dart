@@ -17,6 +17,15 @@ class FriendProfile {
     this.avatarUrl,
   });
 
+  factory FriendProfile.fromJson(Map<String, dynamic> json) {
+    return FriendProfile(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      handle: json['username'] as String? ?? '',
+      avatarUrl: json['avatarUrl'] as String?,
+    );
+  }
+
   String get initials {
     final List<String> pieces = name.trim().split(RegExp(r'\s+'));
     if (pieces.isEmpty || pieces.first.isEmpty) return '?';

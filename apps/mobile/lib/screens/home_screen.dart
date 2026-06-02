@@ -1,16 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
-import '../models/nearby_place.dart';
 import '../models/map_feed_item.dart';
+import '../models/nearby_place.dart';
 import '../services/location_service.dart';
+import '../services/map_feed_service.dart';
 import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
-import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
+import 'profile_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 ///
@@ -177,13 +180,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Future<void> _signOut(BuildContext context) async {
-    await ref.read(authControllerProvider.notifier).signOut();
-    if (context.mounted) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
-    }
-  }
-
   void _onCheckIn() async {
     if (_isLimitedMode) {
       _showLimitedModeSnack(
@@ -299,54 +295,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             cacheHeight: 96,
                           ),
                           GestureDetector(
-                            onTap: () => _showProfileMenu(context),
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
+                              );
+                            },
+                            child: Consumer(
+                              builder: (context, ref, _) {
+                                final authService = ref.watch(authServiceProvider);
+                                
+                                final firstName = authService.firstName ?? '';
+                                final lastName = authService.lastName ?? '';
+                                String initials = 'U';
+                                if (firstName.isNotEmpty || lastName.isNotEmpty) {
+                                  final first = firstName.trim().isNotEmpty ? firstName.trim().substring(0, 1) : '';
+                                  final last = lastName.trim().isNotEmpty ? lastName.trim().substring(0, 1) : '';
+                                  initials = '$first$last'.toUpperCase();
+                                  if (initials.isEmpty) initials = 'U';
+                                } else if (authService.username != null && authService.username!.isNotEmpty) {
+                                  initials = authService.username!.substring(0, 1).toUpperCase();
+                                }
+
+                                return Container(
                                   width: 40,
                                   height: 40,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF5A8DEE),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4050),
                                     shape: BoxShape.circle,
+                                    image: authService.avatarUrl != null && authService.avatarUrl!.isNotEmpty
+                                        ? DecorationImage(
+                                            image: authService.avatarUrl!.startsWith('http')
+                                                ? NetworkImage(authService.avatarUrl!) as ImageProvider
+                                                : FileImage(File(authService.avatarUrl!)),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
                                   ),
-                                  child: const Center(
-                                    child: Text(
-                                      'AA',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: -2,
-                                  right: -2,
-                                  child: Container(
-                                    width: 16,
-                                    height: 16,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFF3B30),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        '1',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                  child: authService.avatarUrl == null || authService.avatarUrl!.isEmpty
+                                      ? Center(
+                                          child: Text(
+                                            initials,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -478,87 +476,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showProfileMenu(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Profile header
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFF5A8DEE),
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: const Center(
-                child: Text(
-                  'AA',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'User',
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Sign out
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _signOut(context);
-                },
-                icon: const Icon(Icons.logout, size: 20),
-                label: const Text('Dang xuat', style: TextStyle(fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.1),
-                  foregroundColor: const Color(0xFFEF4444),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
       ),
     );
   }

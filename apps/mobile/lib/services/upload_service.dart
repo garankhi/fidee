@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:fidee_mobile/config.dart';
 import 'package:fidee_mobile/services/auth_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PendingUpload {
@@ -118,7 +119,7 @@ class UploadService {
     final token = await _authService.getToken();
 
     if (token == null) {
-      print('DEBUG [UploadService]: auth token is null');
+      debugPrint('DEBUG [UploadService]: auth token is null');
       throw UploadException('Phiên đăng nhập đã hết hạn');
     }
 
@@ -209,7 +210,7 @@ class UploadService {
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
         final responseData = e.response?.data;
-        print('DEBUG [UploadService]: HTTP Bad Response Status: $status, Data: $responseData');
+        debugPrint('DEBUG [UploadService]: HTTP Bad Response Status: $status, Data: $responseData');
         if (status == 401) throw UploadException('Phiên đăng nhập đã hết hạn');
         if (status == 403) {
           final errorData = e.response?.data?.toString() ?? 'Lỗi 403 ẩn';

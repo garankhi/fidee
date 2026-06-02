@@ -444,6 +444,92 @@ export class FideeStack extends cdk.Stack {
     userProfilesTable.grantReadWriteData(createMediaUploadFn);
     mediaBucket.grantPut(createMediaUploadFn, 'uploads/*');
 
+    // === POST /media/avatar (no GPS upload) ===
+    const createAvatarUploadFn = new nodejs.NodejsFunction(this, 'CreateAvatarUploadFunction', {
+      functionName: resourceName(stage, 'create-avatar-upload'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/create-avatar-upload.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        MEDIA_BUCKET: mediaBucket.bucketName,
+        UPLOAD_EXPIRY_SECONDS: '300',
+        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
+      },
+    });
+    mediaBucket.grantPut(createAvatarUploadFn, 'avatars/*');
+
+    // === Friends Lambda Handlers ===
+    const friendsLambdaProps = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    };
+
+    const getFriendsFn = new nodejs.NodejsFunction(this, 'GetFriendsFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'get-friends'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'getFriends',
+    });
+    dbCluster.secret!.grantRead(getFriendsFn);
+
+    const getFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetFriendRequestsFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'get-friend-requests'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'getFriendRequests',
+    });
+    dbCluster.secret!.grantRead(getFriendRequestsFn);
+
+    const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'send-friend-request'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'sendFriendRequest',
+    });
+    dbCluster.secret!.grantRead(sendFriendRequestFn);
+
+    const acceptFriendFn = new nodejs.NodejsFunction(this, 'AcceptFriendFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'accept-friend'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'acceptFriend',
+    });
+    dbCluster.secret!.grantRead(acceptFriendFn);
+
+    const declineFriendFn = new nodejs.NodejsFunction(this, 'DeclineFriendFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'decline-friend'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'declineFriend',
+    });
+    dbCluster.secret!.grantRead(declineFriendFn);
+
+    const unfriendFn = new nodejs.NodejsFunction(this, 'UnfriendFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'unfriend'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'unfriend',
+    });
+    dbCluster.secret!.grantRead(unfriendFn);
+
     const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
       queueName: resourceName(stage, 'media-upload-events-dlq'),
       retentionPeriod: cdk.Duration.days(14),
@@ -570,6 +656,49 @@ export class FideeStack extends cdk.Stack {
     const mediaResource = api.root.addResource('media');
     const mediaUploadsResource = mediaResource.addResource('uploads');
     mediaUploadsResource.addMethod('POST', new apigateway.LambdaIntegration(createMediaUploadFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const mediaAvatarResource = mediaResource.addResource('avatar');
+    mediaAvatarResource.addMethod('POST', new apigateway.LambdaIntegration(createAvatarUploadFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // === /friends API Routes ===
+    const friendsResource = api.root.addResource('friends');
+    friendsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const requestsResource = friendsResource.addResource('requests');
+    requestsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendRequestsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const requestActionResource = friendsResource.addResource('request');
+    requestActionResource.addMethod('POST', new apigateway.LambdaIntegration(sendFriendRequestFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const acceptActionResource = friendsResource.addResource('accept');
+    acceptActionResource.addMethod('POST', new apigateway.LambdaIntegration(acceptFriendFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const declineActionResource = friendsResource.addResource('decline');
+    declineActionResource.addMethod('POST', new apigateway.LambdaIntegration(declineFriendFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const unfriendActionResource = friendsResource.addResource('unfriend');
+    unfriendActionResource.addMethod('POST', new apigateway.LambdaIntegration(unfriendFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });

@@ -58,6 +58,7 @@ export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthCont
   const givenName = claims.given_name as string | undefined;
   const familyName = claims.family_name as string | undefined;
   const preferredUsername = claims.preferred_username as string | undefined;
+  const picture = claims.picture as string | undefined;
 
   // Tự động đồng bộ thông tin profile mới nhất từ JWT token claims sang DB
   try {
@@ -68,6 +69,7 @@ export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthCont
       givenName,
       familyName,
       preferredUsername,
+      picture,
     });
   } catch (err) {
     console.error(`[Auth Middleware] Failed to auto-sync user ${sub}:`, err);

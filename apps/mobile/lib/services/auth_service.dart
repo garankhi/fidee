@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
+
 import '../config.dart';
 
 // Persistent Cognito storage.
@@ -106,6 +110,18 @@ class AuthService {
   String? _destination;
   UserTier _tier = UserTier.free;
 
+  String? _firstName;
+  String? _lastName;
+  String? _preferredUsername;
+  String? _avatarUrl;
+  String? _since;
+
+  String? get firstName => _firstName;
+  String? get lastName => _lastName;
+  String? get preferredUsername => _preferredUsername;
+  String? get avatarUrl => _avatarUrl;
+  String? get since => _since;
+
   late CognitoUserPool _userPool;
   CognitoUser? _cognitoUser;
 
@@ -178,21 +194,25 @@ class AuthService {
 
         if (attributes != null) {
           for (var attr in attributes) {
-            // Check for a custom attribute or standard attribute that indicates completion
-            // For example, checking if 'given_name' or 'name' or 'preferred_username' is set
-            if (attr.getName() == 'given_name' &&
-                (attr.getValue()?.isNotEmpty ?? false)) {
-              hasName = true;
-            }
-            if (attr.getName() == 'custom:tier') {
-              if (attr.getValue() == 'pro') {
-                _tier = UserTier.pro;
-              } else {
-                _tier = UserTier.free;
-              }
+            final name = attr.getName();
+            final value = attr.getValue() ?? '';
+            if (name == 'given_name') {
+              _firstName = value;
+              if (value.isNotEmpty) hasName = true;
+            } else if (name == 'family_name') {
+              _lastName = value;
+            } else if (name == 'preferred_username') {
+              _preferredUsername = value;
+            } else if (name == 'picture') {
+              _avatarUrl = value;
+            } else if (name == 'custom:tier') {
+              _tier = value == 'pro' ? UserTier.pro : UserTier.free;
             }
           }
         }
+
+        // Fetch full profile details from PostgreSQL (createdAt, friendCount, etc.)
+        await fetchProfileDetails();
 
         if (hasName) {
           _state = AuthState.authenticated;
@@ -307,6 +327,7 @@ class AuthService {
 
       _username = email.trim();
       _cognitoUser = CognitoUser(_username, _userPool);
+      _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
 
       try {
         final randomPassword = 'GoogleAuth_${const Uuid().v4().replaceAll('-', '')}';
@@ -334,9 +355,9 @@ class AuthService {
           AuthenticationDetails(
             authParameters: [
               AttributeArg(name: 'USERNAME', value: _username),
-              AttributeArg(name: 'provider', value: 'google'),
+              const AttributeArg(name: 'provider', value: 'google'),
             ],
-            validationData: {'provider': 'google'},
+            validationData: const {'provider': 'google'},
           ),
         );
 
@@ -401,7 +422,7 @@ class AuthService {
         errorMessage: e.message ?? 'Lỗi kết nối đến dịch vụ AWS Cognito',
       );
     } catch (e) {
-      print('DEBUG [AuthService] Google login error: $e');
+      debugPrint('DEBUG [AuthService] Google login error: $e');
       return const AuthResult(
         success: false,
         errorMessage: 'Lỗi hệ thống khi đăng nhập bằng Google',
@@ -477,11 +498,11 @@ class AuthService {
         await _cognitoUser!.signOut();
       }
     } catch (e) {
-      print('DEBUG [AuthService]: Remote signOut failed: $e');
+      debugPrint('DEBUG [AuthService]: Remote signOut failed: $e');
       try {
         await _userPool.storage.clear();
       } catch (storageError) {
-        print('DEBUG [AuthService]: Failed to clear storage: $storageError');
+        debugPrint('DEBUG [AuthService]: Failed to clear storage: $storageError');
       }
     } finally {
       _state = AuthState.unauthenticated;
@@ -497,6 +518,9 @@ class AuthService {
     String username,
   ) async {
     if (isTestMode) {
+      _firstName = firstName;
+      _lastName = lastName;
+      _preferredUsername = username;
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
     }
@@ -509,14 +533,104 @@ class AuthService {
           CognitoUserAttribute(name: 'preferred_username', value: username),
         ];
         await _cognitoUser!.updateAttributes(attributes);
+        _firstName = firstName;
+        _lastName = lastName;
+        _preferredUsername = username;
+        
+        await fetchProfileDetails();
       }
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
     } catch (e) {
-      // If it fails (e.g. backend error), we can still just pretend success locally
-      // or return error. Let's set to authenticated anyway for UX or return error.
+      _firstName = firstName;
+      _lastName = lastName;
+      _preferredUsername = username;
       _state = AuthState.authenticated; // fallback so user is not stuck
       return const AuthResult(success: true);
+    }
+  }
+
+  Future<void> fetchProfileDetails() async {
+    final token = await getToken();
+    if (token == null) return;
+    
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/profile'),
+        headers: {'Authorization': token},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final String? displayName = data['displayName'] as String?;
+        if (displayName != null) {
+          final parts = displayName.split(' ');
+          _firstName = parts.isNotEmpty ? parts.first : _firstName;
+          _lastName = parts.length > 1 ? parts.skip(1).join(' ') : _lastName;
+        }
+        _preferredUsername = data['username'] as String? ?? _preferredUsername;
+        _avatarUrl = data['avatarUrl'] as String? ?? _avatarUrl;
+        if (data['plan'] == 'PRO') {
+          _tier = UserTier.pro;
+        } else {
+          _tier = UserTier.free;
+        }
+        
+        // Parse "since" year
+        final createdAtStr = data['createdAt'] as String?;
+        if (createdAtStr != null) {
+          final dt = DateTime.parse(createdAtStr);
+          _since = dt.year.toString();
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  Future<AuthResult> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? preferredUsername,
+    String? avatarUrl,
+  }) async {
+    if (isTestMode) {
+      if (firstName != null) _firstName = firstName;
+      if (lastName != null) _lastName = lastName;
+      if (preferredUsername != null) _preferredUsername = preferredUsername;
+      if (avatarUrl != null) _avatarUrl = avatarUrl;
+      return const AuthResult(success: true);
+    }
+
+    try {
+      if (_cognitoUser != null) {
+        final attributes = <CognitoUserAttribute>[];
+        if (firstName != null) {
+          attributes.add(CognitoUserAttribute(name: 'given_name', value: firstName));
+        }
+        if (lastName != null) {
+          attributes.add(CognitoUserAttribute(name: 'family_name', value: lastName));
+        }
+        if (preferredUsername != null) {
+          attributes.add(CognitoUserAttribute(name: 'preferred_username', value: preferredUsername));
+        }
+        if (avatarUrl != null) {
+          attributes.add(CognitoUserAttribute(name: 'picture', value: avatarUrl));
+        }
+
+        if (attributes.isNotEmpty) {
+          await _cognitoUser!.updateAttributes(attributes);
+        }
+
+        if (firstName != null) _firstName = firstName;
+        if (lastName != null) _lastName = lastName;
+        if (preferredUsername != null) _preferredUsername = preferredUsername;
+        if (avatarUrl != null) _avatarUrl = avatarUrl;
+        
+        await fetchProfileDetails();
+      }
+      return const AuthResult(success: true);
+    } catch (e) {
+      return AuthResult(success: false, errorMessage: e.toString());
     }
   }
 
