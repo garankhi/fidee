@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 import 'auth_service.dart';
@@ -36,116 +37,42 @@ class FriendProfile {
 }
 
 class FriendService {
-  final AuthService? _authService;
-  static const String _baseUrl = Config.apiBaseUrl;
+  final AuthService _authService;
 
-  const FriendService([this._authService]);
+  const FriendService(this._authService);
 
   Future<List<FriendProfile>> fetchFriends() async {
-    final token = await _authService?.getToken();
-    if (token == null) return [];
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
+      return const <FriendProfile>[];
+    }
 
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/friends'),
+        Uri.parse('${Config.apiBaseUrl}/friends'),
         headers: {'Authorization': token},
       );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final List<dynamic> items = data['friends'] as List<dynamic>? ?? const [];
-        return items.map((e) => FriendProfile.fromJson(e as Map<String, dynamic>)).toList();
+
+      if (response.statusCode != 200) {
+        return const <FriendProfile>[];
       }
-    } catch (_) {}
-    return [];
-  }
 
-  Future<List<FriendProfile>> fetchFriendRequests() async {
-    final token = await _authService?.getToken();
-    if (token == null) return [];
-
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/friends/requests'),
-        headers: {'Authorization': token},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final List<dynamic> items = data['requests'] as List<dynamic>? ?? const [];
-        return items.map((e) => FriendProfile.fromJson(e as Map<String, dynamic>)).toList();
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  Future<bool> sendFriendRequest(String targetUserId) async {
-    final token = await _authService?.getToken();
-    if (token == null) return false;
-
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/friends/request'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'targetUserId': targetUserId}),
-      );
-      return response.statusCode == 200;
-    } catch (_) {}
-    return false;
-  }
-
-  Future<bool> acceptFriend(String targetUserId) async {
-    final token = await _authService?.getToken();
-    if (token == null) return false;
-
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/friends/accept'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'targetUserId': targetUserId}),
-      );
-      return response.statusCode == 200;
-    } catch (_) {}
-    return false;
-  }
-
-  Future<bool> declineFriend(String targetUserId) async {
-    final token = await _authService?.getToken();
-    if (token == null) return false;
-
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/friends/decline'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'targetUserId': targetUserId}),
-      );
-      return response.statusCode == 200;
-    } catch (_) {}
-    return false;
-  }
-
-  Future<bool> unfriend(String targetUserId) async {
-    final token = await _authService?.getToken();
-    if (token == null) return false;
-
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/friends/unfriend'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'targetUserId': targetUserId}),
-      );
-      return response.statusCode == 200;
-    } catch (_) {}
-    return false;
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final items = (decoded['data'] as List<dynamic>?) ?? const <dynamic>[];
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (item) => FriendProfile(
+              id: item['id'] as String,
+              name: item['display_name'] as String? ?? item['username'] as String? ?? 'Friend',
+              handle: item['username'] as String? ?? '',
+              avatarUrl: item['avatar_url'] as String?,
+            ),
+          )
+          .toList(growable: false);
+    } catch (error) {
+      debugPrint('Error fetching friends: $error');
+      return const <FriendProfile>[];
+    }
   }
 }

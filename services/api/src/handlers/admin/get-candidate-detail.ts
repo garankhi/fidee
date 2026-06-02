@@ -59,7 +59,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };
     }
 
-    const candidate = candidateResult.rows[0] as any;
+    const candidate = candidateResult.rows[0];
 
     // 2. GPS proof: find check-ins near the candidate's location by the creator
     const gpsSql = `
@@ -106,7 +106,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         data: {
           candidate: {
             ...candidate,
-            coordinates: { lat: parseFloat(candidate.lat), lng: parseFloat(candidate.lng) },
+            coordinates: {
+              lat: parseFloat(String(candidate.lat)),
+              lng: parseFloat(String(candidate.lng)),
+            },
           },
           gps_proof: gpsResult.rows,
           duplicate_hints: duplicateResult.rows.map((r: any) => ({
@@ -125,3 +128,5 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   }
 }
+
+

@@ -201,12 +201,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       builder: (_) => _DiscoverSheet(
         lat: _locationService.currentPosition.latitude,
         lng: _locationService.currentPosition.longitude,
+        nearbyService: NearbyService(ref.read(authServiceProvider)),
         onAddSpot: (spots) {
           Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute<void>(
-              builder: (_) => AddSpotScreen(spotSuggestions: spots),
+              builder: (_) => AddSpotScreen(
+                spotSuggestions: spots,
+                authService: ref.read(authServiceProvider),
+              ),
             ),
           );
         },
@@ -667,11 +671,13 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
 class _DiscoverSheet extends StatefulWidget {
   final double lat;
   final double lng;
+  final NearbyService nearbyService;
   final void Function(List<NearbyPlace> spots) onAddSpot;
 
   const _DiscoverSheet({
     required this.lat,
     required this.lng,
+    required this.nearbyService,
     required this.onAddSpot,
   });
 
@@ -680,7 +686,6 @@ class _DiscoverSheet extends StatefulWidget {
 }
 
 class _DiscoverSheetState extends State<_DiscoverSheet> {
-  final NearbyService _nearbyService = NearbyService();
   List<NearbyPlace> _spots = [];
   bool _loading = true;
 
@@ -692,7 +697,7 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
 
   Future<void> _load() async {
     try {
-      final res = await _nearbyService.fetchNearby(
+      final res = await widget.nearbyService.fetchNearby(
         lat: widget.lat,
         lng: widget.lng,
         mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
@@ -1151,3 +1156,12 @@ class _FeedItemSheet extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+
+
+

@@ -5,12 +5,18 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/nearby_place.dart';
+import '../services/auth_service.dart';
 import '../services/friend_service.dart';
 
 class AddSpotScreen extends StatefulWidget {
   final List<NearbyPlace> spotSuggestions;
+  final AuthService authService;
 
-  const AddSpotScreen({super.key, this.spotSuggestions = const []});
+  const AddSpotScreen({
+    super.key,
+    this.spotSuggestions = const [],
+    required this.authService,
+  });
 
   @override
   State<AddSpotScreen> createState() => _AddSpotScreenState();
@@ -28,7 +34,7 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
 
   final PageController _pageController = PageController();
   final ImagePicker _imagePicker = ImagePicker();
-  final FriendService _friendService = const FriendService();
+  late final FriendService _friendService;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _openController = TextEditingController();
   final TextEditingController _closeController = TextEditingController();
@@ -53,6 +59,8 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
   XFile? _dishImage;
   XFile? _checkInImage;
   Future<List<FriendProfile>>? _friendsFuture;
+
+
 
   @override
   void dispose() {
@@ -860,6 +868,8 @@ class _FriendPickerSheet extends StatefulWidget {
 class _FriendPickerSheetState extends State<_FriendPickerSheet> {
   final TextEditingController _searchController = TextEditingController();
 
+
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -1168,6 +1178,8 @@ class _SpotNameDropdown extends StatefulWidget {
 class _SpotNameDropdownState extends State<_SpotNameDropdown> {
   final TextEditingController _customController = TextEditingController();
   bool _isCustom = false;
+
+
 
   @override
   void dispose() {
@@ -1834,3 +1846,9 @@ class _IconCircleButton extends StatelessWidget {
 }
 
 enum _SpotImageSlot { menu, vibe, dishes, checkIn }
+
+
+
+
+
+

@@ -1,5 +1,8 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+
+import '../services/auth_service.dart';
 import '../services/place_candidate_service.dart';
 
 /// Categories with icons and labels for the category picker.
@@ -19,6 +22,7 @@ class CreatePlaceScreen extends StatefulWidget {
   final double lng;
   final double accuracy;
   final String mediaId;
+  final AuthService authService;
 
   const CreatePlaceScreen({
     super.key,
@@ -27,6 +31,7 @@ class CreatePlaceScreen extends StatefulWidget {
     required this.lng,
     required this.accuracy,
     required this.mediaId,
+    required this.authService,
   });
 
   @override
@@ -60,7 +65,7 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
     setState(() => _state = _ScreenState.loading);
 
     try {
-      final response = await PlaceCandidateService.createCandidate(
+      final response = await PlaceCandidateService(widget.authService).createCandidate(
         name: name,
         category: _selectedCategory,
         mediaId: widget.mediaId,
@@ -614,3 +619,5 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
     );
   }
 }
+
+

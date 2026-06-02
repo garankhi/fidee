@@ -110,6 +110,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         AND pc.created_by IN (
           SELECT friend_id FROM friendships
           WHERE user_id = $4 AND status = 'ACCEPTED'
+          UNION ALL SELECT $4
         )
       ORDER BY distance_meters ASC
       LIMIT 10;

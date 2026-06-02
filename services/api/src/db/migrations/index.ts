@@ -518,5 +518,45 @@ ALTER TABLE place_candidates
   ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
   ADD COLUMN IF NOT EXISTS reviewed_by TEXT,
   ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+`,
+  '007_candidate_checkin_ref': `-- ============================================================================
+-- 007_candidate_checkin_ref
+-- Cho phép user check-in vào quán chưa duyệt (đang là candidate)
+-- ============================================================================
+
+ALTER TABLE check_ins
+  ALTER COLUMN place_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS candidate_id UUID;
+`,
+  '008_seed_test_user': `-- ============================================================================
+-- 008_seed_test_user
+-- Insert test user so check-in APIs don't fail foreign key checks
+-- ============================================================================
+
+INSERT INTO users (id, display_name, username, avatar_url, bio, plan, checkin_count, friend_count)
+VALUES (
+  '696a35fc-50e1-7069-67c5-70ace3fcf12e',
+  'Test User',
+  'testuser',
+  'https://ui-avatars.com/api/?name=Test+User',
+  'I am a test user',
+  'FREE',
+  0,
+  0
+) ON CONFLICT (id) DO NOTHING;
+`,
+  '009_candidate_missing_columns': `-- ============================================================================
+-- 009_candidate_missing_columns
+-- Add missing columns to place_candidates that are expected by APIs
+-- ============================================================================
+
+ALTER TABLE place_candidates
+  ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'FRIENDS',
+  ADD COLUMN IF NOT EXISTS open_time TEXT,
+  ADD COLUMN IF NOT EXISTS close_time TEXT,
+  ADD COLUMN IF NOT EXISTS price_min INTEGER,
+  ADD COLUMN IF NOT EXISTS price_max INTEGER,
+  ADD COLUMN IF NOT EXISTS phone_number TEXT,
+  ADD COLUMN IF NOT EXISTS description TEXT;
 `
 };

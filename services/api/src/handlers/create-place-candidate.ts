@@ -1,22 +1,12 @@
 import { HeadObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { randomUUID } from 'crypto';
+import { query } from '../db/client';
 import { extractAuth } from '../middleware/auth';
 import { ValidationError } from '../media/validation';
 import { getUserPlan, UserPlan } from '../repositories/user-profiles';
-import {
-  buildCandidateId,
-  countUserCandidatesToday,
-  findNearbyCandidates,
-  isPlaceCategory,
-  NearbyCandidate,
-  PlaceCandidate,
-  PlaceCategory,
-  putCandidate,
-  QUOTA_LIMITS,
-} from '../repositories/place-candidates';
-import { encodeGeohash, normalizeName } from '../utils/geo';
+import { buildCandidateId, isPlaceCategory, PlaceCategory, QUOTA_LIMITS } from '../repositories/place-candidates';
+import { normalizeName } from '../utils/geo';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -26,17 +16,20 @@ interface CandidateRequest {
   mediaId: string;
   coordinates: { lat: number; lng: number };
   force?: boolean;
+  address?: string;
+  openTime?: string;
+  closeTime?: string;
+  priceMin?: number;
+  priceMax?: number;
+  phoneNumber?: string;
+  description?: string;
 }
 
 interface CreatePlaceCandidateDeps {
   getPlan: (userId: string) => Promise<UserPlan>;
-  putCandidate: (tableName: string, candidate: PlaceCandidate, client?: DynamoDBDocumentClient) => Promise<'created' | 'duplicate'>;
-  countToday: (tableName: string, userId: string, dateStr: string, client?: DynamoDBDocumentClient) => Promise<number>;
-  findNearby: (tableName: string, lat: number, lng: number, radius: number, normalizedName: string, client?: DynamoDBDocumentClient) => Promise<NearbyCandidate[]>;
   verifyMedia: (bucket: string, mediaId: string) => Promise<{ lat: number; lng: number } | null>;
   candidateIdFactory: () => string;
   env: {
-    placesTable: string;
     mediaBucket: string;
     userProfilesTable: string;
   };
@@ -98,6 +91,13 @@ function validateCandidateRequest(value: unknown): CandidateRequest {
     mediaId: mediaId.trim(),
     coordinates: { lat, lng },
     force: body.force === true,
+    address: typeof body.address === 'string' ? body.address.trim() : undefined,
+    openTime: typeof body.openTime === 'string' ? body.openTime.trim() : undefined,
+    closeTime: typeof body.closeTime === 'string' ? body.closeTime.trim() : undefined,
+    priceMin: typeof body.priceMin === 'number' ? body.priceMin : undefined,
+    priceMax: typeof body.priceMax === 'number' ? body.priceMax : undefined,
+    phoneNumber: typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : undefined,
+    description: typeof body.description === 'string' ? body.description.trim() : undefined,
   };
 }
 
@@ -135,9 +135,6 @@ async function verifyMediaInS3(
 // ─── Handler ────────────────────────────────────────────────────
 
 function defaultDeps(): CreatePlaceCandidateDeps {
-  const placesTable = process.env.PLACES_TABLE;
-  if (!placesTable) throw new Error('PLACES_TABLE is required');
-
   const mediaBucket = process.env.MEDIA_BUCKET;
   if (!mediaBucket) throw new Error('MEDIA_BUCKET is required');
 
@@ -146,12 +143,9 @@ function defaultDeps(): CreatePlaceCandidateDeps {
 
   return {
     getPlan: (userId) => getUserPlan(userId, userProfilesTable),
-    putCandidate,
-    countToday: countUserCandidatesToday,
-    findNearby: findNearbyCandidates,
     verifyMedia: (bucket, mediaId) => verifyMediaInS3(bucket, mediaId),
     candidateIdFactory: buildCandidateId,
-    env: { placesTable, mediaBucket, userProfilesTable },
+    env: { mediaBucket, userProfilesTable },
   };
 }
 
@@ -160,6 +154,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
     try {
       // 1. Auth
       const auth = await extractAuth(event);
+      const userId = auth.sub;
 
       // 2. Parse + validate request
       let parsed: unknown;
@@ -179,11 +174,17 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
         });
       }
 
-      // 4. Check quota
-      const plan = await deps.getPlan(auth.sub);
-      const today = new Date().toISOString().slice(0, 10);
-      const usedToday = await deps.countToday(deps.env.placesTable, auth.sub, today);
+      // 4. Check quota (PostgreSQL)
+      const plan = await deps.getPlan(userId);
       const limit = QUOTA_LIMITS[plan];
+      const countSql = `
+        SELECT COUNT(*) as count 
+        FROM place_candidates 
+        WHERE created_by = $1 AND DATE(created_at) = CURRENT_DATE;
+      `;
+      const countRes = await query(countSql, [userId]);
+      const usedToday = parseInt(countRes.rows[0].count as string, 10);
+      
       if (usedToday >= limit) {
         return jsonResponse(429, {
           status: 'error',
@@ -196,63 +197,88 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
         });
       }
 
-      // 5. Normalize name + encode geohash
+      // 5. Normalize name
       const normalized = normalizeName(request.name);
-      const geohash = encodeGeohash(request.coordinates.lat, request.coordinates.lng, 4);
 
-      // 6. Dedup check (unless force=true)
+      // 6. Dedup check (PostgreSQL)
       if (!request.force) {
-        const duplicates = await deps.findNearby(
-          deps.env.placesTable,
-          request.coordinates.lat,
-          request.coordinates.lng,
-          100,
-          normalized,
-        );
-        if (duplicates.length > 0) {
+        const dedupSql = `
+          SELECT id, name, normalized_name, ST_Distance(location, ST_MakePoint($1, $2)::geography) AS distance_meters
+          FROM place_candidates
+          WHERE ST_DWithin(location, ST_MakePoint($1, $2)::geography, 100)
+            AND (normalized_name = $3 OR similarity(normalized_name, $3) > 0.3)
+          LIMIT 5;
+        `;
+        const dupRes = await query(dedupSql, [request.coordinates.lng, request.coordinates.lat, normalized]);
+        if (dupRes.rows.length > 0) {
           return jsonResponse(409, {
             status: 'conflict',
             error: {
               code: 'NEAR_DUPLICATE',
               message: 'Similar place candidates found nearby',
             },
-            candidates: duplicates,
+            candidates: dupRes.rows.map((r: any) => ({
+              candidateId: r.id,
+              name: r.name,
+              normalizedName: r.normalized_name,
+              distanceMeters: Math.round(parseFloat(r.distance_meters))
+            })),
           });
         }
       }
 
-      // 7. Create candidate
-      const now = new Date().toISOString();
-      const candidate: PlaceCandidate = {
-        candidateId: deps.candidateIdFactory(),
-        name: request.name,
-        normalizedName: normalized,
-        category: request.category,
-        lat: request.coordinates.lat,
-        lng: request.coordinates.lng,
-        geohash,
-        status: 'PENDING_REVIEW',
-        visibility: 'FRIENDS',
-        createdBy: auth.sub,
-        mediaId: request.mediaId,
-        createdAt: now,
-        updatedAt: now,
-      };
+      // 7. Create candidate in PostgreSQL
+      const uuidCandidateId = randomUUID(); // Use standard UUID for Postgres
 
-      await deps.putCandidate(deps.env.placesTable, candidate);
+      const insertSql = `
+        INSERT INTO place_candidates (
+          id, name, normalized_name, category, location, media_id, 
+          status, visibility, created_by,
+          address, open_time, close_time, price_min, price_max, phone_number, description
+        ) VALUES (
+          $1, $2, $3, $4, ST_MakePoint($5, $6)::geography, $7, 
+          'PENDING_REVIEW', 'FRIENDS', $8,
+          $9, $10, $11, $12, $13, $14, $15
+        ) RETURNING created_at;
+      `;
+      
+      const insertRes = await query(insertSql, [
+        uuidCandidateId,
+        request.name,
+        normalized,
+        request.category,
+        request.coordinates.lng,
+        request.coordinates.lat,
+        request.mediaId,
+        userId,
+        request.address || null,
+        request.openTime || null,
+        request.closeTime || null,
+        request.priceMin || null,
+        request.priceMax || null,
+        request.phoneNumber || null,
+        request.description || null
+      ]);
 
       return jsonResponse(201, {
         status: 'created',
         data: {
-          candidate_id: candidate.candidateId,
-          name: candidate.name,
-          normalized_name: candidate.normalizedName,
-          category: candidate.category,
-          coordinates: { lat: candidate.lat, lng: candidate.lng },
-          status: candidate.status,
-          visibility: candidate.visibility,
-          created_by: candidate.createdBy,
-          created_at: candidate.createdAt,
+          candidate_id: uuidCandidateId,
+          name: request.name,
+          normalized_name: normalized,
+          category: request.category,
+          coordinates: { lat: request.coordinates.lat, lng: request.coordinates.lng },
+          status: 'PENDING_REVIEW',
+          visibility: 'FRIENDS',
+          created_by: userId,
+          created_at: insertRes.rows[0].created_at,
+          address: request.address,
+          open_time: request.openTime,
+          close_time: request.closeTime,
+          price_min: request.priceMin,
+          price_max: request.priceMax,
+          phone_number: request.phoneNumber,
+          description: request.description,
         },
       });
     } catch (error) {
