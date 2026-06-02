@@ -149,25 +149,32 @@ export class FideeStack extends cdk.Stack {
     const removalPolicy = isProd(stage) ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
 
     // ─── Auth Trigger Lambdas (Custom Auth OTP Flow) ────────────
-    const authTriggerDefaults: Omit<lambda.FunctionProps, 'handler' | 'functionName'> = {
+    const authTriggerDefaults: Omit<nodejs.NodejsFunctionProps, 'handler' | 'entry' | 'functionName'> = {
       runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset('../../services/api/dist'),
       memorySize: 128,
       timeout: cdk.Duration.seconds(10),
     };
 
-    const defineAuthChallengeFn = new lambda.Function(this, 'DefineAuthChallengeFn', {
+    const defineAuthChallengeFn = new nodejs.NodejsFunction(this, 'DefineAuthChallengeFn', {
       ...authTriggerDefaults,
       functionName: resourceName(stage, 'define-auth'),
-      handler: 'triggers/define-auth-challenge.handler',
+      entry: '../../services/api/src/triggers/define-auth-challenge.ts',
+      handler: 'handler',
+      environment: {
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+      },
     });
 
-    const createAuthChallengeFn = new lambda.Function(this, 'CreateAuthChallengeFn', {
+    const createAuthChallengeFn = new nodejs.NodejsFunction(this, 'CreateAuthChallengeFn', {
       ...authTriggerDefaults,
       functionName: resourceName(stage, 'create-auth'),
-      handler: 'triggers/create-auth-challenge.handler',
+      entry: '../../services/api/src/triggers/create-auth-challenge.ts',
+      handler: 'handler',
       environment: {
-        RESEND_API_KEY: process.env.RESEND_API_KEY || '', RESEND_SENDER_EMAIL: process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev', },
+        RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+        RESEND_SENDER_EMAIL: process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev',
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+      },
     });
 
     // Grant SES send email
@@ -178,16 +185,21 @@ export class FideeStack extends cdk.Stack {
       }),
     );
 
-    const verifyAuthChallengeFn = new lambda.Function(this, 'VerifyAuthChallengeFn', {
+    const verifyAuthChallengeFn = new nodejs.NodejsFunction(this, 'VerifyAuthChallengeFn', {
       ...authTriggerDefaults,
       functionName: resourceName(stage, 'verify-auth'),
-      handler: 'triggers/verify-auth-challenge.handler',
+      entry: '../../services/api/src/triggers/verify-auth-challenge.ts',
+      handler: 'handler',
+      environment: {
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+      },
     });
 
-    const preSignUpFn = new lambda.Function(this, 'PreSignUpFn', {
+    const preSignUpFn = new nodejs.NodejsFunction(this, 'PreSignUpFn', {
       ...authTriggerDefaults,
       functionName: resourceName(stage, 'pre-sign-up'),
-      handler: 'triggers/pre-sign-up.handler',
+      entry: '../../services/api/src/triggers/pre-sign-up.ts',
+      handler: 'handler',
     });
 
     // ─── Cognito User Pool ───────────────────────────────────────
@@ -202,8 +214,16 @@ export class FideeStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: false,
       },
+      lambdaTriggers: {
+        defineAuthChallenge: defineAuthChallengeFn,
+        createAuthChallenge: createAuthChallengeFn,
+        verifyAuthChallengeResponse: verifyAuthChallengeFn,
+        preSignUp: preSignUpFn,
+      },
       removalPolicy,
     });
+
+
 
     // ─── Cognito Groups (RBAC) ───────────────────────────────────
     new cognito.CfnUserPoolGroup(this, 'UsersGroup', {
@@ -223,7 +243,7 @@ export class FideeStack extends cdk.Stack {
     });
 
     const userPoolClient = userPool.addClient('WebClient', {
-      authFlows: { userSrp: true, userPassword: true },
+      authFlows: { userSrp: true, userPassword: true, custom: true },
     });
 
     const placesTable = new dynamodb.Table(this, 'PlacesTable', {
@@ -582,9 +602,9 @@ export class FideeStack extends cdk.Stack {
     const placeCandidatesResource = api.root.addResource('place-candidates');
     placeCandidatesResource.addMethod('POST',
       new apigateway.LambdaIntegration(createPlaceCandidateFn), {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    },
     );
 
     // ─── DB Migration Lambda (VPC, connects to Aurora) ──────────
