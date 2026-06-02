@@ -1,4 +1,4 @@
-package com.fidee.fidee_mobile
+package com.fidee.fidee
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -251,7 +251,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   urlTemplate:
                       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.fidee.fidee_mobile',
+                  userAgentPackageName: 'com.fidee.fidee',
                   maxZoom: 20,
                 ),
                 if (_locationService.hasRealLocation)
