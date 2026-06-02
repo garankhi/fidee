@@ -28,41 +28,41 @@ describe('maskEmail', () => {
 });
 
 describe('extractAuth', () => {
-  it('extracts sub, phone, email from claims', () => {
+  it('extracts sub, phone, email from claims', async () => {
     const event = mockEventWithClaims({
       sub: 'user-123',
       phone_number: '+84912345678',
       email: 'user@example.com',
       'cognito:groups': 'Users',
     });
-    const auth = extractAuth(event);
+    const auth = await extractAuth(event);
     expect(auth.sub).toBe('user-123');
     expect(auth.phone).toBe('+84912345678');
     expect(auth.email).toBe('user@example.com');
     expect(auth.groups).toEqual(['Users']);
   });
 
-  it('defaults to Users group when no groups claim', () => {
+  it('defaults to Users group when no groups claim', async () => {
     const event = mockEventWithClaims({
       sub: 'user-123',
       phone_number: '+84912345678',
     });
-    const auth = extractAuth(event);
+    const auth = await extractAuth(event);
     expect(auth.groups).toEqual(['Users']);
   });
 
-  it('parses multiple groups', () => {
+  it('parses multiple groups', async () => {
     const event = mockEventWithClaims({
       sub: 'admin-1',
       'cognito:groups': 'Admins,Moderators',
     });
-    const auth = extractAuth(event);
+    const auth = await extractAuth(event);
     expect(auth.groups).toEqual(['Admins', 'Moderators']);
   });
 
-  it('throws when sub is missing', () => {
+  it('throws when sub is missing', async () => {
     const event = mockEventWithClaims({});
-    expect(() => extractAuth(event)).toThrow('Missing auth context');
+    await expect(extractAuth(event)).rejects.toThrow('Missing auth context');
   });
 });
 

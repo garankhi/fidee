@@ -56,8 +56,9 @@ class FideeApp extends ConsumerWidget {
     AsyncValue<AuthUiState> authState,
     AsyncValue<LocationService> locationState,
   ) {
-    // Còn loading ở bất kỳ provider nào → giữ SplashScreen
-    if (authState.isLoading || locationState.isLoading) {
+    // Còn loading ở bất kỳ provider nào và chưa có giá trị cũ → giữ SplashScreen
+    if ((authState.isLoading && !authState.hasValue) ||
+        (locationState.isLoading && !locationState.hasValue)) {
       return const _SplashScreen();
     }
 

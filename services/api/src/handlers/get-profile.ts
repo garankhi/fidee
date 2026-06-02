@@ -11,7 +11,7 @@ export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const auth = extractAuth(event);
+    const auth = await extractAuth(event);
 
     return {
       statusCode: 200,

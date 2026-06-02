@@ -190,6 +190,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _signOut(BuildContext context) async {
     await ref.read(authControllerProvider.notifier).signOut();
+    if (context.mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   void _onCheckIn() async {

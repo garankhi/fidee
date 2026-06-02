@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../db/client';
+import { extractAuth } from '../middleware/auth';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -36,10 +37,12 @@ function getConfidence(distanceMeters: number): Confidence {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    // 1. Auth
-    const userId = event.requestContext.authorizer?.jwt?.claims?.sub
-      || event.requestContext.authorizer?.claims?.sub;
-    if (!userId) {
+    // 1. Auth & sync profile
+    let userId: string;
+    try {
+      const auth = await extractAuth(event);
+      userId = auth.sub;
+    } catch (authError) {
       return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
     }
 

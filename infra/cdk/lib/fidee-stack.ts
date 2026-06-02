@@ -395,21 +395,30 @@ export class FideeStack extends cdk.Stack {
       },
     });
 
-    const createMediaUploadFn = new lambda.Function(this, 'CreateMediaUploadFunction', {
+    const createMediaUploadFn = new nodejs.NodejsFunction(this, 'CreateMediaUploadFunction', {
       functionName: resourceName(stage, 'create-media-upload'),
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'handlers/create-media-upload.handler',
-      code: lambda.Code.fromAsset('../../services/api/dist'),
+      entry: '../../services/api/src/handlers/create-media-upload.ts',
+      handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
       environment: {
         STAGE: stage,
         MEDIA_BUCKET: mediaBucket.bucketName,
         USER_PROFILES_TABLE: userProfilesTable.tableName,
         UPLOAD_EXPIRY_SECONDS: '300',
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
       },
     });
-    userProfilesTable.grantReadData(createMediaUploadFn);
+    dbCluster.secret!.grantRead(createMediaUploadFn);
+    userProfilesTable.grantReadWriteData(createMediaUploadFn);
     mediaBucket.grantPut(createMediaUploadFn, 'uploads/*');
 
     const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
@@ -471,6 +480,25 @@ export class FideeStack extends cdk.Stack {
       },
     });
 
+    // Cấu hình Gateway Responses để hỗ trợ CORS cho các lỗi 4XX và 5XX
+    api.addGatewayResponse('Default4XX', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        'gatewayresponse.header.Access-Control-Allow-Origin': "'*'",
+        'gatewayresponse.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+        'gatewayresponse.header.Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'",
+      },
+    });
+
+    api.addGatewayResponse('Default5XX', {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        'gatewayresponse.header.Access-Control-Allow-Origin': "'*'",
+        'gatewayresponse.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+        'gatewayresponse.header.Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'",
+      },
+    });
+
     new route53.ARecord(this, 'ApiAliasRecord', {
       zone: hostedZone,
       recordName: apiDomainName,
@@ -487,15 +515,28 @@ export class FideeStack extends cdk.Stack {
     searchResource.addMethod('POST', new apigateway.LambdaIntegration(searchFn));
 
     // ─── GET /profile (protected) ────────────────────────────────
-    const profileFn = new lambda.Function(this, 'GetProfileFunction', {
+    const profileFn = new nodejs.NodejsFunction(this, 'GetProfileFunction', {
       functionName: resourceName(stage, 'get-profile'),
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'handlers/get-profile.handler',
-      code: lambda.Code.fromAsset('../../services/api/dist'),
+      entry: '../../services/api/src/handlers/get-profile.ts',
+      handler: 'handler',
       memorySize: 128,
       timeout: cdk.Duration.seconds(10),
-      environment: { STAGE: stage },
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
     });
+    dbCluster.secret!.grantRead(profileFn);
+    userProfilesTable.grantReadWriteData(profileFn);
 
     const profileResource = api.root.addResource('profile');
     profileResource.addMethod('GET', new apigateway.LambdaIntegration(profileFn), {
@@ -511,22 +552,31 @@ export class FideeStack extends cdk.Stack {
     });
 
     // ─── POST /place-candidates (protected) ─────────────────────
-    const createPlaceCandidateFn = new lambda.Function(this, 'CreatePlaceCandidateFunction', {
+    const createPlaceCandidateFn = new nodejs.NodejsFunction(this, 'CreatePlaceCandidateFunction', {
       functionName: resourceName(stage, 'create-place-candidate'),
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'handlers/create-place-candidate.handler',
-      code: lambda.Code.fromAsset('../../services/api/dist'),
+      entry: '../../services/api/src/handlers/create-place-candidate.ts',
+      handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(15),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
       environment: {
         STAGE: stage,
         PLACES_TABLE: placesTable.tableName,
         MEDIA_BUCKET: mediaBucket.bucketName,
         USER_PROFILES_TABLE: userProfilesTable.tableName,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
       },
     });
+    dbCluster.secret!.grantRead(createPlaceCandidateFn);
     placesTable.grantReadWriteData(createPlaceCandidateFn);
-    userProfilesTable.grantReadData(createPlaceCandidateFn);
+    userProfilesTable.grantReadWriteData(createPlaceCandidateFn);
     mediaBucket.grantRead(createPlaceCandidateFn, 'uploads/*');
 
     const placeCandidatesResource = api.root.addResource('place-candidates');
@@ -610,9 +660,84 @@ export class FideeStack extends cdk.Stack {
     });
     dbCluster.secret!.grantRead(getNearbyPlacesFn);
 
+    // ─── GET /admin/users (VPC, connects to Aurora) ────────────
+    const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {
+      functionName: resourceName(stage, 'get-users'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-users.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    });
+    dbCluster.secret!.grantRead(getUsersFn);
+
+    // ─── PUT /admin/users/{userId} (VPC, connects to Aurora) ────
+    const updateUserFn = new nodejs.NodejsFunction(this, 'UpdateUserFunction', {
+      functionName: resourceName(stage, 'update-user'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/update-user.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    });
+    dbCluster.secret!.grantRead(updateUserFn);
+    userProfilesTable.grantReadWriteData(updateUserFn);
+
     const placesResource = api.root.addResource('places');
     const nearbyResource = placesResource.addResource('nearby');
     nearbyResource.addMethod('GET', new apigateway.LambdaIntegration(getNearbyPlacesFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── Admin Users Resources (protected) ──────────────────────
+    const adminResource = api.root.addResource('admin');
+    const adminUsersResource = adminResource.addResource('users');
+
+    // Add CORS Preflight options for web browser clients
+    adminUsersResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+
+    adminUsersResource.addMethod('GET', new apigateway.LambdaIntegration(getUsersFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const adminUserDetailResource = adminUsersResource.addResource('{userId}');
+    // Add CORS Preflight options for web browser clients
+    adminUserDetailResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['PUT', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+
+    adminUserDetailResource.addMethod('PUT', new apigateway.LambdaIntegration(updateUserFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });

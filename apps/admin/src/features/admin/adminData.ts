@@ -32,10 +32,14 @@ export interface ModerationRequest {
 export interface User {
   id: string;
   username: string;
+  fullName: string;
   email: string;
+  phone: string;
   joinedDate: string;
   contributions: number;
   status: 'active' | 'inactive';
+  license: 'Free' | 'Basic' | 'Pro' | 'Enterprise';
+  role: 'User' | 'Moderator' | 'Admin';
 }
 
 export interface Place {
@@ -254,11 +258,11 @@ export const mockModerationRequests: ModerationRequest[] = [
 ];
 
 export const mockUsers: User[] = [
-  { id: 'user-1', username: 'nguyenminh', email: 'nguyen@example.com', joinedDate: 'Jan 15, 2024', contributions: 12, status: 'active' },
-  { id: 'user-2', username: 'foodie_sg', email: 'foodie@example.com', joinedDate: 'Feb 20, 2024', contributions: 28, status: 'active' },
-  { id: 'user-3', username: 'jane.doe', email: 'jane@example.com', joinedDate: 'Mar 10, 2024', contributions: 8, status: 'active' },
-  { id: 'user-4', username: 'hoangvu', email: 'hoang@example.com', joinedDate: 'Mar 25, 2024', contributions: 15, status: 'inactive' },
-  { id: 'user-5', username: 'traveler_lee', email: 'traveler@example.com', joinedDate: 'Apr 5, 2024', contributions: 20, status: 'active' },
+  { id: 'user-1', username: 'nguyenminh', fullName: 'Nguyễn Minh', email: 'nguyen@example.com', phone: '0901234567', joinedDate: 'Jan 15, 2024', contributions: 12, status: 'active', license: 'Pro', role: 'Admin' },
+  { id: 'user-2', username: 'foodie_sg', fullName: 'Saigon Foodie', email: 'foodie@example.com', phone: '0912345678', joinedDate: 'Feb 20, 2024', contributions: 28, status: 'active', license: 'Enterprise', role: 'Moderator' },
+  { id: 'user-3', username: 'jane.doe', fullName: 'Jane Doe', email: 'jane@example.com', phone: '0987654321', joinedDate: 'Mar 10, 2024', contributions: 8, status: 'active', license: 'Basic', role: 'User' },
+  { id: 'user-4', username: 'hoangvu', fullName: 'Hoàng Vũ', email: 'hoang@example.com', phone: '0934567890', joinedDate: 'Mar 25, 2024', contributions: 15, status: 'inactive', license: 'Free', role: 'User' },
+  { id: 'user-5', username: 'traveler_lee', fullName: 'Traveler Lee', email: 'traveler@example.com', phone: '0976543210', joinedDate: 'Apr 5, 2024', contributions: 20, status: 'active', license: 'Pro', role: 'User' },
 ];
 
 export const mockPlaces: Place[] = [

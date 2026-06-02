@@ -18,7 +18,7 @@ class SecureCognitoStorage extends CognitoStorage {
   SecureCognitoStorage(FlutterSecureStorage storage)
     : this.custom(
         read: (key) => storage.read(key: key),
-        readAll: storage.readAll,
+        readAll: () => storage.readAll(),
         write: (key, value) => storage.write(key: key, value: value),
         delete: (key) => storage.delete(key: key),
       );
