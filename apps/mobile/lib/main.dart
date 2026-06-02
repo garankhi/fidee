@@ -1,14 +1,14 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/auth/auth_providers.dart';
+
 import 'features/auth/login_page.dart';
 import 'features/auth/screens/register_step3_name_page.dart';
 
 import 'screens/home_screen.dart';
-import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
-import 'services/location_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

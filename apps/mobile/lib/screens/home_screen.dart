@@ -3,14 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../features/auth/auth_providers.dart';
-import '../models/nearby_place.dart';
-import '../models/map_feed_item.dart';
+import '../features/auth/login_page.dart';
+import '../services/auth_service.dart';
 import '../services/location_service.dart';
-import '../services/nearby_service.dart';
-import 'add_spot_screen.dart';
-import '../services/map_feed_service.dart';
-import 'camera_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 ///
