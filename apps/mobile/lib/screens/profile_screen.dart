@@ -178,9 +178,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           title: Text(
             'PROFILE',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.ericaOne(
               color: const Color(0xFFEF4050),
-              fontSize: 22,
+              fontSize: 32,
               fontWeight: FontWeight.w400,
               letterSpacing: 2.0,
             ),
