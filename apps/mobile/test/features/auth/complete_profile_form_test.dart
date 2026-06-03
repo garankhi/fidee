@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  Finder fieldWithValue(String value) {
+    return find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.controller?.text == value,
+      description: 'TextField with value $value',
+    );
+  }
+
   Widget buildForm({
     String? firstName = 'Minh',
     String? lastName,
@@ -34,8 +41,8 @@ void main() {
 
       expect(find.text('Hoan tat ho so'), findsOneWidget);
       expect(find.text('Ten cua ban'), findsNothing);
-      expect(find.displayingText('Minh'), findsOneWidget);
-      expect(find.displayingText('minh'), findsOneWidget);
+      expect(fieldWithValue('Minh'), findsOneWidget);
+      expect(fieldWithValue('minh'), findsOneWidget);
     });
 
     testWidgets('requires all profile fields before submit', (tester) async {
