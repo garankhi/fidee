@@ -11,6 +11,7 @@ import '../config.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
 import '../services/auth_service.dart';
+import 'edit_profile_sheet.dart';
 import 'friends_detail_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -124,6 +125,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         setState(() => _isUploading = false);
       }
     }
+  }
+
+  Future<AuthResult> _updateProfileInfo({
+    required String firstName,
+    required String lastName,
+    required String preferredUsername,
+  }) async {
+    return ref.read(authControllerProvider.notifier).updateProfile(
+          firstName: firstName,
+          lastName: lastName,
+          preferredUsername: preferredUsername,
+        );
+  }
+
+  void _showEditProfileSheet({
+    required String firstName,
+    required String lastName,
+    required String preferredUsername,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return EditProfileSheet(
+          firstName: firstName,
+          lastName: lastName,
+          preferredUsername: preferredUsername,
+          onSave: _updateProfileInfo,
+          onSaved: () {
+            if (mounted) {
+              setState(() {});
+            }
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -329,6 +367,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               color: Color(0xFF8D8D8D),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => _showEditProfileSheet(
+                                firstName: firstName,
+                                lastName: lastName,
+                                preferredUsername: preferredUsername,
+                              ),
+                              icon: const Icon(Icons.edit_rounded, size: 15),
+                              label: const Text('Sửa thông tin'),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFFEF4050),
+                                minimumSize: const Size(0, 34),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                              ),
                             ),
                           ),
                         ],
