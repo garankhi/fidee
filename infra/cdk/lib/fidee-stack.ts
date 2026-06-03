@@ -289,6 +289,11 @@ export class FideeStack extends cdk.Stack {
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
           cidrMask: 24,
         },
+        {
+          name: 'public',
+          subnetType: ec2.SubnetType.PUBLIC,
+          cidrMask: 24,
+        },
       ],
     });
 
@@ -345,6 +350,26 @@ export class FideeStack extends cdk.Stack {
       ec2.Port.tcp(5432),
       'Allow Lambda to connect to Aurora PostgreSQL',
     );
+
+    // ─── Bastion Host (For Local Database Access) ───────────
+    const bastion = new ec2.BastionHostLinux(this, 'BastionHost', {
+      vpc,
+      subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.NANO),
+      machineImage: ec2.MachineImage.latestAmazonLinux2023({
+        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
+      }),
+    });
+
+    dbSecurityGroup.addIngressRule(
+      bastion.connections.securityGroups[0],
+      ec2.Port.tcp(5432),
+      'Allow Bastion Host to connect to Aurora PostgreSQL',
+    );
+
+    new cdk.CfnOutput(this, 'BastionHostId', {
+      value: bastion.instanceId,
+    });
 
     const mediaBucket = new s3.Bucket(this, 'MediaBucket', {
       bucketName: `${resourceName(stage, 'media')}-${cdk.Aws.ACCOUNT_ID}-${MAIN_REGION}`,
@@ -790,6 +815,37 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── GET /map/heatmap (protected) ────────────────────────────
+    const getHeatmapFn = new nodejs.NodejsFunction(this, 'GetHeatmapFunction', {
+      functionName: resourceName(stage, 'get-heatmap'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-heatmap.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getHeatmapFn);
+
+    const mapHeatmapResource = mapResource.addResource('heatmap');
+    mapHeatmapResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    mapHeatmapResource.addMethod('GET', new apigateway.LambdaIntegration(getHeatmapFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // ─── GET /places/nearby (protected) ─────────────────────────
     const getNearbyPlacesFn = new nodejs.NodejsFunction(this, 'GetNearbyPlacesFunction', {
       functionName: resourceName(stage, 'get-nearby-places'),
@@ -881,36 +937,6 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
-    // ─── GET /friends (protected) ───────────────────────────────
-    const getFriendsFn = new nodejs.NodejsFunction(this, 'GetFriendsFunction', {
-      functionName: resourceName(stage, 'get-friends'),
-      runtime: lambda.Runtime.NODEJS_20_X,
-      entry: '../../services/api/src/handlers/get-friends.ts',
-      handler: 'handler',
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
-      vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      securityGroups: [lambdaSecurityGroup],
-      environment: {
-        STAGE: stage,
-        DB_SECRET_ARN: dbCluster.secret!.secretArn,
-        DB_NAME: 'fidee',
-      },
-      bundling: { nodeModules: ['pg'] },
-    });
-    dbCluster.secret!.grantRead(getFriendsFn);
-
-    const friendsResource = api.root.addResource('friends');
-    friendsResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    friendsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendsFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
 
     // ─── GET /admin/users (VPC, connects to Aurora) ────────────
     const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {

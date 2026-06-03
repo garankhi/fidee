@@ -52,14 +52,18 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       JOIN users u ON u.id = ci.user_id
       LEFT JOIN places p ON p.id = ci.place_id
       LEFT JOIN place_candidates pc ON pc.id = ci.candidate_id
-      WHERE ci.user_id IN (
-          SELECT friend_id FROM friendships
-          WHERE user_id = $1 AND status = 'ACCEPTED'
-          UNION ALL SELECT $1
+      WHERE (
+          ci.user_id = $1
+          OR (
+            ci.visibility = 'FRIENDS'
+            AND ci.user_id IN (
+              SELECT friend_id FROM friendships
+              WHERE user_id = $1 AND status = 'ACCEPTED'
+            )
+          )
         )
         AND COALESCE(p.location, pc.location) IS NOT NULL
         AND ST_DWithin(COALESCE(p.location, pc.location), ST_MakePoint($2, $3)::geography, $4)
-        AND ci.visibility IN ('PUBLIC', 'FRIENDS')
       ORDER BY ci.created_at DESC
       LIMIT 50;
     `;

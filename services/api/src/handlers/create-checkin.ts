@@ -12,7 +12,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const auth = await extractAuth(event);
 
     const body = JSON.parse(event.body || '{}');
-    const { place_id, candidate_id, media_id, gps_lat, gps_lng, gps_accuracy, caption, rating, visibility = 'PUBLIC' } = body;
+    const { place_id, candidate_id, media_id, gps_lat, gps_lng, gps_accuracy, caption, rating, visibility = 'FRIENDS' } = body;
 
     if (!place_id && !candidate_id) {
       return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Either place_id or candidate_id is required' }) };
@@ -25,6 +25,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
     if (gps_lat == null || gps_lng == null) {
       return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'gps_lat and gps_lng are required' }) };
+    }
+    if (!['FRIENDS', 'PRIVATE'].includes(visibility)) {
+      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'visibility must be FRIENDS or PRIVATE' }) };
     }
 
     const insertSql = `

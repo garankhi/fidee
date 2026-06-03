@@ -558,5 +558,22 @@ ALTER TABLE place_candidates
   ADD COLUMN IF NOT EXISTS price_max INTEGER,
   ADD COLUMN IF NOT EXISTS phone_number TEXT,
   ADD COLUMN IF NOT EXISTS description TEXT;
+`,
+  '010_checkin_visibility_no_public': `-- ============================================================================
+-- 010_checkin_visibility_no_public
+-- Remove PUBLIC from check_ins visibility. Only FRIENDS and PRIVATE allowed.
+-- ============================================================================
+
+-- Update existing PUBLIC check-ins to FRIENDS
+UPDATE check_ins SET visibility = 'FRIENDS' WHERE visibility = 'PUBLIC';
+
+-- Drop old constraint and add new one
+ALTER TABLE check_ins DROP CONSTRAINT IF EXISTS check_ins_visibility_check;
+ALTER TABLE check_ins
+  ADD CONSTRAINT check_ins_visibility_check
+  CHECK (visibility IN ('FRIENDS', 'PRIVATE'));
+
+-- Update default
+ALTER TABLE check_ins ALTER COLUMN visibility SET DEFAULT 'FRIENDS';
 `
 };
