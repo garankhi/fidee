@@ -764,6 +764,40 @@ export class FideeStack extends cdk.Stack {
     },
     );
 
+    // ─── POST /place-candidates/quick (protected) ────────────────
+    const createQuickPlaceFn = new nodejs.NodejsFunction(this, 'CreateQuickPlaceFunction', {
+      functionName: resourceName(stage, 'create-quick-place'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/create-quick-place.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(createQuickPlaceFn);
+    userProfilesTable.grantReadWriteData(createQuickPlaceFn);
+
+    const quickPlaceResource = placeCandidatesResource.addResource('quick');
+    quickPlaceResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    quickPlaceResource.addMethod('POST',
+      new apigateway.LambdaIntegration(createQuickPlaceFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // ─── DB Migration Lambda (VPC, connects to Aurora) ──────────
     const migrateFn = new nodejs.NodejsFunction(this, 'MigrateFunction', {
       functionName: resourceName(stage, 'db-migrate'),
@@ -842,6 +876,38 @@ export class FideeStack extends cdk.Stack {
       allowHeaders: ['Content-Type', 'Authorization'],
     });
     mapHeatmapResource.addMethod('GET', new apigateway.LambdaIntegration(getHeatmapFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── GET /discovery/feed (protected) ─────────────────────────
+    const getDiscoveryFeedFn = new nodejs.NodejsFunction(this, 'GetDiscoveryFeedFunction', {
+      functionName: resourceName(stage, 'get-discovery-feed'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-discovery-feed.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(15),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getDiscoveryFeedFn);
+
+    const discoveryResource = api.root.addResource('discovery');
+    const discoveryFeedResource = discoveryResource.addResource('feed');
+    discoveryFeedResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    discoveryFeedResource.addMethod('GET', new apigateway.LambdaIntegration(getDiscoveryFeedFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
