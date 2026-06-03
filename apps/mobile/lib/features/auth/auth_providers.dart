@@ -13,6 +13,9 @@ class AuthUiState {
   final bool isSubmitting;
   final bool isVerifying;
   final String? errorMessage;
+  final String? firstName;
+  final String? lastName;
+  final String? preferredUsername;
 
   const AuthUiState({
     required this.authState,
@@ -22,6 +25,9 @@ class AuthUiState {
     this.isSubmitting = false,
     this.isVerifying = false,
     this.errorMessage,
+    this.firstName,
+    this.lastName,
+    this.preferredUsername,
   });
 
   factory AuthUiState.fromService(
@@ -38,6 +44,9 @@ class AuthUiState {
       isSubmitting: isSubmitting,
       isVerifying: isVerifying,
       errorMessage: errorMessage,
+      firstName: service.firstName,
+      lastName: service.lastName,
+      preferredUsername: service.preferredUsername,
     );
   }
 
@@ -49,6 +58,9 @@ class AuthUiState {
     bool? isSubmitting,
     bool? isVerifying,
     String? errorMessage,
+    String? firstName,
+    String? lastName,
+    String? preferredUsername,
     bool clearError = false,
   }) {
     return AuthUiState(
@@ -60,6 +72,9 @@ class AuthUiState {
       isSubmitting: isSubmitting ?? this.isSubmitting,
       isVerifying: isVerifying ?? this.isVerifying,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      preferredUsername: preferredUsername ?? this.preferredUsername,
     );
   }
 }

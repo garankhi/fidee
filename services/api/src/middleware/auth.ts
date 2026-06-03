@@ -4,6 +4,8 @@ import { syncUserToDatabases } from '../utils/sync-user';
 export interface AuthContext {
   /** Cognito user ID */
   sub: string;
+  /** Cognito username, often email for this user pool */
+  username?: string;
   /** Phone number (raw from JWT claim) */
   phone: string | undefined;
   /** Email (raw from JWT claim) */
@@ -45,6 +47,7 @@ export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthCont
   }
 
   const sub = claims.sub as string;
+  const username = (claims['cognito:username'] as string) || undefined;
   const email = (claims.email as string) || undefined;
   const phone = (claims.phone_number as string) || undefined;
 
@@ -77,6 +80,7 @@ export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthCont
 
   return {
     sub,
+    username,
     phone,
     email,
     groups,

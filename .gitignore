@@ -5,6 +5,7 @@ node_modules/
 dist/
 cdk.out/
 tmp/
+.worktrees/
 
 # IDE
 .idea/

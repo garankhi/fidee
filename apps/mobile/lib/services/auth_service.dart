@@ -525,29 +525,17 @@ class AuthService {
       return const AuthResult(success: true);
     }
 
-    try {
-      if (_cognitoUser != null) {
-        final attributes = [
-          CognitoUserAttribute(name: 'given_name', value: firstName),
-          CognitoUserAttribute(name: 'family_name', value: lastName),
-          CognitoUserAttribute(name: 'preferred_username', value: username),
-        ];
-        await _cognitoUser!.updateAttributes(attributes);
-        _firstName = firstName;
-        _lastName = lastName;
-        _preferredUsername = username;
-        
-        await fetchProfileDetails();
-      }
+    final result = await _patchProfileDetails(
+      firstName: firstName,
+      lastName: lastName,
+      username: username,
+    );
+
+    if (result.success) {
       _state = AuthState.authenticated;
-      return const AuthResult(success: true);
-    } catch (e) {
-      _firstName = firstName;
-      _lastName = lastName;
-      _preferredUsername = username;
-      _state = AuthState.authenticated; // fallback so user is not stuck
-      return const AuthResult(success: true);
     }
+
+    return result;
   }
 
   Future<void> fetchProfileDetails() async {
@@ -601,6 +589,18 @@ class AuthService {
       return const AuthResult(success: true);
     }
 
+    if (firstName != null || lastName != null || preferredUsername != null) {
+      final currentFirstName = firstName ?? _firstName ?? '';
+      final currentLastName = lastName ?? _lastName ?? '';
+      final currentUsername = preferredUsername ?? _preferredUsername ?? '';
+
+      return _patchProfileDetails(
+        firstName: currentFirstName,
+        lastName: currentLastName,
+        username: currentUsername,
+      );
+    }
+
     try {
       if (_cognitoUser != null) {
         final attributes = <CognitoUserAttribute>[];
@@ -621,16 +621,86 @@ class AuthService {
           await _cognitoUser!.updateAttributes(attributes);
         }
 
+        await fetchProfileDetails();
+
         if (firstName != null) _firstName = firstName;
         if (lastName != null) _lastName = lastName;
         if (preferredUsername != null) _preferredUsername = preferredUsername;
         if (avatarUrl != null) _avatarUrl = avatarUrl;
-        
-        await fetchProfileDetails();
       }
       return const AuthResult(success: true);
     } catch (e) {
       return AuthResult(success: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<AuthResult> _patchProfileDetails({
+    required String firstName,
+    required String lastName,
+    required String username,
+  }) async {
+    final token = await getToken();
+    if (token == null) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      );
+    }
+
+    try {
+      final response = await http.patch(
+        Uri.parse('${Config.apiBaseUrl}/profile'),
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'firstName': firstName.trim(),
+          'lastName': lastName.trim(),
+          'username': username.trim(),
+        }),
+      );
+
+      final body = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final profile = body['profile'] as Map<String, dynamic>?;
+        _firstName = firstName.trim();
+        _lastName = lastName.trim();
+        _preferredUsername = profile?['username'] as String? ?? username.trim().toLowerCase();
+        _avatarUrl = profile?['avatarUrl'] as String? ?? _avatarUrl;
+
+        final plan = profile?['plan'] as String?;
+        _tier = plan == 'PRO' ? UserTier.pro : UserTier.free;
+
+        final createdAt = profile?['createdAt'] as String?;
+        if (createdAt != null) {
+          _since = DateTime.parse(createdAt).year.toString();
+        }
+
+        return const AuthResult(success: true);
+      }
+
+      final code = body['code'] as String?;
+      if (response.statusCode == 409 && code == 'USERNAME_TAKEN') {
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Username đã được sử dụng',
+        );
+      }
+
+      final error = body['error'] as String?;
+      return AuthResult(
+        success: false,
+        errorMessage: error ?? 'Cập nhật profile thất bại',
+      );
+    } catch (_) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Lỗi kết nối. Vui lòng thử lại.',
+      );
     }
   }
 

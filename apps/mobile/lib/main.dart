@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/auth/auth_providers.dart';
 import 'features/auth/login_page.dart';
-import 'features/auth/screens/register_step3_name_page.dart';
+import 'features/auth/screens/complete_profile_page.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/location_gate_screen1.dart';
@@ -80,8 +80,13 @@ class FideeApp extends ConsumerWidget {
 
       return HomeScreen(locationService: locationService);
     } else if (state.authState == AuthState.incompleteProfile) {
-      // BEST PRACTICE: Bắt lỗi đăng ký dở dang, ép vào màn nhập Tên
-      return const RegisterStep3NamePage();
+      // Authenticated user is missing required profile fields.
+      // Keep this outside the register wizard so users do not feel sent back to signup.
+      return CompleteProfilePage(
+        initialFirstName: state.firstName,
+        initialLastName: state.lastName,
+        initialUsername: state.preferredUsername,
+      );
     } else {
       return const LoginPage();
     }
