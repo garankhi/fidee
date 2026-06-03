@@ -138,7 +138,7 @@ function defaultDeps(): CreateMediaUploadDeps {
 export function createMediaUploadHandler(deps: CreateMediaUploadDeps) {
   return async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
-      const auth = extractAuth(event);
+      const auth = await extractAuth(event);
       const uploadRequest = validateUploadRequest(parseJsonBody(event));
       const plan = await deps.getPlan(auth.sub);
 

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // Since SF-Pro is an Apple system font and cannot be easily bundled due to licensing,
 // we fall back to standard sans-serif which is Roboto on Android and SF-Pro on iOS.
 // For a pure cross-platform SF-Pro look, one would need to manually download the TTF
-// from Apple, place it in assets, and configure pubspec.yaml. 
+// from Apple, place it in assets, and configure pubspec.yaml.
 // For now, we use the default text theme which maps to system defaults (SF Pro on iOS).
 TextStyle _baseTextStyle() => const TextStyle(fontFamily: '.SF Pro Text');
 

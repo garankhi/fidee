@@ -78,7 +78,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     });
                   },
                   onSubmit: _submit,
-                  onGoogleSignIn: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+                  onGoogleSignIn: () => ref
+                      .read(authControllerProvider.notifier)
+                      .signInWithGoogle(),
                 ),
               ),
             ],

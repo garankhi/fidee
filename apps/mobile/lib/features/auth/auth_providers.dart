@@ -167,12 +167,41 @@ class AuthController extends _$AuthController {
     state = AsyncData(AuthUiState.fromService(service));
   }
 
-  Future<AuthResult> completeProfile(String firstName, String lastName, String username) async {
+  Future<AuthResult> completeProfile(
+    String firstName,
+    String lastName,
+    String username,
+  ) async {
     final current = _currentState();
     state = AsyncData(current.copyWith(isSubmitting: true, clearError: true));
 
     final service = ref.read(authServiceProvider);
     final result = await service.completeProfile(firstName, lastName, username);
+    state = AsyncData(
+      AuthUiState.fromService(
+        service,
+        errorMessage: result.success ? null : result.errorMessage,
+      ),
+    );
+    return result;
+  }
+
+  Future<AuthResult> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? preferredUsername,
+    String? avatarUrl,
+  }) async {
+    final current = _currentState();
+    state = AsyncData(current.copyWith(isSubmitting: true, clearError: true));
+
+    final service = ref.read(authServiceProvider);
+    final result = await service.updateProfile(
+      firstName: firstName,
+      lastName: lastName,
+      preferredUsername: preferredUsername,
+      avatarUrl: avatarUrl,
+    );
     state = AsyncData(
       AuthUiState.fromService(
         service,
@@ -195,4 +224,3 @@ class AuthController extends _$AuthController {
         const AuthUiState(authState: AuthState.unauthenticated);
   }
 }
-

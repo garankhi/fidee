@@ -1,0 +1,8 @@
+# Use this workspace to collaborate
+workspace:
+  id: 9fc29bb4-ef6b-47a1-9203-d4d4df34f516
+
+localResources:
+  docs:
+    - ..\services\api\docs\contracts\place-candidates-contract.md
+t\README.md

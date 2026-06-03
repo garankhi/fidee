@@ -25,7 +25,7 @@ class AuthWizardLayout extends StatelessWidget {
           return Stack(
             children: [
               Container(color: LoginColors.red),
-              
+
               // Back Button & Logo
               Positioned(
                 top: 0,
@@ -39,7 +39,11 @@ class AuthWizardLayout extends StatelessWidget {
                         top: MediaQuery.of(context).padding.top + 16,
                         left: 16,
                         child: IconButton(
-                          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+                          icon: const Icon(
+                            Icons.arrow_back_ios,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           onPressed: onBack,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -79,14 +83,18 @@ class AuthWizardLayout extends StatelessWidget {
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 24), // padding an toan
+                        padding: const EdgeInsets.only(
+                          bottom: 24,
+                        ), // padding an toan
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
                               title,
                               textAlign: TextAlign.center,
-                              style: LoginTextStyles.title().copyWith(fontSize: 28),
+                              style: LoginTextStyles.title().copyWith(
+                                fontSize: 28,
+                              ),
                             ),
                             const SizedBox(height: 32),
                             Expanded(child: child),

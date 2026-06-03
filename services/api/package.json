@@ -11,11 +11,14 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:migrate": "aws lambda invoke --function-name fidee-dev-db-migrate --payload \"{}\" --cli-binary-format raw-in-base64-out response.json && type response.json",
+    "db:reseed": "aws lambda invoke --function-name fidee-dev-db-migrate --payload eyJhY3Rpb24iOiJyZXNlZWQifQ== response.json && type response.json"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
@@ -26,9 +29,11 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1055.0",
     "@aws-sdk/client-s3": "^3.1055.0",
+    "@aws-sdk/client-secrets-manager": "^3.1057.0",
     "@aws-sdk/lib-dynamodb": "^3.1055.0",
     "@aws-sdk/s3-presigned-post": "^3.1055.0",
     "dotenv": "^17.4.2",
+    "pg": "^8.21.0",
     "resend": "^6.12.4"
   }
 }
