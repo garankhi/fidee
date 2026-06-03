@@ -159,7 +159,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
   return async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
       // 1. Auth
-      const auth = extractAuth(event);
+      const auth = await extractAuth(event);
 
       // 2. Parse + validate request
       let parsed: unknown;

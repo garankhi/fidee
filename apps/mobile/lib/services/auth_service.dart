@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:uuid/uuid.dart';
 import '../config.dart';
 
 // Persistent Cognito storage.
@@ -18,7 +20,7 @@ class SecureCognitoStorage extends CognitoStorage {
   SecureCognitoStorage(FlutterSecureStorage storage)
     : this.custom(
         read: (key) => storage.read(key: key),
-        readAll: storage.readAll,
+        readAll: () => storage.readAll(),
         write: (key, value) => storage.write(key: key, value: value),
         delete: (key) => storage.delete(key: key),
       );
@@ -281,11 +283,130 @@ class AuthService {
   }
 
   Future<AuthResult> signInWithGoogle() async {
-    // Requires google_sign_in package setup and Cognito Identity Pool
-    return const AuthResult(
-      success: false,
-      errorMessage: 'Chưa hỗ trợ Google Login',
-    );
+    if (isTestMode) {
+      _state = AuthState.authenticated;
+      return const AuthResult(success: true);
+    }
+
+    try {
+      await GoogleSignIn.instance.initialize(
+        serverClientId: '255813663531-rd534l11ckmgrobpo4imj2kdnshpq3ap.apps.googleusercontent.com',
+      );
+
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+      final String email = googleUser.email;
+
+      if (idToken == null || idToken.isEmpty) {
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Không lấy được thông tin xác thực từ Google',
+        );
+      }
+
+      _username = email.trim();
+      _cognitoUser = CognitoUser(_username, _userPool);
+
+      try {
+        final randomPassword = 'GoogleAuth_${const Uuid().v4().replaceAll('-', '')}';
+        final attributes = [
+          AttributeArg(name: 'email', value: _username),
+          if (googleUser.displayName != null && googleUser.displayName!.isNotEmpty) ...[
+            AttributeArg(name: 'given_name', value: googleUser.displayName),
+            const AttributeArg(name: 'family_name', value: 'Google User'),
+          ]
+        ];
+        await _userPool.signUp(_username!, randomPassword, userAttributes: attributes);
+      } on CognitoClientException catch (e) {
+        if (e.code != 'UsernameExistsException') {
+          return AuthResult(
+            success: false,
+            errorMessage: e.message ?? 'Đăng ký tài khoản Google thất bại',
+          );
+        }
+      } catch (e) {
+        // ignore other errors
+      }
+
+      try {
+        final session = await _cognitoUser!.initiateAuth(
+          AuthenticationDetails(
+            authParameters: [
+              AttributeArg(name: 'USERNAME', value: _username),
+              AttributeArg(name: 'provider', value: 'google'),
+            ],
+            validationData: {'provider': 'google'},
+          ),
+        );
+
+        if (session != null && session.isValid()) {
+          _state = AuthState.authenticated;
+          return const AuthResult(success: true);
+        }
+
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Không khởi tạo được phiên đăng nhập',
+        );
+      } on CognitoUserCustomChallengeException catch (e) {
+        if (e.challengeParameters != null &&
+            e.challengeParameters['provider'] == 'google') {
+          
+          final challengeSession = await _cognitoUser!.sendCustomChallengeAnswer(
+            idToken,
+            {'provider': 'google'},
+          );
+
+          if (challengeSession != null && challengeSession.isValid()) {
+            _state = AuthState.authenticated;
+
+            try {
+              final attributes = await _cognitoUser!.getUserAttributes();
+              bool hasName = false;
+              if (attributes != null) {
+                for (var attr in attributes) {
+                  if (attr.getName() == 'given_name' && (attr.getValue()?.isNotEmpty ?? false)) {
+                    hasName = true;
+                  }
+                  if (attr.getName() == 'custom:tier') {
+                    _tier = attr.getValue() == 'pro' ? UserTier.pro : UserTier.free;
+                  }
+                }
+              }
+              if (!hasName) {
+                _state = AuthState.incompleteProfile;
+              }
+            } catch (_) {
+              // fallback
+            }
+
+            return const AuthResult(success: true);
+          } else {
+            return const AuthResult(
+              success: false,
+              errorMessage: 'Xác thực Google ID Token thất bại',
+            );
+          }
+        } else {
+          return const AuthResult(
+            success: false,
+            errorMessage: 'Quy trình xác thực Cognito không hợp lệ',
+          );
+        }
+      }
+    } on CognitoClientException catch (e) {
+      return AuthResult(
+        success: false,
+        errorMessage: e.message ?? 'Lỗi kết nối đến dịch vụ AWS Cognito',
+      );
+    } catch (e) {
+      print('DEBUG [AuthService] Google login error: $e');
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Lỗi hệ thống khi đăng nhập bằng Google',
+      );
+    }
   }
 
   Future<AuthResult> verifyOtp(String code) async {
@@ -350,14 +471,24 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    if (!isTestMode && _cognitoUser != null) {
-      // This clears tokens from SecureCognitoStorage
-      await _cognitoUser!.signOut();
+    try {
+      if (!isTestMode && _cognitoUser != null) {
+        // This clears tokens from SecureCognitoStorage
+        await _cognitoUser!.signOut();
+      }
+    } catch (e) {
+      print('DEBUG [AuthService]: Remote signOut failed: $e');
+      try {
+        await _userPool.storage.clear();
+      } catch (storageError) {
+        print('DEBUG [AuthService]: Failed to clear storage: $storageError');
+      }
+    } finally {
+      _state = AuthState.unauthenticated;
+      _username = null;
+      _cognitoUser = null;
+      _destination = null;
     }
-    _state = AuthState.unauthenticated;
-    _username = null;
-    _cognitoUser = null;
-    _destination = null;
   }
 
   Future<AuthResult> completeProfile(

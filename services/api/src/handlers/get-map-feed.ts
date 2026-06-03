@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../db/client';
+import { extractAuth } from '../middleware/auth';
 
 /**
  * GET /map/feed
@@ -13,10 +14,17 @@ import { query } from '../db/client';
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    // 1. Get user ID from authorizer
-    const userId = event.requestContext.authorizer?.jwt?.claims?.sub;
-    if (!userId) {
-      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+    // 1. Get user ID from authorizer and sync profile
+    let userId: string;
+    try {
+      const auth = await extractAuth(event);
+      userId = auth.sub;
+    } catch (authError) {
+      return {
+        statusCode: 401,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ error: 'Unauthorized' })
+      };
     }
 
     // 2. Parse query parameters

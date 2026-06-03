@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { navigateToPath } from '../../navigation';
+import { Skeleton } from 'boneyard-js/react';
+import { fetchUsers, updateUserData } from './adminApi';
 import {
   activityLogs,
   categoryPerformance,
@@ -15,6 +17,7 @@ import {
   userEngagementData,
   type ModerationRequest,
   type ModerationStatus,
+  type User,
 } from './adminData';
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -512,30 +515,124 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
   );
 }
 
+function UserSkeletonRow() {
+  return (
+    <article className="user-grid-row skeleton-pulse" style={{ pointerEvents: 'none' }}>
+      <div className="list-main">
+        <div className="avatar" style={{ background: 'var(--surface-3)', boxShadow: 'none' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100px' }}>
+          <div style={{ height: '14px', background: 'var(--surface-3)', borderRadius: '4px', width: '80px' }} />
+          <div style={{ height: '10px', background: 'var(--surface-3)', borderRadius: '4px', width: '120px' }} />
+        </div>
+      </div>
+      <div style={{ height: '14px', background: 'var(--surface-3)', borderRadius: '4px', width: '100px' }} />
+      <div style={{ height: '22px', background: 'var(--surface-3)', borderRadius: '12px', width: '60px' }} />
+      <div style={{ height: '22px', background: 'var(--surface-3)', borderRadius: '12px', width: '80px' }} />
+      <div style={{ height: '14px', background: 'var(--surface-3)', borderRadius: '4px', width: '30px' }} />
+      <div style={{ height: '22px', background: 'var(--surface-3)', borderRadius: '12px', width: '60px' }} />
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ height: '34px', background: 'var(--surface-3)', borderRadius: '12px', width: '60px', marginLeft: 'auto' }} />
+      </div>
+    </article>
+  );
+}
+
+function UserSkeletonList() {
+  return (
+    <div className="list-stack users-list">
+      {/* Header Row */}
+      <div className="user-grid-row" style={{ background: 'transparent', border: 0, fontWeight: 700, color: 'var(--muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', paddingBottom: '4px', paddingTop: '4px', boxShadow: 'none' }}>
+        <span>User Info</span>
+        <span>Full Name</span>
+        <span>Role</span>
+        <span>License</span>
+        <span>Contributions</span>
+        <span>Status</span>
+        <span style={{ textAlign: 'right' }}>Actions</span>
+      </div>
+      <UserSkeletonRow />
+      <UserSkeletonRow />
+      <UserSkeletonRow />
+      <UserSkeletonRow />
+      <UserSkeletonRow />
+    </div>
+  );
+}
+
 export function UsersPage() {
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function loadUsers() {
+      setIsLoading(true);
+      try {
+        const realUsers = await fetchUsers();
+        if (active) {
+          setUsers(realUsers);
+          setIsOfflineMode(false);
+        }
+      } catch (error) {
+        console.warn('API error, falling back to mock users:', error);
+        if (active) {
+          setUsers(mockUsers);
+          setIsOfflineMode(true);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+    loadUsers();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredUsers = useMemo(() => {
-    return mockUsers.filter((user) => {
+    return users.filter((user) => {
       const query = search.trim().toLowerCase();
-      const matchesSearch = query === '' || user.username.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+      const matchesSearch =
+        query === '' ||
+        user.username.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.fullName.toLowerCase().includes(query) ||
+        user.phone.toLowerCase().includes(query);
       const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [filterStatus, search]);
+  }, [filterStatus, search, users]);
+
+  const activeCount = useMemo(() => users.filter((u) => u.status === 'active').length, [users]);
+  const totalContributions = useMemo(() => users.reduce((sum, u) => sum + u.contributions, 0), [users]);
 
   return (
     <div className="page-stack">
       <PageHeader title="Users" subtitle="Manage user accounts and contributions" />
       <section className="stats-grid stats-grid-3">
-        <StatCard label="Total Users" value={mockUsers.length} />
-        <StatCard label="Active" value={mockUsers.filter((user) => user.status === 'active').length} tone="success" />
-        <StatCard label="Total Contributions" value={mockUsers.reduce((sum, user) => sum + user.contributions, 0)} />
+        <StatCard label="Total Users" value={users.length} />
+        <StatCard label="Active" value={activeCount} tone="success" />
+        <StatCard label="Total Contributions" value={totalContributions} />
       </section>
 
+      {isOfflineMode && (
+        <div className="offline-banner">
+          <span>⚠️</span>
+          <span>Không thể kết nối tới API Backend. Hệ thống đang chạy ở chế độ ngoại tuyến (Offline Mock Data).</span>
+        </div>
+      )}
+
       <section className="card toolbar-card">
-        <SearchField value={search} onChange={setSearch} placeholder="Search by username or email..." />
+        <SearchField value={search} onChange={setSearch} placeholder="Search by username, email, name, or phone..." />
         <label className="field">
           <span className="field-label">Status</span>
           <select className="control-input" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value as 'all' | 'active' | 'inactive')}>
@@ -547,23 +644,224 @@ export function UsersPage() {
       </section>
 
       <ListPanel title="Users" subtitle={`${filteredUsers.length} users`}>
-        <div className="list-stack users-list">
-          {filteredUsers.map((user) => (
-            <article key={user.id} className="list-row user-row">
-              <div className="list-main">
-                <div className="avatar">{user.username.charAt(0).toUpperCase()}</div>
-                <div>
-                  <strong>{user.username}</strong>
-                  <span>{user.email}</span>
+        <Skeleton name="users-list" loading={isLoading} fallback={<UserSkeletonList />}>
+          <div className="list-stack users-list">
+            {/* Header Row */}
+            <div className="user-grid-row" style={{ background: 'transparent', border: 0, fontWeight: 700, color: 'var(--muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', paddingBottom: '4px', paddingTop: '4px', boxShadow: 'none' }}>
+              <span>User Info</span>
+              <span>Full Name</span>
+              <span>Role</span>
+              <span>License</span>
+              <span>Contributions</span>
+              <span>Status</span>
+              <span style={{ textAlign: 'right' }}>Actions</span>
+            </div>
+
+            {filteredUsers.map((user) => {
+              let avatarClass = 'avatar-user';
+              if (user.role === 'Admin') avatarClass = 'avatar-admin';
+              else if (user.role === 'Moderator') avatarClass = 'avatar-moderator';
+
+              return (
+                <article key={user.id} className="user-grid-row">
+                  <div className="list-main">
+                    <div className={`avatar ${avatarClass}`}>{user.username.charAt(0).toUpperCase()}</div>
+                    <div>
+                      <strong style={{ fontSize: '15px' }}>{user.username}</strong>
+                      <span>{user.email}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{user.fullName}</div>
+                  <div>
+                    <Badge tone={user.role === 'Admin' ? 'danger' : user.role === 'Moderator' ? 'warning' : 'neutral'}>
+                      {user.role}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className={`badge badge-${user.license.toLowerCase()}`}>{user.license}</span>
+                  </div>
+                  <div style={{ color: 'var(--muted)', fontWeight: 600, fontSize: '14px' }}>{user.contributions}</div>
+                  <div>
+                    <Badge tone={user.status === 'active' ? 'success' : 'neutral'}>{user.status === 'active' ? 'Active' : 'Inactive'}</Badge>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <button type="button" className="secondary-btn" style={{ padding: '8px 12px', fontSize: '13px' }} onClick={() => setEditingUser(user)}>
+                      ✏️ Edit
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </Skeleton>
+      </ListPanel>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="modal-overlay" onClick={() => (isSaving ? null : setEditingUser(null))}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit User Profile</h2>
+              <button type="button" className="modal-close-btn" onClick={() => setEditingUser(null)} disabled={isSaving}>
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setIsSaving(true);
+              try {
+                if (isOfflineMode) {
+                  setUsers((prev) => prev.map((u) => u.id === editingUser.id ? editingUser : u));
+                  setToast({
+                    title: 'Cập nhật thành công (Ngoại tuyến)',
+                    message: `Đã cập nhật giả lập cho tài khoản ${editingUser.username}.`
+                  });
+                } else {
+                  const updated = await updateUserData(editingUser.id, editingUser);
+                  setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
+                  setToast({
+                    title: 'Cập nhật thành công (API thực)',
+                    message: `Đã lưu thông tin người dùng ${editingUser.username} lên hệ thống thực.`
+                  });
+                }
+              } catch (error) {
+                console.error('Update user error:', error);
+                setToast({
+                  title: 'Lỗi cập nhật API',
+                  message: error instanceof Error ? error.message : 'Không thể kết nối máy chủ.'
+                });
+              } finally {
+                setIsSaving(false);
+                setEditingUser(null);
+                setTimeout(() => setToast(null), 3000);
+              }
+            }}>
+              <div className="form-stack">
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Username</span>
+                    <input
+                      className="control-input"
+                      type="text"
+                      value={editingUser.username}
+                      disabled
+                      style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Email</span>
+                    <input
+                      className="control-input"
+                      type="email"
+                      required
+                      value={editingUser.email}
+                      onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Full Name</span>
+                    <input
+                      className="control-input"
+                      type="text"
+                      required
+                      value={editingUser.fullName}
+                      onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Phone</span>
+                    <input
+                      className="control-input"
+                      type="text"
+                      required
+                      value={editingUser.phone}
+                      onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Role</span>
+                    <select
+                      className="control-input"
+                      value={editingUser.role}
+                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as any })}
+                    >
+                      <option value="User">User</option>
+                      <option value="Moderator">Moderator</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span className="field-label">License Plan</span>
+                    <select
+                      className="control-input"
+                      value={editingUser.license}
+                      onChange={(e) => setEditingUser({ ...editingUser, license: e.target.value as any })}
+                    >
+                      <option value="Free">Free</option>
+                      <option value="Basic">Basic</option>
+                      <option value="Pro">Pro</option>
+                      <option value="Enterprise">Enterprise</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Status</span>
+                    <select
+                      className="control-input"
+                      value={editingUser.status}
+                      onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value as any })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Contributions</span>
+                    <input
+                      className="control-input"
+                      type="number"
+                      min="0"
+                      value={editingUser.contributions}
+                      onChange={(e) => setEditingUser({ ...editingUser, contributions: parseInt(e.target.value) || 0 })}
+                    />
+                  </label>
                 </div>
               </div>
-              <div className="list-meta list-meta-compact">{user.joinedDate}</div>
-              <div className="list-meta list-meta-compact">{user.contributions}</div>
-              <Badge tone={user.status === 'active' ? 'success' : 'neutral'}>{user.status === 'active' ? 'Active' : 'Inactive'}</Badge>
-            </article>
-          ))}
+
+              <div className="form-actions">
+                <button type="button" className="secondary-btn" onClick={() => setEditingUser(null)} disabled={isSaving}>
+                  Cancel
+                </button>
+                <button type="submit" className="primary-btn" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </ListPanel>
+      )}
+
+      {/* Success Toast */}
+      {toast && (
+        <div className="toast-container">
+          <div className="toast-card toast-success">
+            <span className="toast-icon">✨</span>
+            <div className="toast-content">
+              <div className="toast-title">{toast.title}</div>
+              <div className="toast-message">{toast.message}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

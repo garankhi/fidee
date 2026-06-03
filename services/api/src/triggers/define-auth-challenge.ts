@@ -11,9 +11,10 @@ export const handler = async (
   event: DefineAuthChallengeTriggerEvent,
 ): Promise<DefineAuthChallengeTriggerEvent> => {
   const { session } = event.request;
+  const isGoogle = true; // Google is the only provider using CUSTOM_AUTH flow
 
   if (session.length === 0) {
-    // First call — issue a custom challenge (OTP)
+    // First call — issue a custom challenge (OTP or Google)
     event.response.issueTokens = false;
     event.response.failAuthentication = false;
     event.response.challengeName = 'CUSTOM_CHALLENGE';
@@ -23,9 +24,16 @@ export const handler = async (
   const lastChallenge = session[session.length - 1];
 
   if (lastChallenge.challengeResult) {
-    // OTP verified successfully — issue tokens
+    // verified successfully — issue tokens
     event.response.issueTokens = true;
     event.response.failAuthentication = false;
+    return event;
+  }
+
+  // If Google verification failed, fail authentication immediately (no retries)
+  if (isGoogle || lastChallenge.challengeMetadata?.includes('GOOGLE')) {
+    event.response.issueTokens = false;
+    event.response.failAuthentication = true;
     return event;
   }
 
@@ -39,7 +47,7 @@ export const handler = async (
     return event;
   }
 
-  // Allow retry
+  // Allow retry (OTP only)
   event.response.issueTokens = false;
   event.response.failAuthentication = false;
   event.response.challengeName = 'CUSTOM_CHALLENGE';

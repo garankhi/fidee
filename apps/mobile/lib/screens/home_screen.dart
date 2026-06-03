@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
-import '../models/nearby_place.dart';
 import '../models/map_feed_item.dart';
+import '../models/nearby_place.dart';
 import '../services/location_service.dart';
+import '../services/map_feed_service.dart';
 import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
-import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
@@ -93,6 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _mapController.move(target, 16.0);
   }
 
+  // ignore: unused_element
   void _goToMyLocation() async {
     if (_isLimitedMode) {
       _showLimitedModeSnack('Cần bật vị trí để dùng tính năng này.');
@@ -190,6 +191,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _signOut(BuildContext context) async {
     await ref.read(authControllerProvider.notifier).signOut();
+    if (context.mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   void _onCheckIn() async {
@@ -248,7 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   urlTemplate:
                       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.fidee.fidee_mobile',
+                  userAgentPackageName: 'com.fidee.fidee',
                   maxZoom: 20,
                 ),
                 if (_locationService.hasRealLocation)
