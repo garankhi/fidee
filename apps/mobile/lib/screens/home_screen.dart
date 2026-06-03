@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../models/nearby_place.dart';
 import '../services/location_service.dart';
+import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
 import 'camera_screen.dart';
+import 'explore_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 ///
@@ -65,10 +68,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _onAddSpot() {
+  void _onDiscover() {
     Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => const AddSpotScreen()),
+      MaterialPageRoute(
+        builder: (_) => const ExploreScreen(),
+      ),
+    );
+  }
+
+  void _onAddSpotFromTop() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DiscoverSheet(
+        lat: _locationService.currentPosition.latitude,
+        lng: _locationService.currentPosition.longitude,
+        onAddSpot: (spots) {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => AddSpotScreen(spotSuggestions: spots),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -129,7 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _TopAddSpotButton(onTap: _onAddSpot),
+                        _TopAddSpotButton(onTap: _onAddSpotFromTop),
                         Image.asset(
                           'assets/images/logo.png',
                           height: 32,
@@ -273,7 +299,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // Compass (Left)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Discovery.png',
-                    onTap: _goToMyLocation,
+                    onTap: _onDiscover,
                     size: 60,
                     iconSize: 42,
                   ),
@@ -634,6 +660,200 @@ class _LocationDeniedBanner extends StatelessWidget {
             onTap: onDismiss,
             child: const Icon(Icons.close, color: Colors.black38, size: 18),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// === DISCOVER SHEET ===
+class _DiscoverSheet extends StatefulWidget {
+  final double lat;
+  final double lng;
+  final void Function(List<NearbyPlace> spots) onAddSpot;
+
+  const _DiscoverSheet({
+    required this.lat,
+    required this.lng,
+    required this.onAddSpot,
+  });
+
+  @override
+  State<_DiscoverSheet> createState() => _DiscoverSheetState();
+}
+
+class _DiscoverSheetState extends State<_DiscoverSheet> {
+  final NearbyService _nearbyService = NearbyService();
+  List<NearbyPlace> _spots = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await _nearbyService.fetchNearby(
+        lat: widget.lat,
+        lng: widget.lng,
+        mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _spots = res.data.where((p) => !p.isCustomFallback).toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E2E2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Banner "Chua tim duoc quan yeu thich?"
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFE9EC), Color(0xFFFFF0F2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'CHUA TIM DUOC\nQUAN YEU THICH?',
+                  style: TextStyle(
+                    color: Color(0xFFEF4050),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Hay them dia diem moi va chia se voi moi nguoi!',
+                  style: TextStyle(
+                    color: Color(0xFF8D8D8D),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => widget.onAddSpot(_spots),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4050),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4050).withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'Them ngay vao ban do!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: CircularProgressIndicator(
+                  color: Color(0xFFEF4050),
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else if (_spots.isNotEmpty) ...[
+            const Text(
+              'Dia diem gan ban',
+              style: TextStyle(
+                color: Color(0xFF151515),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ..._spots.take(5).map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.place_rounded,
+                      color: Color(0xFFEF4050),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        p.displayName,
+                        style: const TextStyle(
+                          color: Color(0xFF151515),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '${p.distanceMeters}m',
+                      style: const TextStyle(
+                        color: Color(0xFF8D8D8D),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
