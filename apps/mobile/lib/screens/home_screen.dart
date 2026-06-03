@@ -90,7 +90,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Navigator.push(
             context,
             MaterialPageRoute<void>(
-              builder: (_) => AddSpotScreen(spotSuggestions: spots),
+              builder: (_) => const AddSpotScreen(),
+
             ),
           );
         },
