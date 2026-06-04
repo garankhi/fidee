@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -797,6 +798,46 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () {
+                    // 1. Đóng DiscoverSheet hiện tại
+                    Navigator.pop(context);
+
+                    // 2. Mở PlaceDetailsFriends dưới dạng BottomSheet mới
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true, // Cho phép vuốt kéo và tùy biến chiều cao
+                      backgroundColor: Colors.transparent, // Để lộ bo góc border tròn bên dưới
+                      builder: (_) => const PlaceDetailsFriends(),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4050),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4050).withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'Thêm ngay!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                )
               ],
             ),
           ),
