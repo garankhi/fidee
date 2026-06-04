@@ -47,8 +47,46 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       rating || null,
       visibility,
     ]);
+    // Update counters in parallel: user + place/candidate
+    const counterUpdates: Promise<unknown>[] = [
+      query('UPDATE users SET checkin_count = checkin_count + 1 WHERE id = $1;', [auth.sub]),
+    ];
 
-    await query('UPDATE users SET checkin_count = checkin_count + 1 WHERE id = $1;', [auth.sub]);
+    const ratingVal = rating != null ? Number(rating) : null;
+
+    if (place_id) {
+      counterUpdates.push(query(`
+        UPDATE places SET
+          checkin_count = checkin_count + 1,
+          rating_count = CASE WHEN $2::int IS NOT NULL THEN rating_count + 1 ELSE rating_count END,
+          avg_rating = CASE
+            WHEN $2::int IS NOT NULL AND rating_count > 0
+              THEN (avg_rating * rating_count + $2::int) / (rating_count + 1)
+            WHEN $2::int IS NOT NULL
+              THEN $2::double precision
+            ELSE avg_rating END,
+          cover_media_id = COALESCE(cover_media_id, $3)
+        WHERE id = $1
+      `, [place_id, ratingVal, media_id]));
+    }
+
+    if (candidate_id) {
+      counterUpdates.push(query(`
+        UPDATE place_candidates SET
+          checkin_count = checkin_count + 1,
+          rating_count = CASE WHEN $2::int IS NOT NULL THEN rating_count + 1 ELSE rating_count END,
+          avg_rating = CASE
+            WHEN $2::int IS NOT NULL AND rating_count > 0
+              THEN (avg_rating * rating_count + $2::int) / (rating_count + 1)
+            WHEN $2::int IS NOT NULL
+              THEN $2::double precision
+            ELSE avg_rating END,
+          cover_media_id = COALESCE(cover_media_id, $3)
+        WHERE id = $1
+      `, [candidate_id, ratingVal, media_id]));
+    }
+
+    await Promise.all(counterUpdates);
 
     return {
       statusCode: 201,
