@@ -34,6 +34,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   late final TextEditingController _lastNameController;
   late final TextEditingController _usernameController;
   bool _isSaving = false;
+  String? _saveErrorMessage;
 
   @override
   void initState() {
@@ -56,7 +57,10 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _saveErrorMessage = null;
+    });
 
     final result = await widget.onSave(
       firstName: _firstNameController.text.trim(),
@@ -76,11 +80,9 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
         const SnackBar(content: Text('Cập nhật thông tin thành công!')),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.errorMessage ?? 'Cập nhật profile thất bại'),
-        ),
-      );
+      setState(() {
+        _saveErrorMessage = result.errorMessage ?? 'Cập nhật profile thất bại';
+      });
     }
   }
 
@@ -168,6 +170,10 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                     validator: _usernameMessage,
                     onFieldSubmitted: (_) => _save(),
                   ),
+                  if (_saveErrorMessage != null) ...[
+                    const SizedBox(height: 14),
+                    _ProfileSaveMessage(message: _saveErrorMessage!),
+                  ],
                   const SizedBox(height: 26),
                   Row(
                     children: [
@@ -227,6 +233,46 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileSaveMessage extends StatelessWidget {
+  final String message;
+
+  const _ProfileSaveMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE9EC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFC7D0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFEF4050),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF9B1C2B),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

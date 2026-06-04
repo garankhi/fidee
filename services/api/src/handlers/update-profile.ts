@@ -24,6 +24,15 @@ type UpdateProfileBody = {
   username?: unknown;
 };
 
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === '23505'
+  );
+}
+
 function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGatewayProxyResult {
   return {
     statusCode,
@@ -125,28 +134,27 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const updateResult = await query<ProfileRow>(
       `
-        UPDATE users
-        SET display_name = $2,
-            username = $3
-        WHERE id = $1
-          AND NOT EXISTS (
-            SELECT 1 FROM users
-            WHERE username = $3 AND id <> $1
-          )
+        INSERT INTO users (id, display_name, username, email, phone, plan)
+        SELECT $1, $2, $3, $4, $5, 'FREE'
+        WHERE NOT EXISTS (
+          SELECT 1 FROM users
+          WHERE username = $3 AND id <> $1
+        )
+        ON CONFLICT (id) DO UPDATE
+        SET display_name = EXCLUDED.display_name,
+            username = EXCLUDED.username,
+            email = COALESCE(EXCLUDED.email, users.email),
+            phone = COALESCE(EXCLUDED.phone, users.phone)
+        WHERE NOT EXISTS (
+          SELECT 1 FROM users
+          WHERE username = EXCLUDED.username AND id <> users.id
+        )
         RETURNING id, display_name, username, avatar_url, plan, created_at;
       `,
-      [auth.sub, displayName, username],
+      [auth.sub, displayName, username, auth.email ?? null, auth.phone ?? null],
     );
 
     if (updateResult.rowCount === 0) {
-      const currentUser = await query<{ id: string }>('SELECT id FROM users WHERE id = $1', [
-        auth.sub,
-      ]);
-
-      if (currentUser.rowCount === 0) {
-        return jsonResponse(404, { error: 'User not found', code: 'USER_NOT_FOUND' });
-      }
-
       return jsonResponse(409, { error: 'Username already taken', code: 'USERNAME_TAKEN' });
     }
 
@@ -166,6 +174,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return jsonResponse(403, { error: error.message, code: 'FORBIDDEN' });
+    }
+
+    if (isUniqueViolation(error)) {
+      return jsonResponse(409, { error: 'Username already taken', code: 'USERNAME_TAKEN' });
     }
 
     console.error('Failed to update profile', error);
