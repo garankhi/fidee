@@ -888,6 +888,38 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── GET /discovery/feed (protected) ─────────────────────────
+    const getDiscoveryFeedFn = new nodejs.NodejsFunction(this, 'GetDiscoveryFeedFunction', {
+      functionName: resourceName(stage, 'get-discovery-feed'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-discovery-feed.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(15),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getDiscoveryFeedFn);
+
+    const discoveryResource = api.root.addResource('discovery');
+    const discoveryFeedResource = discoveryResource.addResource('feed');
+    discoveryFeedResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    discoveryFeedResource.addMethod('GET', new apigateway.LambdaIntegration(getDiscoveryFeedFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // ─── GET /places/nearby (protected) ─────────────────────────
     const getNearbyPlacesFn = new nodejs.NodejsFunction(this, 'GetNearbyPlacesFunction', {
       functionName: resourceName(stage, 'get-nearby-places'),
