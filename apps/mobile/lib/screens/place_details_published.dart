@@ -1,18 +1,22 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/place_provider.dart';
 
-// Đổi tên class thành PlaceDetailsFriends theo cấu trúc dự án của bạn
-class PlaceDetailsPublished extends ConsumerStatefulWidget {
-  const PlaceDetailsPublished({super.key});
+class PlaceDetailsFriends extends ConsumerStatefulWidget {
+  final String placeId;
+
+  const PlaceDetailsFriends({super.key, required this.placeId});
 
   @override
-  ConsumerState<PlaceDetailsPublished> createState() => _PlaceDetailsPublishedState();
+  ConsumerState<PlaceDetailsFriends> createState() => _PlaceDetailsFriendsState();
 }
 
-class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
+class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   @override
   Widget build(BuildContext context) {
+    final place = ref.watch(placeControllerProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -29,11 +33,11 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
             ),
           ),
         ),
-        title: const Text(
-          'MARUKAME UDON',
-          style: TextStyle(
+        title: Text(
+          (place.name ?? 'CHI TIẾT ĐỊA ĐIỂM').toUpperCase(),
+          style: const TextStyle(
             color: Color(0xFFEF484F),
-            fontSize: 22,
+            fontSize: 20,
             fontFamily: 'Erica One',
             fontWeight: FontWeight.w400,
           ),
@@ -54,47 +58,48 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
       ),
       body: Stack(
         children: [
-          // Nội dung chi tiết có khả năng cuộn dọc mượt mà
           SingleChildScrollView(
             padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Banner Image & Blur Info Card
-                _buildBannerCard(),
+                // 1. Banner Image & Info Card
+                _buildBannerCard(place),
                 const SizedBox(height: 20),
 
-                // 2. Thông tin quán (Bảng biểu Gradient)
-                _buildInfoQuan(),
+                // 2. Thông tin quán
+                _buildInfoQuan(place),
                 const SizedBox(height: 20),
 
                 // 3. Category Tags phân loại
-                _buildCategoryTags(),
+                _buildCategoryTags(place),
                 const SizedBox(height: 20),
 
-                // 4. Mục tiện nghi đi kèm
+                // 4. Tiện nghi đi kèm
                 _buildAmenities(),
                 const SizedBox(height: 25),
 
-                // 5. Nút chỉ đường chính của trang
-                _buildLargeButton(Icons.near_me, 'Chỉ đường'),
+                // 5. Nút chỉ đường tích hợp tọa độ lat, lng từ state
+                _buildLargeButton(
+                  Icons.near_me,
+                  'Chỉ đường',
+                ),
                 const SizedBox(height: 25),
 
-                // 6. Khu vực Check-in của bạn bè (Xoay Polaroid)
+                // 6. Khu vực Check-in của bạn bè
                 _buildFriendCheckins(),
                 const SizedBox(height: 25),
 
-                // 7. Khu vực đánh giá: Bạn bè nói gì về quán này?
+                // 7. Khu vực đánh giá
                 _buildFriendReviews(),
                 const SizedBox(height: 25),
 
-                // 8. Thư viện Ảnh trực quan
+                // 8. Thư viện Ảnh
                 _buildPhotoGallery(),
               ],
             ),
           ),
 
-          // Bottom Action Bar cố định nổi trên cùng nội dung khi cuộn xuôi màn hình
           Positioned(
             left: 20,
             right: 20,
@@ -118,20 +123,19 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
 
   // --- COMPONENT WIDGETS ---
 
-  Widget _buildBannerCard() {
+  Widget _buildBannerCard(Place place) {
     return Container(
       width: double.infinity,
       height: 220,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         image: const DecorationImage(
-          image: NetworkImage("https://placehold.co/400x240"),
+          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600"),
           fit: BoxFit.cover,
         ),
       ),
       child: Stack(
         children: [
-          // Badge Rating góc trái
           Positioned(
             top: 15,
             left: 15,
@@ -145,12 +149,11 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
                 children: const [
                   Icon(Icons.star, color: Colors.amber, size: 16),
                   SizedBox(width: 4),
-                  Text('4.9', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('4.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
           ),
-          // Nút lưu yêu thích góc phải
           Positioned(
             top: 15,
             right: 15,
@@ -160,7 +163,6 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
               child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
             ),
           ),
-          // Hộp đen thông tin chi tiết tên và địa chỉ đè mờ
           Positioned(
             bottom: 12,
             left: 12,
@@ -178,33 +180,41 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Text(
-                          'MARUKAME UDON',
-                          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Anton'),
+                          place.name ?? 'Chưa cập nhật tên',
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          '📍 123 Lê Lợi, P. Bến Thành',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          '📍 ${place.address ?? "Chưa cập nhật địa chỉ"}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: const Color(0xFF229D00),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('Đang mở cửa', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Đang mở cửa',
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text('Đóng cửa 22:00', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 10)),
+                      Text(
+                        'Đóng ${place.closeTime ?? "22:00"}',
+                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 10),
+                      ),
                     ],
                   )
                 ],
@@ -216,7 +226,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
     );
   }
 
-  Widget _buildInfoQuan() {
+  Widget _buildInfoQuan(Place place) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -236,12 +246,12 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
         children: [
           const Text(
             'THÔNG TIN QUÁN',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 10),
-          _buildInfoRow('Mô tả:', ' Là thương hiệu mì Udon số 1 Nhật Bản'),
-          _buildInfoRow('Khung giờ hoạt động:', ' 11:00 - 22:00'),
-          _buildInfoRow('Liên hệ:', ' 0901 493 132'),
+          _buildInfoRow('Mô tả:', ' Quán mới mở view đẹp, nhạc hay hóng gió cực chill'),
+          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "08:00"} - ${place.closeTime ?? "22:00"}'),
+          _buildInfoRow('Tầm giá:', ' 30k - 65k VND'),
         ],
       ),
     );
@@ -261,13 +271,13 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
     );
   }
 
-  Widget _buildCategoryTags() {
+  Widget _buildCategoryTags(Place place) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTag('🍜 Món Nhật'),
-        _buildTag('💵 50,000 - 100,000VND'),
+        _buildTag(place.category != null ? '🍜 ${place.category}' : '🍜 Cafe'),
+        _buildTag('💵 Tầm Giá Tốt'),
         _buildTag('🕯️ Ấm cúng'),
         _buildTag('👪 Gia đình'),
       ],
@@ -275,6 +285,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
   }
 
   Widget _buildAmenities() {
+    final List<String> amenities = ['Wifi', 'Trong nhà', 'Chỗ đỗ ô tô'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -283,11 +294,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: [
-            _buildTag('Wifi'),
-            _buildTag('Trong nhà'),
-            _buildTag('Chỗ đỗ ô tô'),
-          ],
+          children: amenities.map((amenity) => _buildTag(amenity)).toList(),
         ),
       ],
     );
@@ -330,7 +337,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
   }
 
   Widget _buildFriendCheckins() {
-    final List<Map<String, String>> checkins = [
+    final List<Map<String, String>> mockCheckins = [
       {'name': 'Khanh', 'time': 'hôm nay', 'rot': '-0.03'},
       {'name': 'Minh', 'time': 'tuần trước', 'rot': '0.04'},
       {'name': 'Thông', 'time': '23.03.26', 'rot': '-0.01'},
@@ -344,9 +351,9 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
           height: 165,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: checkins.length,
+            itemCount: mockCheckins.length,
             itemBuilder: (context, index) {
-              final item = checkins[index];
+              final item = mockCheckins[index];
               return Transform.rotate(
                 angle: double.parse(item['rot']!),
                 child: Container(
@@ -369,7 +376,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network("https://placehold.co/130x110", fit: BoxFit.cover, width: double.infinity),
+                          child: Image.network("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300", fit: BoxFit.cover, width: double.infinity),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -393,9 +400,9 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
       children: [
         _buildSectionHeader('Bạn bè nói gì về quán này?'),
         const SizedBox(height: 12),
-        _buildReviewCard('Minh', 'đi nhóm 4 ngon, hơi đông giờ tối — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
+        _buildReviewCard('Minh', 'đi nhóm 4 ngon, quán ngay Nguyễn Huệ không gian siêu thoáng vị trà sữa đậm đà bài bản — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
         const SizedBox(height: 12),
-        _buildReviewCard('Ha', 'Thích nhất món Udon bò, bò mềm, nước dùng ngọt. Chắc chắn sẽ quay lại!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
+        _buildReviewCard('Ha', 'Thích nhất trân châu hoàng kim dai giòn sần sật. Chắc chắn sẽ quay lại rủ hội bạn thân!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
       ],
     );
   }
@@ -414,7 +421,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage("https://placehold.co/40x40"),
+                backgroundImage: NetworkImage("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"),
               ),
               const SizedBox(width: 10),
               Column(
@@ -468,7 +475,7 @@ class _PlaceDetailsPublishedState extends ConsumerState<PlaceDetailsPublished> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         image: const DecorationImage(
-                          image: NetworkImage("https://placehold.co/150x150"),
+                          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200"),
                           fit: BoxFit.cover,
                         ),
                       ),
