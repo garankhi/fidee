@@ -48,38 +48,27 @@ class Place {
 
 @riverpod
 class PlaceController extends _$PlaceController {
-  // @override
-  // Place build() {
-  //   return const Place();
-  // }
-
-  //Mockdata
   @override
   Place build() {
-  return const Place(
-  id: "fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd",
-  name: "Quán Trà Sữa Full Option",
-  category: "Cafe",
-  address: "Phố đi bộ Nguyễn Huệ, Quận 1",
-  lat: 10.7738,
-  lng: 106.7035,
-  openTime: "08:00",
-  closeTime: "22:00",
-  );
+    return const Place();
   }
 
+  // Cập nhật thông tin cơ bản của địa điểm
   void updateBasicInfo(String name, String category, String address) {
     state = state.copyWith(name: name, category: category, address: address);
   }
 
+  // Cập nhật tọa độ bản đồ
   void updateCoordinates(double lat, double lng) {
     state = state.copyWith(lat: lat, lng: lng);
   }
 
+  // Cập nhật khung giờ hoạt động
   void updateOperatingHours(String openTime, String closeTime) {
     state = state.copyWith(openTime: openTime, closeTime: closeTime);
   }
 
+  // Reset trạng thái về trống
   void clear() {
     state = const Place();
   }

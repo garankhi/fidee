@@ -1,12 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../features/auth/place_provider.dart';
+import '../features/auth/place_provider.dart'; // Đảm bảo đúng path dẫn tới file bạn vừa gửi
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
-  final String placeId;
-
-  const PlaceDetailsFriends({super.key, required this.placeId});
+  const PlaceDetailsFriends({super.key});
 
   @override
   ConsumerState<PlaceDetailsFriends> createState() => _PlaceDetailsFriendsState();
@@ -15,6 +13,7 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   @override
   Widget build(BuildContext context) {
+    // Đọc trạng thái đồng bộ hiện tại từ PlaceController của bạn
     final place = ref.watch(placeControllerProvider);
 
     return Scaffold(
@@ -82,7 +81,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 // 5. Nút chỉ đường tích hợp tọa độ lat, lng từ state
                 _buildLargeButton(
                   Icons.near_me,
-                  'Chỉ đường',
+                  'Chỉ đường ${(place.lat != null && place.lng != null) ? '(${place.lat!.toStringAsFixed(4)}, ${place.lng!.toStringAsFixed(4)})' : ''}',
                 ),
                 const SizedBox(height: 25),
 
@@ -100,6 +99,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             ),
           ),
 
+          // Bottom Action Bar cố định nổi mượt mà phía dưới cùng
           Positioned(
             left: 20,
             right: 20,
@@ -130,7 +130,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         image: const DecorationImage(
-          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600"),
+          image: NetworkImage("https://placehold.co/400x240"), // Thay link ảnh thật của quán nếu lưu trong State
           fit: BoxFit.cover,
         ),
       ),
@@ -149,7 +149,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 children: const [
                   Icon(Icons.star, color: Colors.amber, size: 16),
                   SizedBox(width: 4),
-                  Text('4.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('4.9', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -249,9 +249,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 10),
-          _buildInfoRow('Mô tả:', ' Quán mới mở view đẹp, nhạc hay hóng gió cực chill'),
-          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "08:00"} - ${place.closeTime ?? "22:00"}'),
-          _buildInfoRow('Tầm giá:', ' 30k - 65k VND'),
+          _buildInfoRow('Mô tả:', ' Là thương hiệu mì Udon số 1 Nhật Bản'),
+          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "11:00"} - ${place.closeTime ?? "22:00"}'),
+          _buildInfoRow('Tầm giá:', ' 50k - 100k VND'),
         ],
       ),
     );
@@ -276,7 +276,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTag(place.category != null ? '🍜 ${place.category}' : '🍜 Cafe'),
+        _buildTag(place.category != null ? '🍜 ${place.category}' : '🍜 Món Nhật'),
         _buildTag('💵 Tầm Giá Tốt'),
         _buildTag('🕯️ Ấm cúng'),
         _buildTag('👪 Gia đình'),
@@ -376,7 +376,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300", fit: BoxFit.cover, width: double.infinity),
+                          child: Image.network("https://placehold.co/130x110", fit: BoxFit.cover, width: double.infinity),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -400,9 +400,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       children: [
         _buildSectionHeader('Bạn bè nói gì về quán này?'),
         const SizedBox(height: 12),
-        _buildReviewCard('Minh', 'đi nhóm 4 ngon, quán ngay Nguyễn Huệ không gian siêu thoáng vị trà sữa đậm đà bài bản — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
+        _buildReviewCard('Minh', 'đi nhóm 4 ngon, hơi đông giờ tối — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
         const SizedBox(height: 12),
-        _buildReviewCard('Ha', 'Thích nhất trân châu hoàng kim dai giòn sần sật. Chắc chắn sẽ quay lại rủ hội bạn thân!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
+        _buildReviewCard('Ha', 'Thích nhất món Udon bò, bò mềm, nước dùng ngọt. Chắc chắn sẽ quay lại!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
       ],
     );
   }
@@ -421,7 +421,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"),
+                backgroundImage: NetworkImage("https://placehold.co/40x40"),
               ),
               const SizedBox(width: 10),
               Column(
@@ -475,7 +475,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         image: const DecorationImage(
-                          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200"),
+                          image: NetworkImage("https://placehold.co/150x150"),
                           fit: BoxFit.cover,
                         ),
                       ),

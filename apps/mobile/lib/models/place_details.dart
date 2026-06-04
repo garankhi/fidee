@@ -1,3 +1,4 @@
+/// Data models for the GET /places/:id API contract.
 library;
 
 class PlaceCoordinates {
