@@ -1,18 +1,19 @@
-import 'package:fidee_mobile/screens/home_screen.dart';
 import 'package:fidee_mobile/services/location_service.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../features/auth/auth_providers.dart';
 
-class LocationGateScreen extends StatefulWidget {
+class LocationGateScreen extends ConsumerStatefulWidget {
   final LocationService locationService;
 
   const LocationGateScreen({super.key, required this.locationService});
 
   @override
-  State<StatefulWidget> createState() => _LocationGateScreenState();
+  ConsumerState<LocationGateScreen> createState() => _LocationGateScreenState();
 }
 
-class _LocationGateScreenState extends State<LocationGateScreen>
+class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
     with SingleTickerProviderStateMixin {
   late final LocationService _locationService;
   bool _isRequesting = false;
@@ -61,15 +62,7 @@ class _LocationGateScreenState extends State<LocationGateScreen>
 
 
   void _navigateHome() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder<void>(
-        pageBuilder: (context, animation, secondary) =>
-            HomeScreen(locationService: _locationService),
-        transitionsBuilder: (context, animation, secondary, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
+    ref.invalidate(locationControllerProvider);
   }
 
   @override

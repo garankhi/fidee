@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/auth_providers.dart';
 import '../models/nearby_place.dart';
 import '../services/nearby_service.dart';
 
 /// Bottom sheet that shows nearby places after a photo is taken.
-/// Uses mock data from the API contract for MVP.
-class NearbyPlacesSheet extends StatefulWidget {
+class NearbyPlacesSheet extends ConsumerStatefulWidget {
   final File photo;
   final double lat;
   final double lng;
@@ -33,11 +34,10 @@ class NearbyPlacesSheet extends StatefulWidget {
   }
 
   @override
-  State<NearbyPlacesSheet> createState() => _NearbyPlacesSheetState();
+  ConsumerState<NearbyPlacesSheet> createState() => _NearbyPlacesSheetState();
 }
 
-class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
-  final NearbyService _nearbyService = NearbyService();
+class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
   NearbyResponse? _response;
   bool _isLoading = true;
   String? _error;
@@ -50,7 +50,7 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
 
   Future<void> _loadPlaces() async {
     try {
-      final response = await _nearbyService.fetchNearby(
+      final response = await NearbyService(ref.read(authServiceProvider)).fetchNearby(
         lat: widget.lat,
         lng: widget.lng,
         mediaId: 'photo_mock_${DateTime.now().millisecondsSinceEpoch}',
@@ -505,3 +505,7 @@ class _NearbyPlacesSheetState extends State<NearbyPlacesSheet> {
     }
   }
 }
+
+
+
+

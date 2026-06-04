@@ -4,16 +4,22 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../features/auth/auth_providers.dart';
+import '../services/upload_service.dart';
 import '../utils/error.dart';
 import 'camera_screen.dart';
 
-class SendImageScreen extends StatefulWidget {
+class SendImageScreen extends ConsumerStatefulWidget {
   final String imagePath;
+  final String source; // 'IN_APP_CAMERA' or 'EXIF_GALLERY'
 
   /// GPS coordinates captured at photo time.
   /// For camera: [latitude, longitude] from Geolocator at capture.
@@ -24,16 +30,17 @@ class SendImageScreen extends StatefulWidget {
   const SendImageScreen({
     super.key,
     required this.imagePath,
+    required this.source,
     this.gpsCoordinates,
   });
 
   @override
-  State<SendImageScreen> createState() => _SendImageScreenState();
+  ConsumerState<SendImageScreen> createState() => _SendImageScreenState();
 }
 
 enum _UploadStatus { idle, pending, error }
 
-class _SendImageScreenState extends State<SendImageScreen> {
+class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   final List<String> _friends = ['ahn', 'giang', 'huy', 'linh'];
 
   _UploadStatus _uploadStatus = _UploadStatus.idle;
@@ -202,18 +209,38 @@ class _SendImageScreenState extends State<SendImageScreen> {
     setState(() => _uploadStatus = _UploadStatus.pending);
 
     try {
-      // Simulate upload — replace with real API call when backend is ready.
-      await Future<void>.delayed(const Duration(seconds: 2));
+      final authService = ref.read(authServiceProvider);
+      final uploadService = UploadService(authService: authService);
 
-      // TODO: POST /media/uploads with imagePath + gpsCoordinates
-      // On success, navigate to home/map.
+      final latitude = widget.gpsCoordinates?[0] ?? 0.0;
+      final longitude = widget.gpsCoordinates?[1] ?? 0.0;
+      final source = widget.source;
 
-      // For now: reset to idle after simulated success.
-      if (mounted) setState(() => _uploadStatus = _UploadStatus.idle);
+      await uploadService.upload(
+        imagePath: widget.imagePath,
+        latitude: latitude,
+        longitude: longitude,
+        source: source,
+      );
+
+      if (mounted) {
+        setState(() => _uploadStatus = _UploadStatus.idle);
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder<void>(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const CameraScreen(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+      }
     } catch (e) {
+      debugPrint('Upload failed: $e');
       if (mounted) {
         setState(() => _uploadStatus = _UploadStatus.error);
-        ErrorDialogs.showUploadError(context, _handleSend);
+        final errorMessage = e is UploadException ? e.message : e.toString();
+        ErrorDialogs.showUploadError(context, _handleSend, errorMessage: errorMessage);
       }
     }
   }

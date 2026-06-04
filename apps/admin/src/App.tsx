@@ -14,6 +14,8 @@ import {
   SettingsPage,
   UsersPage,
 } from './features/admin/AdminPages';
+import LoginPage from './features/auth/LoginPage';
+import { logoutAdmin } from './features/auth/cognitoService';
 
 const NAV_ITEMS = [
   { icon: '📊', label: 'Dashboard', href: '/admin' },
@@ -30,6 +32,10 @@ const NAV_ITEMS = [
 ];
 
 function getRoute(pathname: string) {
+  if (pathname === '/login') {
+    return { page: 'login', detailId: null };
+  }
+
   if (pathname === '/' || pathname === '/admin') {
     return { page: 'dashboard', detailId: null };
   }
@@ -60,7 +66,21 @@ export default function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname);
 
   useEffect(() => {
-    const syncRoute = () => setPathname(window.location.pathname);
+    const syncRoute = () => {
+      const currentPath = window.location.pathname;
+      const token = localStorage.getItem('admin_token');
+      
+      // Route Guard
+      if (!token && currentPath !== '/login') {
+        navigateToPath('/login');
+        return;
+      }
+      if (token && currentPath === '/login') {
+        navigateToPath('/admin');
+        return;
+      }
+      setPathname(window.location.pathname);
+    };
 
     window.addEventListener('popstate', syncRoute);
     syncRoute();
@@ -76,6 +96,17 @@ export default function App() {
     navigateToPath(href);
   };
 
+  const handleLogout = () => {
+    console.log('Logging out...');
+    logoutAdmin();
+    navigateToPath('/login');
+  };
+
+  // Nếu đang ở trang đăng nhập, render riêng biệt không có Shell/Sidebar
+  if (route.page === 'login') {
+    return <LoginPage />;
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -90,11 +121,16 @@ export default function App() {
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => {
             const isActive =
-              (item.href === '/admin' && (route.page === 'dashboard' || route.page === 'dashboard')) ||
+              (item.href === '/admin' && route.page === 'dashboard') ||
               (item.href !== '/admin' && pathname.startsWith(item.href));
 
             return (
-              <button key={item.href} type="button" className={isActive ? 'nav-item nav-item-active' : 'nav-item'} onClick={() => handleNavigate(item.href)}>
+              <button
+                key={item.href}
+                type="button"
+                className={isActive ? 'nav-item nav-item-active' : 'nav-item'}
+                onClick={() => handleNavigate(item.href)}
+              >
                 <span className="nav-icon">{item.icon}</span>
                 <span>{item.label}</span>
               </button>
@@ -106,15 +142,19 @@ export default function App() {
           <div className="user-info">
             <div className="user-avatar">M</div>
             <div>
-              <strong className="user-name">Minh Nguyen</strong>
-              <p className="user-role">Admin</p>
+              <strong className="user-name" style={{ display: 'block' }}>Minh Nguyen</strong>
+              <button type="button" className="logout-btn" onClick={handleLogout}>
+                🚪 Đăng xuất
+              </button>
             </div>
           </div>
         </div>
       </aside>
 
       <main className="main-content">
-        {route.page === 'moderation-detail' && route.detailId ? <ModerationDetailsPage requestId={route.detailId} /> : null}
+        {route.page === 'moderation-detail' && route.detailId ? (
+          <ModerationDetailsPage requestId={route.detailId} />
+        ) : null}
         {route.page === 'moderation' ? <ModerationPage /> : null}
         {route.page === 'dashboard' ? <DashboardPage /> : null}
         {route.page === 'places' ? <PlacesPage /> : null}

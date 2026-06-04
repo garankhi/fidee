@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:native_exif/native_exif.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -192,6 +192,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             pageBuilder: (context, animation, secondaryAnimation) =>
                 SendImageScreen(
                   imagePath: pickedFile.path,
+                  source: 'EXIF_GALLERY',
                   // AC2: pass EXIF GPS to preview screen
                   gpsCoordinates: [latLong.latitude, latLong.longitude],
                 ),
@@ -475,6 +476,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                         secondaryAnimation,
                                       ) => SendImageScreen(
                                         imagePath: image.path,
+                                        source: 'IN_APP_CAMERA',
                                         gpsCoordinates: gpsCoords,
                                       ),
                                   transitionsBuilder:

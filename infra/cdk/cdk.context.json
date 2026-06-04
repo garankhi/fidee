@@ -3,5 +3,9 @@
     "ap-southeast-1a",
     "ap-southeast-1b",
     "ap-southeast-1c"
-  ]
+  ],
+  "hosted-zone:account=305018987075:domainName=fidee.site:region=ap-southeast-1": {
+    "Id": "/hostedzone/Z04735472BP3Q4MYXB8YR",
+    "Name": "fidee.site."
+  }
 }
