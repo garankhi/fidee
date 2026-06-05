@@ -575,5 +575,107 @@ ALTER TABLE check_ins
 
 -- Update default
 ALTER TABLE check_ins ALTER COLUMN visibility SET DEFAULT 'FRIENDS';
+`,
+  '011_reviews': `-- ============================================================================
+-- 011_reviews
+-- Add reviews table, rating columns, and auto-update trigger
+-- ============================================================================
+
+-- ── Reviews table ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Polymorphic target: 1 trong 2 phải NOT NULL
+  place_id UUID REFERENCES places(id) ON DELETE CASCADE,
+  candidate_id UUID REFERENCES place_candidates(id) ON DELETE CASCADE,
+
+  -- Author
+  user_id TEXT NOT NULL REFERENCES users(id),
+
+  -- Content
+  rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  content TEXT CHECK (length(content) <= 500),
+
+  -- Metadata
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  visibility TEXT NOT NULL DEFAULT 'FRIENDS'
+    CHECK (visibility IN ('FRIENDS', 'PRIVATE')),
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- Constraints
+  CONSTRAINT review_has_target CHECK (
+    (place_id IS NOT NULL AND candidate_id IS NULL) OR
+    (place_id IS NULL AND candidate_id IS NOT NULL)
+  )
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_reviews_place ON reviews (place_id, created_at DESC) WHERE place_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_candidate ON reviews (candidate_id, created_at DESC) WHERE candidate_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews (user_id, created_at DESC);
+
+-- Unique: 1 user chỉ review 1 lần per place/candidate
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_unique_place ON reviews (user_id, place_id) WHERE place_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_unique_candidate ON reviews (user_id, candidate_id) WHERE candidate_id IS NOT NULL;
+
+-- ── Add rating columns to places & place_candidates ─────────────────────────
+ALTER TABLE places
+  ADD COLUMN IF NOT EXISTS avg_rating NUMERIC(2,1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cover_media_id TEXT;
+
+ALTER TABLE place_candidates
+  ADD COLUMN IF NOT EXISTS avg_rating NUMERIC(2,1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0;
+
+-- ── Trigger: auto-update avg_rating on review changes ────────────────────────
+CREATE OR REPLACE FUNCTION update_place_rating()
+RETURNS TRIGGER AS \$\$
+DECLARE
+  target_place_id UUID;
+  target_candidate_id UUID;
+BEGIN
+  -- Handle DELETE: use OLD row
+  IF TG_OP = 'DELETE' THEN
+    target_place_id := OLD.place_id;
+    target_candidate_id := OLD.candidate_id;
+  ELSE
+    target_place_id := NEW.place_id;
+    target_candidate_id := NEW.candidate_id;
+  END IF;
+
+  IF target_place_id IS NOT NULL THEN
+    UPDATE places SET
+      avg_rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE place_id = target_place_id), 0),
+      rating_count = (SELECT COUNT(*) FROM reviews WHERE place_id = target_place_id)
+    WHERE id = target_place_id;
+  END IF;
+
+  IF target_candidate_id IS NOT NULL THEN
+    UPDATE place_candidates SET
+      avg_rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE candidate_id = target_candidate_id), 0),
+      rating_count = (SELECT COUNT(*) FROM reviews WHERE candidate_id = target_candidate_id)
+    WHERE id = target_candidate_id;
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
+END;
+\$\$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_review_rating ON reviews;
+CREATE TRIGGER trg_review_rating
+  AFTER INSERT OR UPDATE OR DELETE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION update_place_rating();
+
+-- ── Trigger: auto-update updated_at on reviews ──────────────────────────────
+DROP TRIGGER IF EXISTS trg_reviews_updated ON reviews;
+CREATE TRIGGER trg_reviews_updated
+  BEFORE UPDATE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 `
-};
+};

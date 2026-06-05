@@ -950,14 +950,14 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
-    // ─── GET /places/{id} (protected) ───────────────────────────
+    // ─── GET /places/{id} (protected, BFF) ──────────────────────
     const getPlaceDetailFn = new nodejs.NodejsFunction(this, 'GetPlaceDetailFunction', {
       functionName: resourceName(stage, 'get-place-detail'),
       runtime: lambda.Runtime.NODEJS_20_X,
       entry: '../../services/api/src/handlers/get-place-detail.ts',
       handler: 'handler',
       memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
+      timeout: cdk.Duration.seconds(15),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -977,6 +977,68 @@ export class FideeStack extends cdk.Stack {
       allowHeaders: ['Content-Type', 'Authorization'],
     });
     placeIdResource.addMethod('GET', new apigateway.LambdaIntegration(getPlaceDetailFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── GET /places/{id}/reviews (protected) ────────────────────
+    const getPlaceReviewsFn = new nodejs.NodejsFunction(this, 'GetPlaceReviewsFunction', {
+      functionName: resourceName(stage, 'get-place-reviews'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-place-reviews.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getPlaceReviewsFn);
+
+    const placeReviewsResource = placeIdResource.addResource('reviews');
+    placeReviewsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    placeReviewsResource.addMethod('GET', new apigateway.LambdaIntegration(getPlaceReviewsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── POST /reviews (protected) ──────────────────────────────
+    const createReviewFn = new nodejs.NodejsFunction(this, 'CreateReviewFunction', {
+      functionName: resourceName(stage, 'create-review'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/create-review.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(createReviewFn);
+
+    const reviewsResource = api.root.addResource('reviews');
+    reviewsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    reviewsResource.addMethod('POST', new apigateway.LambdaIntegration(createReviewFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
