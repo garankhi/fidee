@@ -8,8 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
-import 'package:lucide_icons/lucide_icons.dart';
-
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/auth_providers.dart';

@@ -127,7 +127,7 @@ class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
                         const SizedBox(width: 4),
 
                         const Icon(
-                          LucideIcons.arrowRight,
+                          Icons.arrow_forward,
                           color: Color(0xFFEF4050),
                           size: 18,
                         )
