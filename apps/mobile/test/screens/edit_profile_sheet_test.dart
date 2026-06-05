@@ -10,6 +10,7 @@ void main() {
       required String lastName,
       required String preferredUsername,
     }) onSave,
+    Future<UsernameAvailabilityResult> Function(String username)? onCheckUsername,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -18,6 +19,11 @@ void main() {
           lastName: 'Minh',
           preferredUsername: 'minh',
           onSave: onSave,
+          onCheckUsername: onCheckUsername ??
+              (_) async => const UsernameAvailabilityResult(
+                    success: true,
+                    available: true,
+                  ),
           onSaved: () {},
         ),
       ),
@@ -51,5 +57,55 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('disables save when username is already taken', (tester) async {
+    await tester.pumpWidget(
+      buildSheet(
+        onSave: ({
+          required firstName,
+          required lastName,
+          required preferredUsername,
+        }) async {
+          return const AuthResult(success: true);
+        },
+        onCheckUsername: (_) async => const UsernameAvailabilityResult(
+          success: true,
+          available: false,
+          errorMessage: 'Username đã được sử dụng',
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(2), 'taken');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(find.text('Username đã được sử dụng'), findsOneWidget);
+
+    final saveButton = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Lưu'),
+    );
+    expect(saveButton.onPressed, isNull);
+  });
+
+  testWidgets('enables save when initial username is available', (tester) async {
+    await tester.pumpWidget(
+      buildSheet(
+        onSave: ({
+          required firstName,
+          required lastName,
+          required preferredUsername,
+        }) async {
+          return const AuthResult(success: true);
+        },
+      ),
+    );
+
+    final saveButton = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Lưu'),
+    );
+    expect(saveButton.onPressed, isNotNull);
   });
 }

@@ -703,6 +703,31 @@ export class FideeStack extends cdk.Stack {
       }),
     );
 
+    const checkUsernameAvailabilityFn = new nodejs.NodejsFunction(
+      this,
+      'CheckUsernameAvailabilityFunction',
+      {
+        functionName: resourceName(stage, 'check-username-availability'),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: '../../services/api/src/handlers/check-username-availability.ts',
+        handler: 'handler',
+        memorySize: 128,
+        timeout: cdk.Duration.seconds(10),
+        vpc,
+        vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+        securityGroups: [lambdaSecurityGroup],
+        environment: {
+          STAGE: stage,
+          DB_SECRET_ARN: dbCluster.secret!.secretArn,
+          DB_NAME: 'fidee',
+        },
+        bundling: {
+          nodeModules: ['pg'],
+        },
+      },
+    );
+    dbCluster.secret!.grantRead(checkUsernameAvailabilityFn);
+
     const profileResource = api.root.addResource('profile');
     profileResource.addCorsPreflight({
       allowOrigins: apigateway.Cors.ALL_ORIGINS,
@@ -717,6 +742,20 @@ export class FideeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+    const usernameAvailabilityResource = profileResource.addResource('username-availability');
+    usernameAvailabilityResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    usernameAvailabilityResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(checkUsernameAvailabilityFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
 
     const mediaResource = api.root.addResource('media');
     const mediaUploadsResource = mediaResource.addResource('uploads');
