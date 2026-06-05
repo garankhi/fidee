@@ -1,8 +1,58 @@
+import 'package:fidee_mobile/screens/add_spot_screen.dart';
+import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import 'package:flutter/material.dart';
-import 'ai_chat_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ExploreScreen extends StatelessWidget {
+import '../features/auth/auth_providers.dart';
+import '../models/nearby_place.dart';
+import '../services/nearby_service.dart';
+
+class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({super.key});
+
+  @override
+  ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends ConsumerState<ExploreScreen> {
+  List<NearbyPlace> _nearbySpots = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNearbySpots();
+  }
+
+  Future<void> _loadNearbySpots() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final nearbyService = NearbyService(authService);
+      // Note: We don't have real location here, using default for demo
+      final res = await nearbyService.fetchNearby(
+        lat: 10.762892,
+        lng: 106.682586,
+        mediaId: 'explore_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      setState(() {
+        _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
+      });
+    } catch (e) {
+      // Do nothing
+    }
+  }
+
+  void _onAddSpot() {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AddSpotScreen(
+          spotSuggestions: _nearbySpots,
+          authService: ref.read(authServiceProvider),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +143,7 @@ class ExploreScreen extends StatelessWidget {
                         'CHƯA TÌM ĐƯỢC\nQUÁN YÊU THÍCH?',
                         style: TextStyle(
                           color: Color(0xFFEF4050),
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                           height: 1.2,
                         ),
@@ -108,29 +158,31 @@ class ExploreScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4050),
-                          borderRadius: BorderRadius.circular(999),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  const Color(0xFFEF4050).withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
+                      GestureDetector(
+                        onTap: _onAddSpot,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4050),
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFEF4050).withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: const Text(
+                            'Thêm ngay vào bản đồ!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
                             ),
-                          ],
-                        ),
-                        child: const Text(
-                          'Thêm ngay vào bản đồ!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -152,7 +204,7 @@ class ExploreScreen extends StatelessWidget {
 
                 // === Weather Card ===
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(16),
@@ -184,7 +236,7 @@ class ExploreScreen extends StatelessWidget {
                             '24°C',
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 32,
+                              fontSize: 44,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -212,7 +264,7 @@ class ExploreScreen extends StatelessWidget {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: [
+                  children: const [
                     _CategoryChip(label: 'Hẹn hò'),
                     _CategoryChip(label: 'Nhậu'),
                     _CategoryChip(label: 'Họp làm'),
@@ -253,17 +305,17 @@ class ExploreScreen extends StatelessWidget {
                   height: 230,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: [
+                    children: const [
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
                         name: 'B2Q Saigon',
-                        tags: const ['Đang mở', 'Cafe', 'Nhạc chill', 'Quán quen'],
+                        tags: ['Đang mở', 'Cafe', 'Nhạc chill', 'Quán quen'],
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: 14),
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1521017431713-00b87e4c16b3?w=400',
                         name: 'Kyoto Zen',
-                        tags: const ['Đang mở', 'Nhật Bản', 'Yêu thích', 'Ngọt ngào'],
+                        tags: ['Đang mở', 'Nhật Bản', 'Yêu thích', 'Ngọt ngào'],
                       ),
                     ],
                   ),
@@ -297,17 +349,17 @@ class ExploreScreen extends StatelessWidget {
                   height: 230,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: [
+                    children: const [
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1554679665-f5537f187268?w=400',
                         name: 'Moonlight Ramen',
-                        tags: const ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
+                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: 14),
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38e71?w=400',
                         name: 'The Garden',
-                        tags: const ['Đang mở', 'Thoải mái', 'Ăn vặt', 'Nhóm bạn'],
+                        tags: ['Đang mở', 'Thoải mái', 'Ăn vặt', 'Nhóm bạn'],
                       ),
                     ],
                   ),
@@ -341,26 +393,26 @@ class ExploreScreen extends StatelessWidget {
                   height: 230,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: [
+                    children: const [
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=400',
                         name: 'Moonlight Ramen',
-                        tags: const ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                        friendAvatars: const ['AA', 'BB', 'CC'],
+                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
+                        friendAvatars: ['AA', 'BB', 'CC'],
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: 14),
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=400',
                         name: 'Moonlight Ramen',
-                        tags: const ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                        friendAvatars: const ['DD', 'EE'],
+                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
+                        friendAvatars: ['DD', 'EE'],
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: 14),
                       _PlaceCard(
                         imageUrl: 'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=400',
                         name: 'Moonlight Ramen',
-                        tags: const ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                        friendAvatars: const ['FF'],
+                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
+                        friendAvatars: ['FF'],
                       ),
                     ],
                   ),
@@ -388,8 +440,7 @@ class ExploreScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                const Color(0xFFEF4050).withValues(alpha: 0.4),
+                            color: const Color(0xFFEF4050).withValues(alpha: 0.4),
                             blurRadius: 16,
                             offset: const Offset(0, 8),
                           ),

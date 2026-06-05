@@ -7,13 +7,9 @@ import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../models/map_feed_item.dart';
-import '../models/nearby_place.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
-import '../services/nearby_service.dart';
-import 'add_spot_screen.dart';
 import 'camera_screen.dart';
-import 'dashboard.dart';
 import 'profile_screen.dart';
 import 'explore_screen.dart';
 
@@ -194,54 +190,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _onAddSpotFromTop() async {
-    List<NearbyPlace> localSpots = [];
-
-    try {
-      final nearbyService = NearbyService(ref.read(authServiceProvider));
-      final res = await nearbyService.fetchNearby(
-        lat: _locationService.currentPosition.latitude,
-        lng: _locationService.currentPosition.longitude,
-        mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      localSpots = res.data.where((p) => !p.isCustomFallback).toList();
-    } catch (e) {
-      debugPrint('Error loading nearby spots for dashboard flow: $e');
-    }
-
-    if (!mounted) return;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: DashboardScreen(
-            spotSuggestions: localSpots,
-            onAddSpot: (spots) {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => AddSpotScreen(
-                    spotSuggestions: spots,
-                    authService: ref.read(authServiceProvider),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -309,7 +257,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _TopAddSpotButton(onTap: _onAddSpotFromTop),
                         Image.asset(
                           'assets/images/logo_red.png',
                           height: 25,
@@ -507,37 +454,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-class _TopAddSpotButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _TopAddSpotButton({required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add_location_alt_rounded,
-          color: Color(0xFFEF4050),
-          size: 22,
-        ),
-      ),
-    );
-  }
-}
 
 class _BottomNavIcon extends StatelessWidget {
   final String assetPath;
