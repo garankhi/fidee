@@ -575,167 +575,107 @@ ALTER TABLE check_ins
 
 -- Update default
 ALTER TABLE check_ins ALTER COLUMN visibility SET DEFAULT 'FRIENDS';
-`
-,
-  '011_place_rating_counters': `-- ============================================================================
--- 011_place_rating_counters
--- Add denormalized rating/checkin counters + cover_media_id to places & candidates
+`,
+  '011_reviews': `-- ============================================================================
+-- 011_reviews
+-- Add reviews table, rating columns, and auto-update trigger
 -- ============================================================================
 
+-- ── Reviews table ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Polymorphic target: 1 trong 2 phải NOT NULL
+  place_id UUID REFERENCES places(id) ON DELETE CASCADE,
+  candidate_id UUID REFERENCES place_candidates(id) ON DELETE CASCADE,
+
+  -- Author
+  user_id TEXT NOT NULL REFERENCES users(id),
+
+  -- Content
+  rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  content TEXT CHECK (length(content) <= 500),
+
+  -- Metadata
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  visibility TEXT NOT NULL DEFAULT 'FRIENDS'
+    CHECK (visibility IN ('FRIENDS', 'PRIVATE')),
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- Constraints
+  CONSTRAINT review_has_target CHECK (
+    (place_id IS NOT NULL AND candidate_id IS NULL) OR
+    (place_id IS NULL AND candidate_id IS NOT NULL)
+  )
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_reviews_place ON reviews (place_id, created_at DESC) WHERE place_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_candidate ON reviews (candidate_id, created_at DESC) WHERE candidate_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews (user_id, created_at DESC);
+
+-- Unique: 1 user chỉ review 1 lần per place/candidate
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_unique_place ON reviews (user_id, place_id) WHERE place_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_unique_candidate ON reviews (user_id, candidate_id) WHERE candidate_id IS NOT NULL;
+
+-- ── Add rating columns to places & place_candidates ─────────────────────────
 ALTER TABLE places
-  ADD COLUMN IF NOT EXISTS avg_rating DOUBLE PRECISION DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS avg_rating NUMERIC(2,1) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS checkin_count INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS cover_media_id TEXT;
 
 ALTER TABLE place_candidates
-  ADD COLUMN IF NOT EXISTS avg_rating DOUBLE PRECISION DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS checkin_count INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS cover_media_id TEXT;
+  ADD COLUMN IF NOT EXISTS avg_rating NUMERIC(2,1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0;
 
--- Backfill places from existing check_ins
-UPDATE places p SET
-  avg_rating = COALESCE(s.avg_r, 0),
-  rating_count = COALESCE(s.cnt_r, 0),
-  checkin_count = COALESCE(s.cnt, 0),
-  cover_media_id = s.latest_media
-FROM (
-  SELECT place_id,
-    AVG(rating)::double precision AS avg_r,
-    COUNT(rating)::integer AS cnt_r,
-    COUNT(*)::integer AS cnt,
-    (array_agg(media_id ORDER BY created_at DESC))[1] AS latest_media
-  FROM check_ins WHERE place_id IS NOT NULL
-  GROUP BY place_id
-) s WHERE p.id = s.place_id;
-
--- Backfill place_candidates from existing check_ins
-UPDATE place_candidates pc SET
-  avg_rating = COALESCE(s.avg_r, 0),
-  rating_count = COALESCE(s.cnt_r, 0),
-  checkin_count = COALESCE(s.cnt, 0),
-  cover_media_id = s.latest_media
-FROM (
-  SELECT candidate_id,
-    AVG(rating)::double precision AS avg_r,
-    COUNT(rating)::integer AS cnt_r,
-    COUNT(*)::integer AS cnt,
-    (array_agg(media_id ORDER BY created_at DESC))[1] AS latest_media
-  FROM check_ins WHERE candidate_id IS NOT NULL
-  GROUP BY candidate_id
-) s WHERE pc.id = s.candidate_id;
-
--- Index for hot places query (sort by checkin_count)
-CREATE INDEX IF NOT EXISTS idx_places_checkin_count ON places (checkin_count DESC) WHERE checkin_count > 0;
-CREATE INDEX IF NOT EXISTS idx_candidates_checkin_count ON place_candidates (checkin_count DESC) WHERE checkin_count > 0;
-`
-,
-  '012_candidate_media_nullable': `-- ============================================================================
--- 012_candidate_media_nullable
--- Allow place_candidates to be created without media (quick create flow)
--- ============================================================================
-ALTER TABLE place_candidates ALTER COLUMN media_id DROP NOT NULL;
-`
-,
-  '013_gamification_schema': `-- ============================================================================
--- 013_gamification_schema
--- Create tables for Gamification (Level, XP, Coins, Badges, Challenges)
--- ============================================================================
-
--- 1. Bảng user_gamification
-CREATE TABLE IF NOT EXISTS user_gamification (
-  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  level INTEGER NOT NULL DEFAULT 1,
-  xp INTEGER NOT NULL DEFAULT 0,
-  coins INTEGER NOT NULL DEFAULT 0,
-  current_streak INTEGER NOT NULL DEFAULT 0,
-  title TEXT,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Khi user mới tạo, tự động tạo dòng user_gamification
--- (Hoặc insert cho tất cả user hiện tại)
-INSERT INTO user_gamification (user_id)
-SELECT id FROM users
-ON CONFLICT (user_id) DO NOTHING;
-
--- 2. Hệ thống Badges
-CREATE TABLE IF NOT EXISTS badges (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  icon_url TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS user_badges (
-  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
-  badge_id TEXT REFERENCES badges(id) ON DELETE CASCADE,
-  earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, badge_id)
-);
-
--- Seed Badges
-INSERT INTO badges (id, name, description, icon_url) VALUES 
-('badge_early_bird', 'Early Bird', 'Joined in the first year', 'https://d3mzokndfkczxw.cloudfront.net/default-badges/early.png'),
-('badge_coffee_lover', 'Coffee Lover', 'Check in to 10 cafes', 'https://d3mzokndfkczxw.cloudfront.net/default-badges/coffee.png')
-ON CONFLICT (id) DO NOTHING;
-
--- 3. Hệ thống Challenges
-CREATE TABLE IF NOT EXISTS challenges (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  target_value INTEGER NOT NULL,
-  reward_coins INTEGER NOT NULL DEFAULT 0,
-  challenge_type TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS user_challenges (
-  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
-  challenge_id TEXT REFERENCES challenges(id) ON DELETE CASCADE,
-  progress INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'IN_PROGRESS' 
-    CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'CLAIMED')),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, challenge_id)
-);
-
--- Seed Challenges
-INSERT INTO challenges (id, title, description, target_value, reward_coins, challenge_type) VALUES 
-('chal_streak_30', '30-Day streak', 'Maintain a 30-day checkin streak', 30, 500, 'STREAK_DAYS'),
-('chal_checkin_50', 'Check-in 50 spots', 'Discover 50 new spots', 50, 1000, 'CHECKIN_COUNT'),
-('chal_tag_5', 'Tag 5 friends this week', 'Tag your friends to get coins', 5, 100, 'SOCIAL_TAG')
-ON CONFLICT (id) DO NOTHING;
-
--- Tạm thời seed data cho tài khoản test API (lấy user đầu tiên có trong DB)
-DO $$ 
+-- ── Trigger: auto-update avg_rating on review changes ────────────────────────
+CREATE OR REPLACE FUNCTION update_place_rating()
+RETURNS TRIGGER AS \$\$
 DECLARE
-  test_user_id TEXT;
+  target_place_id UUID;
+  target_candidate_id UUID;
 BEGIN
-  SELECT id INTO test_user_id FROM users LIMIT 1;
-  IF test_user_id IS NOT NULL THEN
-    -- Cập nhật gamification
-    UPDATE user_gamification 
-    SET level = 8, xp = 500, coins = 98, current_streak = 29, title = 'Rising Star'
-    WHERE user_id = test_user_id;
-
-    -- Seed user badges
-    INSERT INTO user_badges (user_id, badge_id) VALUES 
-    (test_user_id, 'badge_early_bird'),
-    (test_user_id, 'badge_coffee_lover')
-    ON CONFLICT DO NOTHING;
-
-    -- Seed user challenges
-    INSERT INTO user_challenges (user_id, challenge_id, progress, status) VALUES 
-    (test_user_id, 'chal_streak_30', 30, 'CLAIMED'),
-    (test_user_id, 'chal_checkin_50', 50, 'CLAIMED'),
-    (test_user_id, 'chal_tag_5', 3, 'IN_PROGRESS')
-    ON CONFLICT DO NOTHING;
+  -- Handle DELETE: use OLD row
+  IF TG_OP = 'DELETE' THEN
+    target_place_id := OLD.place_id;
+    target_candidate_id := OLD.candidate_id;
+  ELSE
+    target_place_id := NEW.place_id;
+    target_candidate_id := NEW.candidate_id;
   END IF;
-END $$;
 
+  IF target_place_id IS NOT NULL THEN
+    UPDATE places SET
+      avg_rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE place_id = target_place_id), 0),
+      rating_count = (SELECT COUNT(*) FROM reviews WHERE place_id = target_place_id)
+    WHERE id = target_place_id;
+  END IF;
+
+  IF target_candidate_id IS NOT NULL THEN
+    UPDATE place_candidates SET
+      avg_rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE candidate_id = target_candidate_id), 0),
+      rating_count = (SELECT COUNT(*) FROM reviews WHERE candidate_id = target_candidate_id)
+    WHERE id = target_candidate_id;
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
+END;
+\$\$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_review_rating ON reviews;
+CREATE TRIGGER trg_review_rating
+  AFTER INSERT OR UPDATE OR DELETE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION update_place_rating();
+
+-- ── Trigger: auto-update updated_at on reviews ──────────────────────────────
+DROP TRIGGER IF EXISTS trg_reviews_updated ON reviews;
+CREATE TRIGGER trg_reviews_updated
+  BEFORE UPDATE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 `
 };
