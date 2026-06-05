@@ -373,7 +373,7 @@ class ExploreScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<void>(
                           builder: (_) => const AiChatScreen(),
                         ),
                       );

@@ -16,7 +16,6 @@ import 'camera_screen.dart';
 import 'dashboard.dart';
 import 'profile_screen.dart';
 import 'explore_screen.dart';
-import 'ai_chat_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -189,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _onExplore() {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) => const ExploreScreen(),
       ),
     );
