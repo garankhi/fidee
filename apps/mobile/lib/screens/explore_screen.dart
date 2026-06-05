@@ -16,6 +16,7 @@ class ExploreScreen extends ConsumerStatefulWidget {
 
 class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   List<NearbyPlace> _nearbySpots = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -52,6 +53,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         ),
       ),
     );
+  }
+
+  void _onFilterTap() {
+    // TODO: Implement filter functionality
+    print('Filter tapped');
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -95,30 +107,37 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 const SizedBox(height: 16),
 
                 // === Search Bar ===
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: Color(0xFFEF4050)),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Tìm kiếm, quán ăn...',
-                          style: TextStyle(
+              Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, color: Color(0xFFEF4050)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Tìm kiếm, quán ăn...',
+                          hintStyle: TextStyle(
                             color: Colors.black54,
                             fontSize: 14,
                           ),
                         ),
                       ),
-                      Icon(Icons.filter_list, color: Colors.grey.shade600),
-                    ],
-                  ),
+                    ),
+                    GestureDetector(
+                      onTap: _onFilterTap,
+                      child: Icon(Icons.filter_list, color: Colors.grey.shade600),
+                    ),
+                  ],
                 ),
+              ),
                 const SizedBox(height: 24),
 
                 // === "Chưa tìm được quán?" Banner ===

@@ -1,7 +1,28 @@
 import 'package:flutter/material.dart';
 
-class AiChatScreen extends StatelessWidget {
+class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
+
+  @override
+  State<AiChatScreen> createState() => _AiChatScreenState();
+}
+
+class _AiChatScreenState extends State<AiChatScreen> {
+  final TextEditingController _chatController = TextEditingController();
+
+  void _sendMessage(String message) {
+    // TODO: Implement actual sending logic
+    if (message.isNotEmpty) {
+      print('Sending message: $message');
+      _chatController.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,20 +135,23 @@ class AiChatScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // === Quick Suggestion Button ===
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4050),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Center(
-                  child: Text(
-                    'Hey! Find 3 restaurants near me 🍔',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+              GestureDetector(
+                onTap: () => _sendMessage('Hey! Find 3 restaurants near me 🍔'),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4050),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Hey! Find 3 restaurants near me 🍔',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -184,8 +208,14 @@ class AiChatScreen extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _QuickOptionChip(label: 'Chỉ có non-spicy options'),
-                  _QuickOptionChip(label: 'More romantic & quiet'),
+                  _QuickOptionChip(
+                    label: 'Chỉ có non-spicy options',
+                    onTap: () => _sendMessage('Chỉ có non-spicy options'),
+                  ),
+                  _QuickOptionChip(
+                    label: 'More romantic & quiet',
+                    onTap: () => _sendMessage('More romantic & quiet'),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -202,9 +232,10 @@ class AiChatScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
+                        controller: _chatController,
+                        decoration: const InputDecoration(
                           border: InputBorder.none,
                           hintText: 'What\'s your vibe today?',
                           hintStyle: TextStyle(
@@ -213,20 +244,24 @@ class AiChatScreen extends StatelessWidget {
                           ),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
                         ),
+                        onSubmitted: _sendMessage,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4050),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 20,
+                    GestureDetector(
+                      onTap: () => _sendMessage(_chatController.text),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4050),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.send,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -243,24 +278,28 @@ class AiChatScreen extends StatelessWidget {
 
 class _QuickOptionChip extends StatelessWidget {
   final String label;
+  final VoidCallback? onTap;
 
-  const _QuickOptionChip({required this.label});
+  const _QuickOptionChip({required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
