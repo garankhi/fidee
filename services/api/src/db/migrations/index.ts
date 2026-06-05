@@ -558,5 +558,184 @@ ALTER TABLE place_candidates
   ADD COLUMN IF NOT EXISTS price_max INTEGER,
   ADD COLUMN IF NOT EXISTS phone_number TEXT,
   ADD COLUMN IF NOT EXISTS description TEXT;
+`,
+  '010_checkin_visibility_no_public': `-- ============================================================================
+-- 010_checkin_visibility_no_public
+-- Remove PUBLIC from check_ins visibility. Only FRIENDS and PRIVATE allowed.
+-- ============================================================================
+
+-- Update existing PUBLIC check-ins to FRIENDS
+UPDATE check_ins SET visibility = 'FRIENDS' WHERE visibility = 'PUBLIC';
+
+-- Drop old constraint and add new one
+ALTER TABLE check_ins DROP CONSTRAINT IF EXISTS check_ins_visibility_check;
+ALTER TABLE check_ins
+  ADD CONSTRAINT check_ins_visibility_check
+  CHECK (visibility IN ('FRIENDS', 'PRIVATE'));
+
+-- Update default
+ALTER TABLE check_ins ALTER COLUMN visibility SET DEFAULT 'FRIENDS';
+`
+,
+  '011_place_rating_counters': `-- ============================================================================
+-- 011_place_rating_counters
+-- Add denormalized rating/checkin counters + cover_media_id to places & candidates
+-- ============================================================================
+
+ALTER TABLE places
+  ADD COLUMN IF NOT EXISTS avg_rating DOUBLE PRECISION DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS checkin_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cover_media_id TEXT;
+
+ALTER TABLE place_candidates
+  ADD COLUMN IF NOT EXISTS avg_rating DOUBLE PRECISION DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS checkin_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cover_media_id TEXT;
+
+-- Backfill places from existing check_ins
+UPDATE places p SET
+  avg_rating = COALESCE(s.avg_r, 0),
+  rating_count = COALESCE(s.cnt_r, 0),
+  checkin_count = COALESCE(s.cnt, 0),
+  cover_media_id = s.latest_media
+FROM (
+  SELECT place_id,
+    AVG(rating)::double precision AS avg_r,
+    COUNT(rating)::integer AS cnt_r,
+    COUNT(*)::integer AS cnt,
+    (array_agg(media_id ORDER BY created_at DESC))[1] AS latest_media
+  FROM check_ins WHERE place_id IS NOT NULL
+  GROUP BY place_id
+) s WHERE p.id = s.place_id;
+
+-- Backfill place_candidates from existing check_ins
+UPDATE place_candidates pc SET
+  avg_rating = COALESCE(s.avg_r, 0),
+  rating_count = COALESCE(s.cnt_r, 0),
+  checkin_count = COALESCE(s.cnt, 0),
+  cover_media_id = s.latest_media
+FROM (
+  SELECT candidate_id,
+    AVG(rating)::double precision AS avg_r,
+    COUNT(rating)::integer AS cnt_r,
+    COUNT(*)::integer AS cnt,
+    (array_agg(media_id ORDER BY created_at DESC))[1] AS latest_media
+  FROM check_ins WHERE candidate_id IS NOT NULL
+  GROUP BY candidate_id
+) s WHERE pc.id = s.candidate_id;
+
+-- Index for hot places query (sort by checkin_count)
+CREATE INDEX IF NOT EXISTS idx_places_checkin_count ON places (checkin_count DESC) WHERE checkin_count > 0;
+CREATE INDEX IF NOT EXISTS idx_candidates_checkin_count ON place_candidates (checkin_count DESC) WHERE checkin_count > 0;
+`
+,
+  '012_candidate_media_nullable': `-- ============================================================================
+-- 012_candidate_media_nullable
+-- Allow place_candidates to be created without media (quick create flow)
+-- ============================================================================
+ALTER TABLE place_candidates ALTER COLUMN media_id DROP NOT NULL;
+`
+,
+  '013_gamification_schema': `-- ============================================================================
+-- 013_gamification_schema
+-- Create tables for Gamification (Level, XP, Coins, Badges, Challenges)
+-- ============================================================================
+
+-- 1. Bảng user_gamification
+CREATE TABLE IF NOT EXISTS user_gamification (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  level INTEGER NOT NULL DEFAULT 1,
+  xp INTEGER NOT NULL DEFAULT 0,
+  coins INTEGER NOT NULL DEFAULT 0,
+  current_streak INTEGER NOT NULL DEFAULT 0,
+  title TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Khi user mới tạo, tự động tạo dòng user_gamification
+-- (Hoặc insert cho tất cả user hiện tại)
+INSERT INTO user_gamification (user_id)
+SELECT id FROM users
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 2. Hệ thống Badges
+CREATE TABLE IF NOT EXISTS badges (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  icon_url TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_badges (
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+  badge_id TEXT REFERENCES badges(id) ON DELETE CASCADE,
+  earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, badge_id)
+);
+
+-- Seed Badges
+INSERT INTO badges (id, name, description, icon_url) VALUES 
+('badge_early_bird', 'Early Bird', 'Joined in the first year', 'https://d3mzokndfkczxw.cloudfront.net/default-badges/early.png'),
+('badge_coffee_lover', 'Coffee Lover', 'Check in to 10 cafes', 'https://d3mzokndfkczxw.cloudfront.net/default-badges/coffee.png')
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. Hệ thống Challenges
+CREATE TABLE IF NOT EXISTS challenges (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  target_value INTEGER NOT NULL,
+  reward_coins INTEGER NOT NULL DEFAULT 0,
+  challenge_type TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_challenges (
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+  challenge_id TEXT REFERENCES challenges(id) ON DELETE CASCADE,
+  progress INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'IN_PROGRESS' 
+    CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'CLAIMED')),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, challenge_id)
+);
+
+-- Seed Challenges
+INSERT INTO challenges (id, title, description, target_value, reward_coins, challenge_type) VALUES 
+('chal_streak_30', '30-Day streak', 'Maintain a 30-day checkin streak', 30, 500, 'STREAK_DAYS'),
+('chal_checkin_50', 'Check-in 50 spots', 'Discover 50 new spots', 50, 1000, 'CHECKIN_COUNT'),
+('chal_tag_5', 'Tag 5 friends this week', 'Tag your friends to get coins', 5, 100, 'SOCIAL_TAG')
+ON CONFLICT (id) DO NOTHING;
+
+-- Tạm thời seed data cho tài khoản test API (lấy user đầu tiên có trong DB)
+DO $$ 
+DECLARE
+  test_user_id TEXT;
+BEGIN
+  SELECT id INTO test_user_id FROM users LIMIT 1;
+  IF test_user_id IS NOT NULL THEN
+    -- Cập nhật gamification
+    UPDATE user_gamification 
+    SET level = 8, xp = 500, coins = 98, current_streak = 29, title = 'Rising Star'
+    WHERE user_id = test_user_id;
+
+    -- Seed user badges
+    INSERT INTO user_badges (user_id, badge_id) VALUES 
+    (test_user_id, 'badge_early_bird'),
+    (test_user_id, 'badge_coffee_lover')
+    ON CONFLICT DO NOTHING;
+
+    -- Seed user challenges
+    INSERT INTO user_challenges (user_id, challenge_id, progress, status) VALUES 
+    (test_user_id, 'chal_streak_30', 30, 'CLAIMED'),
+    (test_user_id, 'chal_checkin_50', 50, 'CLAIMED'),
+    (test_user_id, 'chal_tag_5', 3, 'IN_PROGRESS')
+    ON CONFLICT DO NOTHING;
+  END IF;
+END $$;
+
 `
 };

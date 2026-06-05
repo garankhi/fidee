@@ -15,18 +15,13 @@ import '../services/map_feed_service.dart';
 import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
 import 'camera_screen.dart';
+import 'dashboard.dart';
 import 'profile_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
-///
-/// [locationService] được truyền vào từ main.dart đã resolve sẵn thông qua
-/// [locationControllerProvider]. HomeScreen không cần tự khởi động location
-/// và không hiển thị spinner trắng — map render ngay lập tức.
 class HomeScreen extends ConsumerStatefulWidget {
   final LocationService locationService;
 
-  /// Khi false, các tính năng cần vị trí bị ẩn/khoá.
-  /// User có thể mở khoá bằng cách cấp phép từ banner.
   const HomeScreen({super.key, required this.locationService});
 
   @override
@@ -40,19 +35,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _showLocationBanner = false;
   List<MapFeedItem> _feedItems = [];
 
-  /// True nếu user đang ở chế độ giới hạn (không có GPS).
   bool get _isLimitedMode => _locationService.status != LocationStatus.granted;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // LocationService đã được khởi động song song với auth trong main.dart.
-    // Không cần _initLocation() hay spinner — dùng thẳng kết quả đã có.
     _locationService = widget.locationService;
     _showLocationBanner = _locationService.status != LocationStatus.granted;
     if (_locationService.hasRealLocation) {
-      // Need to defer the fetch slightly so Riverpod ref is ready, or just do it after build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _fetchFeed();
       });
@@ -195,48 +186,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _onDiscover() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ExploreScreen(),
-      ),
-    );
-  }
+  void _onDiscover() async {
+    List<NearbyPlace> localSpots = [];
 
-  void _onAddSpotFromTop() {
+    try {
+      final nearbyService = NearbyService(ref.read(authServiceProvider));
+      final res = await nearbyService.fetchNearby(
+        lat: _locationService.currentPosition.latitude,
+        lng: _locationService.currentPosition.longitude,
+        mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      localSpots = res.data.where((p) => !p.isCustomFallback).toList();
+    } catch (e) {
+      debugPrint('Error loading nearby spots for dashboard flow: $e');
+    }
+
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _DiscoverSheet(
-        lat: _locationService.currentPosition.latitude,
-        lng: _locationService.currentPosition.longitude,
-        nearbyService: NearbyService(ref.read(authServiceProvider)),
-        onAddSpot: (spots) {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (_) => AddSpotScreen(
-                spotSuggestions: spots,
-                authService: ref.read(authServiceProvider),
-              ),
-            ),
-          );
-        },
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: DashboardScreen(
+            spotSuggestions: localSpots,
+            onAddSpot: (spots) {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => AddSpotScreen(
+                    spotSuggestions: spots,
+                    authService: ref.read(authServiceProvider),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Không còn _isLoading guard — map render ngay từ frame đầu tiên.
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // === MAP ===
           RepaintBoundary(
             child: FlutterMap(
               mapController: _mapController,
@@ -250,7 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 // Light-style tile layer (Voyager)
                 TileLayer(
                   urlTemplate:
-                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.fidee.fidee',
                   maxZoom: 20,
@@ -271,15 +274,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     markers: _feedItems
                         .map(
                           (item) => Marker(
-                            point: LatLng(item.lat, item.lng),
-                            width: 48,
-                            height: 48,
-                            child: GestureDetector(
-                              onTap: () => _showFeedItemDetails(context, item),
-                              child: _FeedMarker(item: item),
-                            ),
-                          ),
-                        )
+                        point: LatLng(item.lat, item.lng),
+                        width: 48,
+                        height: 48,
+                        child: GestureDetector(
+                          onTap: () => _showFeedItemDetails(context, item),
+                          child: _FeedMarker(item: item),
+                        ),
+                      ),
+                    )
                         .toList(),
                   ),
               ],
@@ -300,68 +303,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _TopAddSpotButton(onTap: _onAddSpotFromTop),
+                        _TopAddSpotButton(onTap: _onDiscover),
                         Image.asset(
-                          'assets/images/logo.png',
-                          height: 32,
+                          'assets/images/logo_red.png',
+                          height: 25,
                           cacheHeight: 96,
                         ),
                         GestureDetector(
-                          onTap: () => _showProfileMenu(context),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => const ProfileScreen(),
+                              ),
+                            );
+                          },
+                          child: Consumer(
+                            builder: (context, ref, _) {
+                              final authService = ref.watch(authServiceProvider);
+                              final firstName = authService.firstName ?? '';
+                              final lastName = authService.lastName ?? '';
+                              String initials = 'U';
+                              if (firstName.isNotEmpty || lastName.isNotEmpty) {
+                                final first = firstName.trim().isNotEmpty
+                                    ? firstName.trim().substring(0, 1)
+                                    : '';
+                                final last = lastName.trim().isNotEmpty
+                                    ? lastName.trim().substring(0, 1)
+                                    : '';
+                                initials = '$first$last'.toUpperCase();
+                                if (initials.isEmpty) initials = 'U';
+                              } else if (authService.username != null &&
+                                  authService.username!.isNotEmpty) {
+                                initials = authService.username!
+                                    .substring(0, 1)
+                                    .toUpperCase();
+                              }
+
+                              return Container(
                                 width: 40,
                                 height: 40,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF5A8DEE),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4050),
                                   shape: BoxShape.circle,
+                                  image: authService.avatarUrl != null &&
+                                      authService.avatarUrl!.isNotEmpty
+                                      ? DecorationImage(
+                                    image: authService.avatarUrl!.startsWith('http')
+                                        ? NetworkImage(authService.avatarUrl!) as ImageProvider
+                                        : FileImage(File(authService.avatarUrl!)),
+                                    fit: BoxFit.cover,
+                                  )
+                                      : null,
                                 ),
-                                child: const Center(
+                                child: authService.avatarUrl == null ||
+                                    authService.avatarUrl!.isEmpty
+                                    ? Center(
                                   child: Text(
-                                    'AA',
-                                    style: TextStyle(
+                                    initials,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ),
-                              ),
-                              Positioned(
-                                top: -2,
-                                right: -2,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF3B30),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      '1',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                                )
+                                    : null,
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Search Bar
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Container(
@@ -401,6 +415,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
+
           // === LOCATION DENIED BANNER ===
           if (_showLocationBanner)
             Positioned(
@@ -411,16 +426,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: _LocationDeniedBanner(
                   status: _locationService.status,
                   onAllow: () async {
-                    if (_locationService.status ==
-                        LocationStatus.deniedForever) {
+                    if (_locationService.status == LocationStatus.deniedForever) {
                       await _locationService.openSettings();
                     } else {
                       await _locationService.initialize();
                     }
                     if (!mounted) return;
                     setState(() {
-                      _showLocationBanner =
-                          _locationService.status != LocationStatus.granted;
+                      _showLocationBanner = _locationService.status != LocationStatus.granted;
                     });
                     if (_locationService.hasRealLocation) {
                       _animateToLocation(_locationService.currentPosition);
@@ -452,7 +465,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Compass (Left)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Discovery.png',
                     onTap: _onDiscover,
@@ -461,7 +473,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     locked: _isLimitedMode,
                   ),
                   const SizedBox(width: 24),
-                  // Camera (Center)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Camera.png',
                     onTap: _onCheckIn,
@@ -470,7 +481,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     locked: _isLimitedMode,
                   ),
                   const SizedBox(width: 24),
-                  // Messages (Right)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Chat.png',
                     onTap: () {
@@ -493,7 +503,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 class _TopAddSpotButton extends StatelessWidget {
   final VoidCallback onTap;
-
   const _TopAddSpotButton({required this.onTap});
 
   @override
@@ -524,7 +533,6 @@ class _TopAddSpotButton extends StatelessWidget {
   }
 }
 
-// === BOTTOM NAV ICON ===
 class _BottomNavIcon extends StatelessWidget {
   final String assetPath;
   final VoidCallback onTap;
@@ -536,7 +544,7 @@ class _BottomNavIcon extends StatelessWidget {
     required this.assetPath,
     required this.onTap,
     this.size = 60,
-    this.iconSize = 28, // <-- ĐÂY LÀ CHỖ TĂNG KÍCH THƯỚC ICON MẶC ĐỊNH
+    this.iconSize = 28,
     this.locked = false,
   });
 
@@ -576,7 +584,7 @@ class _BottomNavIcon extends StatelessWidget {
                   fit: BoxFit.contain,
                   cacheWidth: 152,
                   errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.error, color: Colors.grey),
+                  const Icon(Icons.error, color: Colors.grey),
                 ),
               ),
             ),
@@ -736,18 +744,14 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
         builder: (_, _) => Stack(
           alignment: Alignment.center,
           children: [
-            // Outer pulse
             Container(
               width: 60 * _animation.value,
               height: 60 * _animation.value,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(
-                  0xFF3B82F6,
-                ).withValues(alpha: 0.2 * (1 - _animation.value)),
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.2 * (1 - _animation.value)),
               ),
             ),
-            // Inner dot
             Container(
               width: 18,
               height: 18,
@@ -770,203 +774,6 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
   }
 }
 
-// === DISCOVER SHEET ===
-class _DiscoverSheet extends StatefulWidget {
-  final double lat;
-  final double lng;
-  final NearbyService nearbyService;
-  final void Function(List<NearbyPlace> spots) onAddSpot;
-
-  const _DiscoverSheet({
-    required this.lat,
-    required this.lng,
-    required this.nearbyService,
-    required this.onAddSpot,
-  });
-
-  @override
-  State<_DiscoverSheet> createState() => _DiscoverSheetState();
-}
-
-class _DiscoverSheetState extends State<_DiscoverSheet> {
-  List<NearbyPlace> _spots = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final res = await widget.nearbyService.fetchNearby(
-        lat: widget.lat,
-        lng: widget.lng,
-        mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!mounted) return;
-      setState(() {
-        _spots = res.data.where((p) => !p.isCustomFallback).toList();
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E2E2),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Banner "Chưa tìm được quán yêu thích?"
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFE9EC), Color(0xFFFFF0F2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'CHƯA TÌM ĐƯỢC\nQUÁN YÊU THÍCH?',
-                  style: TextStyle(
-                    color: Color(0xFFEF4050),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
-                  style: TextStyle(
-                    color: Color(0xFF8D8D8D),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => widget.onAddSpot(_spots),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4050),
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFEF4050).withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Text(
-                      'Thêm ngay vào bản đồ!',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: CircularProgressIndicator(
-                  color: Color(0xFFEF4050),
-                  strokeWidth: 2,
-                ),
-              ),
-            )
-          else if (_spots.isNotEmpty) ...
-            [
-              const Text(
-                'Địa điểm gần bạn',
-                style: TextStyle(
-                  color: Color(0xFF151515),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ..._spots.take(5).map(
-                (p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.place_rounded,
-                        color: Color(0xFFEF4050),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          p.displayName,
-                          style: const TextStyle(
-                            color: Color(0xFF151515),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        '${p.distanceMeters}m',
-                        style: const TextStyle(
-                          color: Color(0xFF8D8D8D),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-        ],
-      ),
-    );
-  }
-}
-
-// === LOCATION DENIED BANNER ===
 class _LocationDeniedBanner extends StatelessWidget {
   final LocationStatus status;
   final VoidCallback onAllow;
@@ -1223,47 +1030,30 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.place_rounded,
-                      color: Color(0xFFEF4050),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        p.displayName,
-                        style: const TextStyle(
-                          color: Color(0xFF151515),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      '${p.distanceMeters}m',
-                      style: const TextStyle(
-                        color: Color(0xFF8D8D8D),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text(item.userName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(item.placeName, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
                   ],
                 ),
               ),
-            ),
+              Text(
+                '${item.createdAt.hour}:${item.createdAt.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+              ),
+            ],
+          ),
+          if (item.caption.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(item.caption, style: const TextStyle(color: Colors.white, fontSize: 16)),
           ],
+          const SizedBox(height: 16),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(color: const Color(0xFF0A0E17), borderRadius: BorderRadius.circular(16)),
+            child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 48)),
+          ),
         ],
       ),
     );
   }
 }
-
-
-
-
-
-
-
-
-

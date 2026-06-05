@@ -147,6 +147,26 @@ describe('FideeStack', () => {
     });
   });
 
+  it('creates a protected PATCH /profile endpoint for unique username updates', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'fidee-dev-update-profile',
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'PATCH',
+      AuthorizationType: 'COGNITO_USER_POOLS',
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'cognito-idp:AdminUpdateUserAttributes',
+            Effect: 'Allow',
+          }),
+        ]),
+      },
+    });
+  });
+
   it('creates a protected POST /media/uploads endpoint', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'fidee-dev-create-media-upload',
