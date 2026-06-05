@@ -1,75 +1,66 @@
-import '../models/nearby_place.dart';
+import 'dart:convert';
 
-/// Service that provides nearby places data.
-/// Currently returns mock data matching the API contract.
-/// Will be replaced with real API calls when backend is ready.
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+import '../config.dart';
+import '../models/nearby_place.dart';
+import 'auth_service.dart';
+
+/// Service that provides nearby places data from the backend.
 class NearbyService {
+  final AuthService _authService;
+
+  const NearbyService(this._authService);
+
   /// Fetch nearby places based on coordinates.
-  /// In MVP, returns mock data from the contract.
   Future<NearbyResponse> fetchNearby({
     required double lat,
     required double lng,
     int radius = 50,
     required String mediaId,
   }) async {
-    // Simulate network delay
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
+      return NearbyResponse.fromJson(_mockFallback(lat, lng));
+    }
 
-    // Return mock data matching nearby_mock_success.json
-    return NearbyResponse.fromJson(_mockSuccessResponse(lat, lng));
+    try {
+      final uri = Uri.parse(
+        '${Config.apiBaseUrl}/places/nearby?lat=$lat&lng=$lng&radius=$radius&media_id=$mediaId',
+      );
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': token},
+      );
+
+      if (response.statusCode != 200) {
+        return NearbyResponse.fromJson(_mockFallback(lat, lng));
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return NearbyResponse.fromJson(decoded);
+    } catch (error) {
+      debugPrint('Error fetching nearby places: $error');
+      return NearbyResponse.fromJson(_mockFallback(lat, lng));
+    }
   }
 
-  static Map<String, dynamic> _mockSuccessResponse(double lat, double lng) {
+  static Map<String, dynamic> _mockFallback(double lat, double lng) {
     return {
       'status': 'success',
       'metadata': {
-        'source': 'goong_places',
-        'has_goong_fallback': true,
-        'total_results': 3,
+        'source': 'local_fallback',
+        'has_goong_fallback': false,
+        'total_results': 1,
       },
       'data': [
-        {
-          'id': 'place_fidee_001',
-          'place_id': 'goong_pid_98765',
-          'source': 'goong_places',
-          'display_name': 'Bitexco Financial Tower',
-          'address': '2 Hải Triều, Bến Nghé, Quận 1, Hồ Chí Minh',
-          'category': 'tourist_attraction',
-          'distance_meters': 5,
-          'confidence': 'high',
-          'coordinates': {'lat': 10.771597, 'lng': 106.704416},
-          'actions': {'primary': 'attach_place_to_photo'},
-        },
-        {
-          'id': 'place_fidee_002',
-          'place_id': 'goong_pid_43210',
-          'source': 'goong_places',
-          'display_name': 'Katinat Saigon Kafe',
-          'address': '91 Đồng Khởi, Bến Nghé, Quận 1, Hồ Chí Minh',
-          'category': 'cafe',
-          'distance_meters': 28,
-          'confidence': 'medium',
-          'coordinates': {'lat': 10.771800, 'lng': 106.704600},
-          'actions': {'primary': 'attach_place_to_photo'},
-        },
-        {
-          'id': 'place_fidee_003',
-          'place_id': 'goong_pid_55555',
-          'source': 'goong_places',
-          'display_name': 'The Coffee House - Hai Trieu',
-          'address': '5 Hải Triều, Bến Nghé, Quận 1, Hồ Chí Minh',
-          'category': 'cafe',
-          'distance_meters': 42,
-          'confidence': 'low',
-          'coordinates': {'lat': 10.771900, 'lng': 106.704200},
-          'actions': {'primary': 'attach_place_to_photo'},
-        },
         {
           'id': 'custom_fallback',
           'place_id': null,
           'source': 'custom',
           'display_name': 'Tạo địa điểm mới tại đây',
-          'address': 'Gần 2 Hải Triều, Quận 1, Hồ Chí Minh',
+          'address': 'Gần vị trí hiện tại',
           'category': 'custom',
           'distance_meters': 0,
           'confidence': 'low',
@@ -80,4 +71,3 @@ class NearbyService {
     };
   }
 }
-

@@ -1,7 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
+
 import '../config.dart';
 
 // Persistent Cognito storage.
@@ -18,7 +24,7 @@ class SecureCognitoStorage extends CognitoStorage {
   SecureCognitoStorage(FlutterSecureStorage storage)
     : this.custom(
         read: (key) => storage.read(key: key),
-        readAll: storage.readAll,
+        readAll: () => storage.readAll(),
         write: (key, value) => storage.write(key: key, value: value),
         delete: (key) => storage.delete(key: key),
       );
@@ -72,7 +78,13 @@ class SecureCognitoStorage extends CognitoStorage {
 }
 
 // Auth state and result.
-enum AuthState { loading, unauthenticated, otpSent, authenticated, incompleteProfile }
+enum AuthState {
+  loading,
+  unauthenticated,
+  otpSent,
+  authenticated,
+  incompleteProfile,
+}
 
 enum UserTier { free, pro }
 
@@ -88,6 +100,20 @@ class AuthResult {
   });
 }
 
+class UsernameAvailabilityResult {
+  final bool success;
+  final bool available;
+  final String? normalizedUsername;
+  final String? errorMessage;
+
+  const UsernameAvailabilityResult({
+    required this.success,
+    required this.available,
+    this.normalizedUsername,
+    this.errorMessage,
+  });
+}
+
 // Auth service.
 class AuthService {
   final bool isTestMode;
@@ -97,6 +123,18 @@ class AuthService {
   DateTime? _lastOtpSent;
   String? _destination;
   UserTier _tier = UserTier.free;
+
+  String? _firstName;
+  String? _lastName;
+  String? _preferredUsername;
+  String? _avatarUrl;
+  String? _since;
+
+  String? get firstName => _firstName;
+  String? get lastName => _lastName;
+  String? get preferredUsername => _preferredUsername;
+  String? get avatarUrl => _avatarUrl;
+  String? get since => _since;
 
   late CognitoUserPool _userPool;
   CognitoUser? _cognitoUser;
@@ -109,6 +147,18 @@ class AuthService {
   AuthState get state => _state;
   UserTier get tier => _tier;
   String? get destination => _destination;
+
+  String? get username => _username;
+
+  Future<String?> getToken() async {
+    if (_cognitoUser == null) return null;
+    try {
+      final session = await _cognitoUser!.getSession();
+      return session?.getIdToken().getJwtToken();
+    } catch (_) {
+      return null;
+    }
+  }
 
   int get resendCooldownRemaining {
     if (_lastOtpSent == null) return 0;
@@ -151,27 +201,32 @@ class AuthService {
 
       if (session != null && session.isValid()) {
         _username = user.getUsername();
-        
+
         // Fetch attributes to check if profile is complete
         final attributes = await user.getUserAttributes();
         bool hasName = false;
-        
+
         if (attributes != null) {
           for (var attr in attributes) {
-            // Check for a custom attribute or standard attribute that indicates completion
-            // For example, checking if 'given_name' or 'name' or 'preferred_username' is set
-            if (attr.getName() == 'given_name' && (attr.getValue()?.isNotEmpty ?? false)) {
-              hasName = true;
-            }
-            if (attr.getName() == 'custom:tier') {
-              if (attr.getValue() == 'pro') {
-                _tier = UserTier.pro;
-              } else {
-                _tier = UserTier.free;
-              }
+            final name = attr.getName();
+            final value = attr.getValue() ?? '';
+            if (name == 'given_name') {
+              _firstName = value;
+              if (value.isNotEmpty) hasName = true;
+            } else if (name == 'family_name') {
+              _lastName = value;
+            } else if (name == 'preferred_username') {
+              _preferredUsername = value;
+            } else if (name == 'picture') {
+              _avatarUrl = value;
+            } else if (name == 'custom:tier') {
+              _tier = value == 'pro' ? UserTier.pro : UserTier.free;
             }
           }
         }
+
+        // Fetch full profile details from PostgreSQL (createdAt, friendCount, etc.)
+        await fetchProfileDetails();
 
         if (hasName) {
           _state = AuthState.authenticated;
@@ -194,7 +249,7 @@ class AuthService {
 
   Future<AuthResult> signIn(String email, String password) async {
     _username = email.trim();
-    
+
     if (isTestMode) {
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
@@ -212,30 +267,21 @@ class AuthService {
         _state = AuthState.authenticated;
         return const AuthResult(success: true);
       } else {
-        return const AuthResult(
-          success: false,
-          errorMessage: 'Login failed',
-        );
+        return const AuthResult(success: false, errorMessage: 'Login failed');
       }
     } on CognitoUserConfirmationNecessaryException {
       _state = AuthState.otpSent;
       _lastOtpSent = DateTime.now();
       _destination = _maskDestination(_username!);
       // Cần verify email
-      return AuthResult(
-        success: true,
-        destination: _destination,
-      );
+      return AuthResult(success: true, destination: _destination);
     } on CognitoClientException catch (e) {
       return AuthResult(
         success: false,
         errorMessage: e.message ?? 'Sai tài khoản hoặc mật khẩu',
       );
     } catch (e) {
-      return const AuthResult(
-        success: false,
-        errorMessage: 'Lỗi kết nối.',
-      );
+      return const AuthResult(success: false, errorMessage: 'Lỗi kết nối.');
     }
   }
 
@@ -250,15 +296,9 @@ class AuthService {
     }
 
     try {
-      final attributes = [
-        AttributeArg(name: 'email', value: _username),
-      ];
+      final attributes = [AttributeArg(name: 'email', value: _username)];
 
-      await _userPool.signUp(
-        _username!,
-        password,
-        userAttributes: attributes,
-      );
+      await _userPool.signUp(_username!, password, userAttributes: attributes);
 
       _cognitoUser = CognitoUser(_username, _userPool);
       _state = AuthState.otpSent;
@@ -268,22 +308,140 @@ class AuthService {
     } on CognitoClientException catch (e) {
       return AuthResult(
         success: false,
-        errorMessage: e.message ?? 'Không thể đăng ký. Email có thể đã tồn tại.',
+        errorMessage:
+            e.message ?? 'Không thể đăng ký. Email có thể đã tồn tại.',
       );
     } catch (e) {
-      return const AuthResult(
-        success: false,
-        errorMessage: 'Lỗi hệ thống.',
-      );
+      return const AuthResult(success: false, errorMessage: 'Lỗi hệ thống.');
     }
   }
 
   Future<AuthResult> signInWithGoogle() async {
-    // Requires google_sign_in package setup and Cognito Identity Pool
-    return const AuthResult(
-      success: false,
-      errorMessage: 'Chưa hỗ trợ Google Login',
-    );
+    if (isTestMode) {
+      _state = AuthState.authenticated;
+      return const AuthResult(success: true);
+    }
+
+    try {
+      await GoogleSignIn.instance.initialize(
+        serverClientId: '255813663531-rd534l11ckmgrobpo4imj2kdnshpq3ap.apps.googleusercontent.com',
+      );
+
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+      final String email = googleUser.email;
+
+      if (idToken == null || idToken.isEmpty) {
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Không lấy được thông tin xác thực từ Google',
+        );
+      }
+
+      _username = email.trim();
+      _cognitoUser = CognitoUser(_username, _userPool);
+      _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
+
+      try {
+        final randomPassword = 'GoogleAuth_${const Uuid().v4().replaceAll('-', '')}';
+        final attributes = [
+          AttributeArg(name: 'email', value: _username),
+          if (googleUser.displayName != null && googleUser.displayName!.isNotEmpty) ...[
+            AttributeArg(name: 'given_name', value: googleUser.displayName),
+            const AttributeArg(name: 'family_name', value: 'Google User'),
+          ]
+        ];
+        await _userPool.signUp(_username!, randomPassword, userAttributes: attributes);
+      } on CognitoClientException catch (e) {
+        if (e.code != 'UsernameExistsException') {
+          return AuthResult(
+            success: false,
+            errorMessage: e.message ?? 'Đăng ký tài khoản Google thất bại',
+          );
+        }
+      } catch (e) {
+        // ignore other errors
+      }
+
+      try {
+        final session = await _cognitoUser!.initiateAuth(
+          AuthenticationDetails(
+            authParameters: [
+              AttributeArg(name: 'USERNAME', value: _username),
+              const AttributeArg(name: 'provider', value: 'google'),
+            ],
+            validationData: const {'provider': 'google'},
+          ),
+        );
+
+        if (session != null && session.isValid()) {
+          _state = AuthState.authenticated;
+          return const AuthResult(success: true);
+        }
+
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Không khởi tạo được phiên đăng nhập',
+        );
+      } on CognitoUserCustomChallengeException catch (e) {
+        if (e.challengeParameters != null &&
+            e.challengeParameters['provider'] == 'google') {
+          
+          final challengeSession = await _cognitoUser!.sendCustomChallengeAnswer(
+            idToken,
+            {'provider': 'google'},
+          );
+
+          if (challengeSession != null && challengeSession.isValid()) {
+            _state = AuthState.authenticated;
+
+            try {
+              final attributes = await _cognitoUser!.getUserAttributes();
+              bool hasName = false;
+              if (attributes != null) {
+                for (var attr in attributes) {
+                  if (attr.getName() == 'given_name' && (attr.getValue()?.isNotEmpty ?? false)) {
+                    hasName = true;
+                  }
+                  if (attr.getName() == 'custom:tier') {
+                    _tier = attr.getValue() == 'pro' ? UserTier.pro : UserTier.free;
+                  }
+                }
+              }
+              if (!hasName) {
+                _state = AuthState.incompleteProfile;
+              }
+            } catch (_) {
+              // fallback
+            }
+
+            return const AuthResult(success: true);
+          } else {
+            return const AuthResult(
+              success: false,
+              errorMessage: 'Xác thực Google ID Token thất bại',
+            );
+          }
+        } else {
+          return const AuthResult(
+            success: false,
+            errorMessage: 'Quy trình xác thực Cognito không hợp lệ',
+          );
+        }
+      }
+    } on CognitoClientException catch (e) {
+      return AuthResult(
+        success: false,
+        errorMessage: e.message ?? 'Lỗi kết nối đến dịch vụ AWS Cognito',
+      );
+    } catch (e) {
+      debugPrint('DEBUG [AuthService] Google login error: $e');
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Lỗi hệ thống khi đăng nhập bằng Google',
+      );
+    }
   }
 
   Future<AuthResult> verifyOtp(String code) async {
@@ -316,10 +474,7 @@ class AuthService {
         errorMessage: e.message ?? 'Mã xác thực sai',
       );
     } catch (e) {
-      return const AuthResult(
-        success: false,
-        errorMessage: 'Lỗi kết nối.',
-      );
+      return const AuthResult(success: false, errorMessage: 'Lỗi kết nối.');
     }
   }
 
@@ -337,7 +492,7 @@ class AuthService {
         errorMessage: 'Không tìm thấy phiên đăng ký',
       );
     }
-    
+
     try {
       await _cognitoUser?.resendConfirmationCode();
       _lastOtpSent = DateTime.now();
@@ -351,38 +506,277 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    if (!isTestMode && _cognitoUser != null) {
-      // This clears tokens from SecureCognitoStorage
-      await _cognitoUser!.signOut();
+    try {
+      if (!isTestMode && _cognitoUser != null) {
+        // This clears tokens from SecureCognitoStorage
+        await _cognitoUser!.signOut();
+      }
+    } catch (e) {
+      debugPrint('DEBUG [AuthService]: Remote signOut failed: $e');
+      try {
+        await _userPool.storage.clear();
+      } catch (storageError) {
+        debugPrint('DEBUG [AuthService]: Failed to clear storage: $storageError');
+      }
+    } finally {
+      _state = AuthState.unauthenticated;
+      _username = null;
+      _cognitoUser = null;
+      _destination = null;
     }
-    _state = AuthState.unauthenticated;
-    _username = null;
-    _cognitoUser = null;
-    _destination = null;
   }
 
-  Future<AuthResult> completeProfile(String firstName, String lastName, String username) async {
+  Future<AuthResult> completeProfile(
+    String firstName,
+    String lastName,
+    String username,
+  ) async {
     if (isTestMode) {
+      _firstName = firstName;
+      _lastName = lastName;
+      _preferredUsername = username;
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
+    }
+
+    final result = await _patchProfileDetails(
+      firstName: firstName,
+      lastName: lastName,
+      username: username,
+    );
+
+    if (result.success) {
+      _state = AuthState.authenticated;
+    }
+
+    return result;
+  }
+
+  Future<void> fetchProfileDetails() async {
+    final token = await getToken();
+    if (token == null) return;
+    
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/profile'),
+        headers: {'Authorization': token},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final String? displayName = data['displayName'] as String?;
+        if (displayName != null) {
+          final parts = displayName.split(' ');
+          _firstName = parts.isNotEmpty ? parts.first : _firstName;
+          _lastName = parts.length > 1 ? parts.skip(1).join(' ') : _lastName;
+        }
+        _preferredUsername = data['username'] as String? ?? _preferredUsername;
+        _avatarUrl = data['avatarUrl'] as String? ?? _avatarUrl;
+        if (data['plan'] == 'PRO') {
+          _tier = UserTier.pro;
+        } else {
+          _tier = UserTier.free;
+        }
+        
+        // Parse "since" year
+        final createdAtStr = data['createdAt'] as String?;
+        if (createdAtStr != null) {
+          final dt = DateTime.parse(createdAtStr);
+          _since = dt.year.toString();
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  Future<UsernameAvailabilityResult> checkUsernameAvailability(String username) async {
+    final normalizedUsername = username.trim().toLowerCase();
+
+    if (isTestMode) {
+      return UsernameAvailabilityResult(
+        success: true,
+        available: true,
+        normalizedUsername: normalizedUsername,
+      );
+    }
+
+    final token = await getToken();
+    if (token == null) {
+      return const UsernameAvailabilityResult(
+        success: false,
+        available: false,
+        errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      );
+    }
+
+    try {
+      final uri = Uri.parse('${Config.apiBaseUrl}/profile/username-availability')
+          .replace(queryParameters: {'username': normalizedUsername});
+      final response = await http.get(uri, headers: {'Authorization': token});
+      final body = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final available = body['available'] == true;
+        return UsernameAvailabilityResult(
+          success: true,
+          available: available,
+          normalizedUsername: body['username'] as String? ?? normalizedUsername,
+          errorMessage: available ? null : 'Username đã được sử dụng',
+        );
+      }
+
+      final code = body['code'] as String?;
+      if (response.statusCode == 400 && code == 'VALIDATION_ERROR') {
+        return const UsernameAvailabilityResult(
+          success: false,
+          available: false,
+          errorMessage: 'Username không hợp lệ',
+        );
+      }
+
+      final error = body['error'] as String?;
+      return UsernameAvailabilityResult(
+        success: false,
+        available: false,
+        errorMessage: error ?? 'Không kiểm tra được username. Vui lòng thử lại.',
+      );
+    } catch (_) {
+      return const UsernameAvailabilityResult(
+        success: false,
+        available: false,
+        errorMessage: 'Không kiểm tra được username. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<AuthResult> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? preferredUsername,
+    String? avatarUrl,
+  }) async {
+    if (isTestMode) {
+      if (firstName != null) _firstName = firstName;
+      if (lastName != null) _lastName = lastName;
+      if (preferredUsername != null) _preferredUsername = preferredUsername;
+      if (avatarUrl != null) _avatarUrl = avatarUrl;
+      return const AuthResult(success: true);
+    }
+
+    if (firstName != null || lastName != null || preferredUsername != null) {
+      final currentFirstName = firstName ?? _firstName ?? '';
+      final currentLastName = lastName ?? _lastName ?? '';
+      final currentUsername = preferredUsername ?? _preferredUsername ?? '';
+
+      return _patchProfileDetails(
+        firstName: currentFirstName,
+        lastName: currentLastName,
+        username: currentUsername,
+      );
     }
 
     try {
       if (_cognitoUser != null) {
-        final attributes = [
-          CognitoUserAttribute(name: 'given_name', value: firstName),
-          CognitoUserAttribute(name: 'family_name', value: lastName),
-          CognitoUserAttribute(name: 'preferred_username', value: username),
-        ];
-        await _cognitoUser!.updateAttributes(attributes);
+        final attributes = <CognitoUserAttribute>[];
+        if (firstName != null) {
+          attributes.add(CognitoUserAttribute(name: 'given_name', value: firstName));
+        }
+        if (lastName != null) {
+          attributes.add(CognitoUserAttribute(name: 'family_name', value: lastName));
+        }
+        if (preferredUsername != null) {
+          attributes.add(CognitoUserAttribute(name: 'preferred_username', value: preferredUsername));
+        }
+        if (avatarUrl != null) {
+          attributes.add(CognitoUserAttribute(name: 'picture', value: avatarUrl));
+        }
+
+        if (attributes.isNotEmpty) {
+          await _cognitoUser!.updateAttributes(attributes);
+        }
+
+        await fetchProfileDetails();
+
+        if (firstName != null) _firstName = firstName;
+        if (lastName != null) _lastName = lastName;
+        if (preferredUsername != null) _preferredUsername = preferredUsername;
+        if (avatarUrl != null) _avatarUrl = avatarUrl;
       }
-      _state = AuthState.authenticated;
       return const AuthResult(success: true);
     } catch (e) {
-      // If it fails (e.g. backend error), we can still just pretend success locally 
-      // or return error. Let's set to authenticated anyway for UX or return error.
-      _state = AuthState.authenticated; // fallback so user is not stuck
-      return const AuthResult(success: true);
+      return AuthResult(success: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<AuthResult> _patchProfileDetails({
+    required String firstName,
+    required String lastName,
+    required String username,
+  }) async {
+    final token = await getToken();
+    if (token == null) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      );
+    }
+
+    try {
+      final response = await http.patch(
+        Uri.parse('${Config.apiBaseUrl}/profile'),
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'firstName': firstName.trim(),
+          'lastName': lastName.trim(),
+          'username': username.trim(),
+        }),
+      );
+
+      final body = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final profile = body['profile'] as Map<String, dynamic>?;
+        _firstName = firstName.trim();
+        _lastName = lastName.trim();
+        _preferredUsername = profile?['username'] as String? ?? username.trim().toLowerCase();
+        _avatarUrl = profile?['avatarUrl'] as String? ?? _avatarUrl;
+
+        final plan = profile?['plan'] as String?;
+        _tier = plan == 'PRO' ? UserTier.pro : UserTier.free;
+
+        final createdAt = profile?['createdAt'] as String?;
+        if (createdAt != null) {
+          _since = DateTime.parse(createdAt).year.toString();
+        }
+
+        return const AuthResult(success: true);
+      }
+
+      final code = body['code'] as String?;
+      if (response.statusCode == 409 && code == 'USERNAME_TAKEN') {
+        return const AuthResult(
+          success: false,
+          errorMessage: 'Username đã được sử dụng',
+        );
+      }
+
+      final error = body['error'] as String?;
+      return AuthResult(
+        success: false,
+        errorMessage: error ?? 'Cập nhật profile thất bại',
+      );
+    } catch (_) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Lỗi kết nối. Vui lòng thử lại.',
+      );
     }
   }
 
@@ -399,9 +793,3 @@ class AuthService {
         '${input.substring(input.length - 3)}';
   }
 }
-
-
-
-
-
-

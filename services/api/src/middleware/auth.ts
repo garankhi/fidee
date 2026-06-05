@@ -1,8 +1,11 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
+import { syncUserToDatabases } from '../utils/sync-user';
 
 export interface AuthContext {
   /** Cognito user ID */
   sub: string;
+  /** Cognito username, often email for this user pool */
+  username?: string;
   /** Phone number (raw from JWT claim) */
   phone: string | undefined;
   /** Email (raw from JWT claim) */
@@ -36,12 +39,17 @@ export function maskEmail(email: string): string {
  *  - Never log the Authorization header or tokens
  *  - Use maskPhone() / maskEmail() for logging
  */
-export function extractAuth(event: APIGatewayProxyEvent): AuthContext {
+export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthContext> {
   const claims = event.requestContext.authorizer?.claims;
 
   if (!claims?.sub) {
     throw new Error('Missing auth context: no sub claim found');
   }
+
+  const sub = claims.sub as string;
+  const username = (claims['cognito:username'] as string) || undefined;
+  const email = (claims.email as string) || undefined;
+  const phone = (claims.phone_number as string) || undefined;
 
   const groupsClaim = claims['cognito:groups'];
   const groups: string[] = groupsClaim
@@ -50,10 +58,31 @@ export function extractAuth(event: APIGatewayProxyEvent): AuthContext {
       : []
     : ['Users'];
 
+  const givenName = claims.given_name as string | undefined;
+  const familyName = claims.family_name as string | undefined;
+  const preferredUsername = claims.preferred_username as string | undefined;
+  const picture = claims.picture as string | undefined;
+
+  // Tự động đồng bộ thông tin profile mới nhất từ JWT token claims sang DB
+  try {
+    await syncUserToDatabases({
+      sub,
+      email,
+      phone,
+      givenName,
+      familyName,
+      preferredUsername,
+      picture,
+    });
+  } catch (err) {
+    console.error(`[Auth Middleware] Failed to auto-sync user ${sub}:`, err);
+  }
+
   return {
-    sub: claims.sub as string,
-    phone: (claims.phone_number as string) || undefined,
-    email: (claims.email as string) || undefined,
+    sub,
+    username,
+    phone,
+    email,
     groups,
   };
 }

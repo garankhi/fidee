@@ -28,16 +28,20 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
 
   void _submit() {
     if (_selectedDate == null) return;
-    
-    ref.read(profileDraftControllerProvider.notifier).updateInfo(_gender, _selectedDate!);
+
+    ref
+        .read(profileDraftControllerProvider.notifier)
+        .updateInfo(_gender, _selectedDate!);
     Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => RegisterStep5UsernamePage(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        gender: _gender,
-        dob: _selectedDate!,
-      )),
+      MaterialPageRoute<void>(
+        builder: (_) => RegisterStep5UsernamePage(
+          firstName: widget.firstName,
+          lastName: widget.lastName,
+          gender: _gender,
+          dob: _selectedDate!,
+        ),
+      ),
     );
   }
 
@@ -63,7 +67,9 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
               SizedBox(
                 height: 180,
                 child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: initialIndex),
+                  scrollController: FixedExtentScrollController(
+                    initialItem: initialIndex,
+                  ),
                   itemExtent: 32.0,
                   onSelectedItemChanged: (int index) {
                     setState(() {
@@ -76,9 +82,12 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
                 ),
               ),
               CupertinoButton(
-                child: const Text('Xong', style: TextStyle(color: Color(0xFFEF4050))),
+                child: const Text(
+                  'Xong',
+                  style: TextStyle(color: Color(0xFFEF4050)),
+                ),
                 onPressed: () => Navigator.of(context).pop(),
-              )
+              ),
             ],
           ),
         ),
@@ -93,7 +102,10 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
         data: const CupertinoThemeData(
           brightness: Brightness.light,
           textTheme: CupertinoTextThemeData(
-            dateTimePickerTextStyle: TextStyle(color: Colors.black, fontSize: 21),
+            dateTimePickerTextStyle: TextStyle(
+              color: Colors.black,
+              fontSize: 21,
+            ),
           ),
         ),
         child: Container(
@@ -115,9 +127,12 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
                 ),
               ),
               CupertinoButton(
-                child: const Text('Xong', style: TextStyle(color: Color(0xFFEF4050))),
+                child: const Text(
+                  'Xong',
+                  style: TextStyle(color: Color(0xFFEF4050)),
+                ),
                 onPressed: () => Navigator.of(context).pop(),
-              )
+              ),
             ],
           ),
         ),
@@ -142,7 +157,7 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
               child: Text(
                 _gender,
                 style: LoginTextStyles.title().copyWith(
-                  fontSize: 28, 
+                  fontSize: 28,
                   color: LoginColors.textPrimary,
                   fontWeight: FontWeight.w400,
                 ),
@@ -153,7 +168,9 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
           Text(
             'Nam/Nữ/Không tiện nói',
             textAlign: TextAlign.center,
-            style: LoginTextStyles.fieldText().copyWith(fontStyle: FontStyle.italic),
+            style: LoginTextStyles.fieldText().copyWith(
+              fontStyle: FontStyle.italic,
+            ),
           ),
           const SizedBox(height: 60),
           Text(
@@ -168,10 +185,14 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               alignment: Alignment.center,
               child: Text(
-                _selectedDate == null ? 'DD-MM-YYYY' : DateFormat('dd-MM-yyyy').format(_selectedDate!),
+                _selectedDate == null
+                    ? 'DD-MM-YYYY'
+                    : DateFormat('dd-MM-yyyy').format(_selectedDate!),
                 style: LoginTextStyles.title().copyWith(
-                  fontSize: 28, 
-                  color: _selectedDate == null ? LoginColors.border : LoginColors.textPrimary,
+                  fontSize: 28,
+                  color: _selectedDate == null
+                      ? LoginColors.border
+                      : LoginColors.textPrimary,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -201,5 +222,3 @@ class _RegisterStep4State extends ConsumerState<RegisterStep4InfoPage> {
     );
   }
 }
-
-

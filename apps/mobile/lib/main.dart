@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/auth/auth_providers.dart';
 import 'features/auth/login_page.dart';
-import 'features/auth/screens/register_step3_name_page.dart';
+import 'features/auth/screens/complete_profile_page.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 
@@ -55,8 +56,9 @@ class FideeApp extends ConsumerWidget {
     AsyncValue<AuthUiState> authState,
     AsyncValue<LocationService> locationState,
   ) {
-    // Còn loading ở bất kỳ provider nào → giữ SplashScreen
-    if (authState.isLoading || locationState.isLoading) {
+    // Còn loading ở bất kỳ provider nào và chưa có giá trị cũ → giữ SplashScreen
+    if ((authState.isLoading && !authState.hasValue) ||
+        (locationState.isLoading && !locationState.hasValue)) {
       return const _SplashScreen();
     }
 
@@ -70,10 +72,21 @@ class FideeApp extends ConsumerWidget {
     if (state.authState == AuthState.authenticated) {
       // Location đã resolve (hoặc lỗi được bỏ qua với fallback mặc định)
       final locationService = locationState.valueOrNull ?? LocationService();
+
+      // Nếu location chưa được cấp phép → hiển thị gate screen trước khi vào map
+      if (locationService.status != LocationStatus.granted) {
+        return LocationGateScreen(locationService: locationService);
+      }
+
       return HomeScreen(locationService: locationService);
     } else if (state.authState == AuthState.incompleteProfile) {
-      // BEST PRACTICE: Bắt lỗi đăng ký dở dang, ép vào màn nhập Tên
-      return const RegisterStep3NamePage();
+      // Authenticated user is missing required profile fields.
+      // Keep this outside the register wizard so users do not feel sent back to signup.
+      return CompleteProfilePage(
+        initialFirstName: state.firstName,
+        initialLastName: state.lastName,
+        initialUsername: state.preferredUsername,
+      );
     } else {
       return const LoginPage();
     }

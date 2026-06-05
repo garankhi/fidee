@@ -52,7 +52,7 @@ class ProfileDraftController extends _$ProfileDraftController {
   void updateUsername(String username) {
     state = state.copyWith(username: username);
   }
-  
+
   void clear() {
     state = const ProfileDraft();
   }
