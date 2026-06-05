@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+
+enum _UsernameAvailabilityStatus { idle, checking, available, taken, error }
 
 class EditProfileSheet extends StatefulWidget {
   final String firstName;
@@ -11,6 +15,7 @@ class EditProfileSheet extends StatefulWidget {
     required String lastName,
     required String preferredUsername,
   }) onSave;
+  final Future<UsernameAvailabilityResult> Function(String username) onCheckUsername;
   final VoidCallback onSaved;
 
   const EditProfileSheet({
@@ -19,6 +24,7 @@ class EditProfileSheet extends StatefulWidget {
     required this.lastName,
     required this.preferredUsername,
     required this.onSave,
+    required this.onCheckUsername,
     required this.onSaved,
   });
 
@@ -35,6 +41,11 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   late final TextEditingController _usernameController;
   bool _isSaving = false;
   String? _saveErrorMessage;
+  Timer? _usernameDebounce;
+  int _usernameCheckRequestId = 0;
+  late final String _initialNormalizedUsername;
+  _UsernameAvailabilityStatus _usernameStatus = _UsernameAvailabilityStatus.idle;
+  String? _usernameAvailabilityMessage;
 
   @override
   void initState() {
@@ -42,18 +53,109 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _firstNameController = TextEditingController(text: widget.firstName);
     _lastNameController = TextEditingController(text: widget.lastName);
     _usernameController = TextEditingController(text: widget.preferredUsername);
+    _initialNormalizedUsername = widget.preferredUsername.trim().toLowerCase();
+    _usernameStatus = _isValidUsername(_initialNormalizedUsername)
+        ? _UsernameAvailabilityStatus.available
+        : _UsernameAvailabilityStatus.idle;
+    _firstNameController.addListener(_onProfileFieldChanged);
+    _lastNameController.addListener(_onProfileFieldChanged);
+    _usernameController.addListener(_onUsernameChanged);
   }
 
   @override
   void dispose() {
+    _usernameDebounce?.cancel();
+    _firstNameController.removeListener(_onProfileFieldChanged);
+    _lastNameController.removeListener(_onProfileFieldChanged);
+    _usernameController.removeListener(_onUsernameChanged);
     _firstNameController.dispose();
     _lastNameController.dispose();
     _usernameController.dispose();
     super.dispose();
   }
 
+  bool _isValidUsername(String value) {
+    return _usernamePattern.hasMatch(value.trim().toLowerCase());
+  }
+
+  bool get _hasRequiredProfileFields {
+    return _firstNameController.text.trim().isNotEmpty &&
+        _lastNameController.text.trim().isNotEmpty &&
+        _usernameController.text.trim().isNotEmpty;
+  }
+
+  bool get _canSave {
+    return !_isSaving &&
+        _hasRequiredProfileFields &&
+        _usernameStatus == _UsernameAvailabilityStatus.available;
+  }
+
+  void _onProfileFieldChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onUsernameChanged() {
+    _usernameDebounce?.cancel();
+    final username = _usernameController.text.trim().toLowerCase();
+
+    setState(() {
+      _saveErrorMessage = null;
+      _usernameAvailabilityMessage = null;
+
+      if (username.isEmpty || !_isValidUsername(username)) {
+        _usernameStatus = _UsernameAvailabilityStatus.idle;
+        return;
+      }
+
+      if (username == _initialNormalizedUsername) {
+        _usernameStatus = _UsernameAvailabilityStatus.available;
+        return;
+      }
+
+      _usernameStatus = _UsernameAvailabilityStatus.checking;
+      _usernameAvailabilityMessage = 'Đang kiểm tra username...';
+    });
+
+    if (username.isEmpty || !_isValidUsername(username) || username == _initialNormalizedUsername) {
+      return;
+    }
+
+    final requestId = ++_usernameCheckRequestId;
+    _usernameDebounce = Timer(const Duration(milliseconds: 500), () async {
+      UsernameAvailabilityResult result;
+      try {
+        result = await widget.onCheckUsername(username);
+      } catch (_) {
+        result = const UsernameAvailabilityResult(
+          success: false,
+          available: false,
+          errorMessage: 'Không kiểm tra được username. Vui lòng thử lại.',
+        );
+      }
+
+      if (!mounted || requestId != _usernameCheckRequestId) return;
+      if (_usernameController.text.trim().toLowerCase() != username) return;
+
+      setState(() {
+        if (!result.success) {
+          _usernameStatus = _UsernameAvailabilityStatus.error;
+          _usernameAvailabilityMessage = result.errorMessage ??
+              'Không kiểm tra được username. Vui lòng thử lại.';
+        } else if (result.available) {
+          _usernameStatus = _UsernameAvailabilityStatus.available;
+          _usernameAvailabilityMessage = 'Username có thể sử dụng';
+        } else {
+          _usernameStatus = _UsernameAvailabilityStatus.taken;
+          _usernameAvailabilityMessage = result.errorMessage ?? 'Username đã được sử dụng';
+        }
+      });
+    });
+  }
+
   Future<void> _save() async {
-    if (_isSaving || !(_formKey.currentState?.validate() ?? false)) {
+    if (!_canSave || !(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
@@ -170,6 +272,13 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                     validator: _usernameMessage,
                     onFieldSubmitted: (_) => _save(),
                   ),
+                  if (_usernameAvailabilityMessage != null) ...[
+                    const SizedBox(height: 10),
+                    _UsernameAvailabilityMessage(
+                      message: _usernameAvailabilityMessage!,
+                      status: _usernameStatus,
+                    ),
+                  ],
                   if (_saveErrorMessage != null) ...[
                     const SizedBox(height: 14),
                     _ProfileSaveMessage(message: _saveErrorMessage!),
@@ -199,7 +308,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _isSaving ? null : _save,
+                          onPressed: _canSave ? _save : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFEF4050),
                             foregroundColor: Colors.white,
@@ -274,6 +383,50 @@ class _ProfileSaveMessage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _UsernameAvailabilityMessage extends StatelessWidget {
+  final String message;
+  final _UsernameAvailabilityStatus status;
+
+  const _UsernameAvailabilityMessage({
+    required this.message,
+    required this.status,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAvailable = status == _UsernameAvailabilityStatus.available;
+    final isChecking = status == _UsernameAvailabilityStatus.checking;
+    final color = isAvailable
+        ? const Color(0xFF1F8A4C)
+        : isChecking
+            ? const Color(0xFF6E7E91)
+            : const Color(0xFFEF4050);
+    final icon = isAvailable
+        ? Icons.check_circle_outline_rounded
+        : isChecking
+            ? Icons.hourglass_empty_rounded
+            : Icons.error_outline_rounded;
+
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 17),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

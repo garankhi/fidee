@@ -703,6 +703,31 @@ export class FideeStack extends cdk.Stack {
       }),
     );
 
+    const checkUsernameAvailabilityFn = new nodejs.NodejsFunction(
+      this,
+      'CheckUsernameAvailabilityFunction',
+      {
+        functionName: resourceName(stage, 'check-username-availability'),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: '../../services/api/src/handlers/check-username-availability.ts',
+        handler: 'handler',
+        memorySize: 128,
+        timeout: cdk.Duration.seconds(10),
+        vpc,
+        vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+        securityGroups: [lambdaSecurityGroup],
+        environment: {
+          STAGE: stage,
+          DB_SECRET_ARN: dbCluster.secret!.secretArn,
+          DB_NAME: 'fidee',
+        },
+        bundling: {
+          nodeModules: ['pg'],
+        },
+      },
+    );
+    dbCluster.secret!.grantRead(checkUsernameAvailabilityFn);
+
     const profileResource = api.root.addResource('profile');
     profileResource.addCorsPreflight({
       allowOrigins: apigateway.Cors.ALL_ORIGINS,
@@ -717,6 +742,20 @@ export class FideeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+    const usernameAvailabilityResource = profileResource.addResource('username-availability');
+    usernameAvailabilityResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    usernameAvailabilityResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(checkUsernameAvailabilityFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
 
     const mediaResource = api.root.addResource('media');
     const mediaUploadsResource = mediaResource.addResource('uploads');
@@ -805,6 +844,40 @@ export class FideeStack extends cdk.Stack {
         authorizationType: apigateway.AuthorizationType.COGNITO,
       },
     );
+
+    // ─── POST /place-candidates/quick (protected) ────────────────
+    const createQuickPlaceFn = new nodejs.NodejsFunction(this, 'CreateQuickPlaceFunction', {
+      functionName: resourceName(stage, 'create-quick-place'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/create-quick-place.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(createQuickPlaceFn);
+    userProfilesTable.grantReadWriteData(createQuickPlaceFn);
+
+    const quickPlaceResource = placeCandidatesResource.addResource('quick');
+    quickPlaceResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    quickPlaceResource.addMethod('POST',
+      new apigateway.LambdaIntegration(createQuickPlaceFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     // ─── DB Migration Lambda (VPC, connects to Aurora) ──────────
     const migrateFn = new nodejs.NodejsFunction(this, 'MigrateFunction', {
@@ -1073,6 +1146,7 @@ export class FideeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+
 
     // ─── GET /admin/users (VPC, connects to Aurora) ────────────
     const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {

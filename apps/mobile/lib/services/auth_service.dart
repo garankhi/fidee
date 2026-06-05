@@ -100,6 +100,20 @@ class AuthResult {
   });
 }
 
+class UsernameAvailabilityResult {
+  final bool success;
+  final bool available;
+  final String? normalizedUsername;
+  final String? errorMessage;
+
+  const UsernameAvailabilityResult({
+    required this.success,
+    required this.available,
+    this.normalizedUsername,
+    this.errorMessage,
+  });
+}
+
 // Auth service.
 class AuthService {
   final bool isTestMode;
@@ -572,6 +586,68 @@ class AuthService {
       }
     } catch (_) {
       // ignore
+    }
+  }
+
+  Future<UsernameAvailabilityResult> checkUsernameAvailability(String username) async {
+    final normalizedUsername = username.trim().toLowerCase();
+
+    if (isTestMode) {
+      return UsernameAvailabilityResult(
+        success: true,
+        available: true,
+        normalizedUsername: normalizedUsername,
+      );
+    }
+
+    final token = await getToken();
+    if (token == null) {
+      return const UsernameAvailabilityResult(
+        success: false,
+        available: false,
+        errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      );
+    }
+
+    try {
+      final uri = Uri.parse('${Config.apiBaseUrl}/profile/username-availability')
+          .replace(queryParameters: {'username': normalizedUsername});
+      final response = await http.get(uri, headers: {'Authorization': token});
+      final body = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final available = body['available'] == true;
+        return UsernameAvailabilityResult(
+          success: true,
+          available: available,
+          normalizedUsername: body['username'] as String? ?? normalizedUsername,
+          errorMessage: available ? null : 'Username đã được sử dụng',
+        );
+      }
+
+      final code = body['code'] as String?;
+      if (response.statusCode == 400 && code == 'VALIDATION_ERROR') {
+        return const UsernameAvailabilityResult(
+          success: false,
+          available: false,
+          errorMessage: 'Username không hợp lệ',
+        );
+      }
+
+      final error = body['error'] as String?;
+      return UsernameAvailabilityResult(
+        success: false,
+        available: false,
+        errorMessage: error ?? 'Không kiểm tra được username. Vui lòng thử lại.',
+      );
+    } catch (_) {
+      return const UsernameAvailabilityResult(
+        success: false,
+        available: false,
+        errorMessage: 'Không kiểm tra được username. Vui lòng thử lại.',
+      );
     }
   }
 

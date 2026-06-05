@@ -678,4 +678,4 @@ CREATE TRIGGER trg_reviews_updated
   BEFORE UPDATE ON reviews
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 `
-};
+};
