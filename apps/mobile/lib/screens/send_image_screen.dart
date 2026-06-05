@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../features/auth/friends_provider.dart';
 import '../models/nearby_place.dart';
 import '../services/nearby_service.dart';
 import '../services/upload_service.dart';
@@ -42,8 +43,6 @@ class SendImageScreen extends ConsumerStatefulWidget {
 enum _UploadStatus { idle, pending, error }
 
 class _SendImageScreenState extends ConsumerState<SendImageScreen> {
-  final List<String> _friends = ['ahn', 'giang', 'huy', 'linh'];
-
   _UploadStatus _uploadStatus = _UploadStatus.idle;
   List<NearbyPlace> _nearbySpots = [];
   String? _selectedPlaceName; // Track selected place name
@@ -1130,82 +1129,111 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                 // Danh sách người nhận
                 SizedBox(
                   height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _friends.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 54,
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.amber,
-                                    width: 2,
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final friendsState = ref.watch(friendsControllerProvider);
+                      final friends = friendsState.friends;
+
+                      return ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: friends.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 16),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 54,
+                                    height: 54,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.amber,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Container(
+                                      margin: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.grey[800],
+                                      ),
+                                      child: const Icon(
+                                        Icons.people_alt,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                child: Container(
-                                  margin: const EdgeInsets.all(2),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Tất cả',
+                                    style: TextStyle(
+                                      fontFamily: 'SF Pro Text',
+                                      color: Colors.amber,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          final friend = friends[index - 1];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 54,
+                                  height: 54,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Colors.grey[800],
+                                    color: Colors.grey[900],
                                   ),
-                                  child: const Icon(
-                                    Icons.people_alt,
-                                    color: Colors.white,
-                                    size: 24,
+                                  child: friend.avatarUrl != null
+                                      ? ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(27),
+                                          child: Image.network(
+                                            friend.avatarUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return const Icon(
+                                                Icons.person,
+                                                color: Colors.white54,
+                                                size: 24,
+                                              );
+                                            },
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Text(
+                                            friend.initials,
+                                            style: const TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  friend.name,
+                                  style: const TextStyle(
+                                    fontFamily: 'SF Pro Text',
+                                    color: Colors.white54,
+                                    fontSize: 12,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Tất cả',
-                                style: TextStyle(
-                                  fontFamily: 'SF Pro Text',
-                                  color: Colors.amber,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      final friendName = _friends[index - 1];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey[900],
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Colors.white54,
-                                size: 24,
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              friendName,
-                              style: const TextStyle(
-                                fontFamily: 'SF Pro Text',
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
