@@ -46,7 +46,8 @@ class FriendService {
   Future<List<FriendProfile>> fetchFriends() async {
     return _fetchProfiles(
       path: '/friends',
-      listKey: 'data',
+      listKey: 'friends',
+      fallbackListKey: 'data',
       debugLabel: 'friends',
     );
   }
@@ -78,6 +79,7 @@ class FriendService {
   Future<List<FriendProfile>> _fetchProfiles({
     required String path,
     required String listKey,
+    String? fallbackListKey,
     required String debugLabel,
   }) async {
     final token = await _authService.getToken();
@@ -96,8 +98,12 @@ class FriendService {
       }
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final items = (decoded[listKey] as List<dynamic>?) ?? const <dynamic>[];
-      return items
+      dynamic items = decoded[listKey];
+      if (items == null && fallbackListKey != null) {
+        items = decoded[fallbackListKey];
+      }
+      final itemList = (items as List<dynamic>?) ?? const <dynamic>[];
+      return itemList
           .whereType<Map<String, dynamic>>()
           .map(_friendProfileFromApi)
           .toList(growable: false);
