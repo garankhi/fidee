@@ -11,8 +11,11 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../models/nearby_place.dart';
+import '../services/nearby_service.dart';
 import '../services/upload_service.dart';
 import '../utils/error.dart';
+import 'add_spot_screen.dart';
 import 'camera_screen.dart';
 
 class SendImageScreen extends ConsumerStatefulWidget {
@@ -42,6 +45,8 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   final List<String> _friends = ['ahn', 'giang', 'huy', 'linh'];
 
   _UploadStatus _uploadStatus = _UploadStatus.idle;
+  List<NearbyPlace> _nearbySpots = [];
+  String? _selectedPlaceName;
 
   // Data cho các caption
   String _locationString = 'Đang tải...';
@@ -65,6 +70,31 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     super.initState();
     _startClock();
     _fetchLocationAndWeather();
+    _fetchNearbySpots();
+  }
+
+  Future<void> _fetchNearbySpots() async {
+    try {
+      final lat = widget.gpsCoordinates?[0] ?? 10.762892;
+      final lng = widget.gpsCoordinates?[1] ?? 106.682586;
+
+      final authService = ref.read(authServiceProvider);
+      final nearbyService = NearbyService(authService);
+      final res = await nearbyService.fetchNearby(
+        lat: lat,
+        lng: lng,
+        mediaId: 'send_image_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      setState(() {
+        _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
+        if (_nearbySpots.isNotEmpty) {
+          _selectedPlaceName = _nearbySpots[0].displayName;
+        }
+      });
+    } catch (e) {
+      debugPrint('Error loading nearby spots: $e');
+    }
   }
 
   @override
@@ -254,6 +284,182 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       curve: Curves.easeInOut,
     );
     Navigator.pop(context); // Close bottom sheet
+  }
+
+  void _showNearbySpotsSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          padding: const EdgeInsets.only(top: 12, bottom: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.search, color: Colors.white54),
+                      SizedBox(width: 8),
+                      Text(
+                        'Tìm gần đây...',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: _nearbySpots.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == _nearbySpots.length) {
+                      return Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => AddSpotScreen(
+                                    spotSuggestions: _nearbySpots,
+                                    authService: ref.read(authServiceProvider),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4050),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Thêm địa điểm tùy chỉnh',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    final spot = _nearbySpots[index];
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedPlaceName = spot.displayName;
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Colors.grey[800]!,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4050),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.restaurant,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    spot.displayName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    spot.address,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showCaptionBottomSheet() {
@@ -581,7 +787,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                       const Align(
                         alignment: Alignment.center,
                         child: Text(
-                          'Gửi đến...',
+                          'Chia sẻ khoảnh khắc',
                           style: TextStyle(
                             fontFamily: 'SF Pro Text',
                             color: Colors.white,
@@ -632,6 +838,55 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                             top: 16,
                             left: 16,
                             child: _buildGpsBadge(),
+                          ),
+
+                          // Venue label (clickable)
+                          Positioned(
+                            top: 60,
+                            left: 16,
+                            child: GestureDetector(
+                              onTap: _showNearbySpotsSheet,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.25),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _selectedPlaceName ?? 'Chọn địa điểm',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'SF Pro',
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
 
                           // Caption Carousel
@@ -687,6 +942,33 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                   ),
                 ),
                 const Spacer(flex: 1),
+                // "Thêm lời nhắn" button
+                GestureDetector(
+                  onTap: _showCaptionBottomSheet,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Text(
+                      'Thêm lời nhắn',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 // Pagination Dots
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -712,125 +994,114 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: GestureDetector(
-                            onTap: () => Navigator.pushReplacement(
-                              context,
-                              PageRouteBuilder<void>(
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) =>
-                                        const CameraScreen(),
-                                transitionDuration: Duration.zero,
-                                reverseTransitionDuration: Duration.zero,
-                              ),
+                        child: GestureDetector(
+                          onTap: () => Navigator.pushReplacement(
+                            context,
+                            PageRouteBuilder<void>(
+                              pageBuilder:
+                                  (context, animation, secondaryAnimation) =>
+                                      const CameraScreen(),
+                              transitionDuration: Duration.zero,
+                              reverseTransitionDuration: Duration.zero,
                             ),
-                            child: Container(
-                              width: 50,
-                              height: 50,
-                              decoration: const BoxDecoration(
-                                color: Colors.transparent,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close_rounded,
-                                color: Colors.white,
-                                size: 32,
-                              ),
+                          ),
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 32,
                             ),
                           ),
                         ),
                       ),
-                      Hero(
-                        tag: 'capture_to_send_button',
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: GestureDetector(
-                            onTap: _uploadStatus == _UploadStatus.pending
-                                ? null
-                                : _handleSend,
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.transparent,
-                                  width: 0,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 3,
+                        child: Hero(
+                          tag: 'capture_to_send_button',
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: GestureDetector(
+                              onTap: _uploadStatus == _UploadStatus.pending
+                                  ? null
+                                  : _handleSend,
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: _uploadStatus == _UploadStatus.error
+                                      ? const Color(0xFF8B0000)
+                                      : const Color(0xFFEF4050),
+                                  borderRadius: BorderRadius.circular(999),
                                 ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 84,
-                                  height: 84,
-                                  decoration: BoxDecoration(
-                                    color: _uploadStatus == _UploadStatus.error
-                                        ? const Color(0xFF8B0000)
-                                        : const Color(0xFF333333),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: _uploadStatus == _UploadStatus.pending
-                                      ? const Center(
-                                          child: CircularProgressIndicator(
+                                child: _uploadStatus == _UploadStatus.pending
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 3,
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          _uploadStatus == _UploadStatus.error
+                                              ? 'Lỗi! Thử lại'
+                                              : 'Chia sẻ ngay!',
+                                          style: const TextStyle(
                                             color: Colors.white,
-                                            strokeWidth: 3,
-                                          ),
-                                        )
-                                      : Center(
-                                          child: Icon(
-                                            _uploadStatus == _UploadStatus.error
-                                                ? Icons.error_outline
-                                                : Icons.send_rounded,
-                                            color: Colors.white,
-                                            size: 36,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                ),
+                                      ),
                               ),
                             ),
                           ),
                         ),
                       ),
+                      const SizedBox(width: 16),
                       Expanded(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: _showCaptionBottomSheet,
-                            child: Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white54,
-                                  width: 2,
+                        child: GestureDetector(
+                          onTap: _showCaptionBottomSheet,
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white54,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: [
+                                Text(
+                                  'Aa',
+                                  style: TextStyle(
+                                    fontFamily: 'SF Pro Text',
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              child: const Stack(
-                                alignment: Alignment.center,
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Text(
-                                    'Aa',
-                                    style: TextStyle(
-                                      fontFamily: 'SF Pro Text',
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                Positioned(
+                                  top: -2,
+                                  right: -6,
+                                  child: Icon(
+                                    Icons.auto_awesome,
+                                    color: Colors.white,
+                                    size: 16,
                                   ),
-                                  Positioned(
-                                    top: -2,
-                                    right: -6,
-                                    child: Icon(
-                                      Icons.auto_awesome,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -839,6 +1110,16 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                // "Cùng với" label
+                const Text(
+                  'Cùng với',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 // Danh sách người nhận
                 SizedBox(
                   height: 120,
