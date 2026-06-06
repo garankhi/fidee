@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../models/dashboard_place.dart';
+import '../auth/auth_providers.dart';
 
 part 'dashboard_provider.g.dart';
 
@@ -33,10 +34,8 @@ class DashboardState {
   }) {
     return DashboardState(
       hotPlaces: hotPlaces ?? this.hotPlaces,
-      recommendedPlaces:
-      recommendedPlaces ?? this.recommendedPlaces,
-      friendActivities:
-      friendActivities ?? this.friendActivities,
+      recommendedPlaces: recommendedPlaces ?? this.recommendedPlaces,
+      friendActivities: friendActivities ?? this.friendActivities,
       vibes: vibes ?? this.vibes,
       selectedVibe: selectedVibe ?? this.selectedVibe,
     );
@@ -52,72 +51,55 @@ class DashboardController extends _$DashboardController {
   }
 
   Future<void> loadDiscoveryFeed() async {
+    final authService = ref.read(authServiceProvider);
+    final token = await authService.getToken();
+
     try {
       const lat = 10.7769;
       const lng = 106.7009;
 
       final response = await http.get(
-        Uri.parse(
-          'https://api.fidee.site/discovery/feed?lat=$lat&lng=$lng',
-        ),
+        Uri.parse('https://api.fidee.site/discovery/feed?lat=$lat&lng=$lng'),
         headers: {
           'Content-Type': 'application/json',
-
-          // TODO:
-          // 'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token',
         },
       );
-
       if (response.statusCode != 200) {
         return;
       }
 
-      final jsonResult =
-      jsonDecode(response.body) as Map<String, dynamic>;
+      final jsonResult = jsonDecode(response.body) as Map<String, dynamic>;
 
-      final data =
-          jsonResult['data'] as Map<String, dynamic>? ?? {};
+      final data = jsonResult['data'] as Map<String, dynamic>? ?? {};
 
-      final hotPlaces =
-      (data['hotPlaces'] as List<dynamic>? ?? [])
+      final hotPlaces = (data['hotPlaces'] as List<dynamic>? ?? [])
           .map(
             (e) => DashboardPlace.fromJson(
-          _convertPlace(
-            e as Map<String, dynamic>,
-          ),
-        ),
-      )
+              _convertPlace(e as Map<String, dynamic>),
+            ),
+          )
           .toList();
 
       final recommendedPlaces =
-      (data['recommendedPlaces'] as List<dynamic>? ?? [])
+          (data['recommendedPlaces'] as List<dynamic>? ?? [])
+              .map(
+                (e) => DashboardPlace.fromJson(
+                  _convertPlace(e as Map<String, dynamic>),
+                ),
+              )
+              .toList();
+
+      final friendActivities = (data['friendsActivity'] as List<dynamic>? ?? [])
           .map(
             (e) => DashboardPlace.fromJson(
-          _convertPlace(
-            e as Map<String, dynamic>,
-          ),
-        ),
-      )
+              _convertFriendPlace(e as Map<String, dynamic>),
+            ),
+          )
           .toList();
 
-      final friendActivities =
-      (data['friendsActivity'] as List<dynamic>? ?? [])
-          .map(
-            (e) => DashboardPlace.fromJson(
-          _convertFriendPlace(
-            e as Map<String, dynamic>,
-          ),
-        ),
-      )
-          .toList();
-
-      final vibes =
-      (data['vibes'] as List<dynamic>? ?? [])
-          .map(
-            (e) => Map<String, dynamic>.from(
-          e as Map,
-        ),
-      )
+      final vibes = (data['vibes'] as List<dynamic>? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
 
       state = state.copyWith(
@@ -132,14 +114,10 @@ class DashboardController extends _$DashboardController {
   }
 
   void selectVibe(String vibe) {
-    state = state.copyWith(
-      selectedVibe: vibe,
-    );
+    state = state.copyWith(selectedVibe: vibe);
   }
 
-  Map<String, dynamic> _convertPlace(
-      Map<String, dynamic> item,
-      ) {
+  Map<String, dynamic> _convertPlace(Map<String, dynamic> item) {
     return {
       "id": item["placeId"],
       "name": item["name"],
@@ -147,37 +125,23 @@ class DashboardController extends _$DashboardController {
       "avg_rating": item["avgRating"],
       "checkin_count": item["checkinCount"],
       "distance_meters": item["distanceMeters"],
-      "metadata": {
-        "image_url": _buildImageUrl(
-          item["coverMediaId"],
-        ),
-      },
+      "metadata": {"image_url": _buildImageUrl(item["coverMediaId"])},
     };
   }
 
-  Map<String, dynamic> _convertFriendPlace(
-      Map<String, dynamic> item,
-      ) {
+  Map<String, dynamic> _convertFriendPlace(Map<String, dynamic> item) {
     return {
       "id": item["placeId"],
       "name": item["name"],
       "category": item["category"],
       "avg_rating": item["avgRating"],
-      "checkin_count":
-      item["friendCheckinCount"],
-      "distance_meters":
-      item["distanceMeters"],
-      "metadata": {
-        "image_url": _buildImageUrl(
-          item["coverMediaId"],
-        ),
-      },
+      "checkin_count": item["friendCheckinCount"],
+      "distance_meters": item["distanceMeters"],
+      "metadata": {"image_url": _buildImageUrl(item["coverMediaId"])},
     };
   }
 
-  String _buildImageUrl(
-      dynamic mediaId,
-      ) {
+  String _buildImageUrl(dynamic mediaId) {
     if (mediaId == null) {
       return "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500";
     }

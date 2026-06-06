@@ -2,25 +2,69 @@ import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fidee_mobile/screens/ai_chat_screen.dart';
+import '../features/auth/auth_providers.dart';
 import '../features/auth/dashboard_provider.dart';
 import '../models/dashboard_place.dart';
 import '../models/nearby_place.dart';
+import '../services/nearby_service.dart';
+import 'add_spot_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
-  final void Function(List<NearbyPlace> spots) onAddSpot;
-  final List<NearbyPlace> spotSuggestions;
-
-  const DashboardScreen({
-    super.key,
-    required this.onAddSpot,
-    required this.spotSuggestions,
-  });
+  const DashboardScreen({super.key});
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  List<NearbyPlace> _nearbySpots = [];
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNearbySpots();
+  }
+
+  Future<void> _loadNearbySpots() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final nearbyService = NearbyService(authService);
+      final res = await nearbyService.fetchNearby(
+        lat: 10.762892,
+        lng: 106.682586,
+        mediaId: 'explore_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      setState(() {
+        _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
+      });
+    } catch (e) {
+    }
+  }
+
+  void _onAddSpot() {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AddSpotScreen(
+          spotSuggestions: _nearbySpots,
+          authService: ref.read(authServiceProvider),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardControllerProvider);
@@ -51,15 +95,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: const Icon(Icons.arrow_back, color: Colors.black),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Hôm nay ăn gì cho vibe?',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -68,8 +103,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 25),
               _buildAddPlaceBanner(),
               const SizedBox(height: 25),
-              _buildWeatherWidget(),
-              const SizedBox(height: 25),
+              // _buildWeatherWidget(),
+              // const SizedBox(height: 25),
               const Text(
                 '“Vibe” hôm nay là gì?',
                 style: TextStyle(color: Colors.black, fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold),
@@ -104,19 +139,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-
-    Future.microtask(() {
-      ref
-          .read(
-        dashboardControllerProvider.notifier,
-      )
-          .loadDiscoveryFeed();
-    });
-  }
-
   Widget _buildHeaderSearchBar() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,40 +159,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.grey[300]!),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: const Color(0xFFEF484F), borderRadius: BorderRadius.circular(15)),
-                      child: const Text('Hỏi AI', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Tìm nhà hàng, quán ăn..',
-                          hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                          border: InputBorder.none,
-                          isDense: true,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AiChatScreen(),
                         ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF484F),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Text(
+                        'Hỏi AI',
+                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Tìm nhà hàng, quán ăn..',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                        border: InputBorder.none,
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ]
               ),
             ),
-            const SizedBox(width: 10),
-            Container(
-              height: 46,
-              width: 46,
-              decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle, border: Border.all(color: Colors.grey[300]!)),
-              child: const Icon(Icons.tune, color: Color(0xFFEF484F), size: 20),
-            )
-          ],
-        ),
-      ],
-    );
-  }
+          ),
+          const SizedBox(width: 10),
+          Container(
+            height: 36,
+            width: 46,
+            decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle, border: Border.all(color: Colors.grey[300]!)),
+            child: const Icon(Icons.tune, color: Color(0xFFEF484F), size: 20),
+          )
+        ],
+      ),
+    ],
+  );
+}
 
   Widget _buildAddPlaceBanner() {
     return Container(
@@ -192,53 +230,72 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
             style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.w500),
           ),
-          const SizedBox(height: 14),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF484F),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          const SizedBox(height: 18),
+          GestureDetector(
+            onTap: _onAddSpot,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4050),
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEF4050).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'Thêm ngay vào bản đồ!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-            onPressed: () => widget.onAddSpot(widget.spotSuggestions),
-            child: const Text('Thêm ngay vào bản đồ!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildWeatherWidget() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFE4060F), Color(0xCCFF1D27)]),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Phường Bến Thành, TP.HCM', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text('Thay đổi 📍', style: TextStyle(color: Colors.white70, fontSize: 12, fontStyle: FontStyle.italic)),
-              SizedBox(height: 8),
-              Text('24°C', style: TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          Column(
-            children: const [
-              Icon(Icons.umbrella, size: 48, color: Colors.white),
-              SizedBox(height: 4),
-              Text('Mưa phùn', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-            ],
-          )
-        ],
-      ),
-    );
-  }
+  // Widget _buildWeatherWidget() {
+  //   return Container(
+  //     width: double.infinity,
+  //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+  //     decoration: BoxDecoration(
+  //       gradient: const LinearGradient(colors: [Color(0xFFE4060F), Color(0xCCFF1D27)]),
+  //       borderRadius: BorderRadius.circular(16),
+  //     ),
+  //     child: Row(
+  //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //       children: [
+  //         Column(
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: const [
+  //             Text('Phường Bến Thành, TP.HCM', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+  //             SizedBox(height: 4),
+  //             Text('Thay đổi 📍', style: TextStyle(color: Colors.white70, fontSize: 12, fontStyle: FontStyle.italic)),
+  //             SizedBox(height: 8),
+  //             Text('24°C', style: TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.bold)),
+  //           ],
+  //         ),
+  //         Column(
+  //           children: const [
+  //             Icon(Icons.umbrella, size: 48, color: Colors.white),
+  //             SizedBox(height: 4),
+  //             Text('Mưa phùn', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+  //           ],
+  //         )
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildVibeGrid(String? selectedVibe) {
     final vibes = [
