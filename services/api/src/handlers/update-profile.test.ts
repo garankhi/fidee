@@ -45,6 +45,7 @@ describe('update-profile handler', () => {
     mockQuery.mockReset();
     mockExtractAuth.mockReset();
     mockCognitoSend.mockReset();
+    delete process.env.COGNITO_PROFILE_MIRROR_TIMEOUT_MS;
     process.env.COGNITO_USER_POOL_ID = 'pool-1';
     mockExtractAuth.mockResolvedValue({
       sub: 'user-1',
@@ -90,8 +91,43 @@ describe('update-profile handler', () => {
           Username: 'user@example.com',
         }),
       }),
+      expect.objectContaining({ abortSignal: expect.any(Object) }),
     );
     expect(JSON.parse(result.body).profile.username).toBe('minh');
+  });
+
+  it('does not block the profile response when Cognito mirror hangs', async () => {
+    process.env.COGNITO_PROFILE_MIRROR_TIMEOUT_MS = '1';
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'user-1',
+          display_name: 'Nguyen Minh',
+          username: 'minh',
+          avatar_url: null,
+          plan: 'FREE',
+          created_at: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+    });
+    mockCognitoSend.mockImplementationOnce((_command, options) => {
+      if (!options?.abortSignal) {
+        return new Promise(() => undefined);
+      }
+
+      return new Promise((_, reject) => {
+        options.abortSignal.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+    });
+
+    const result = await Promise.race([
+      handler(mockEvent({ firstName: 'Nguyen', lastName: 'Minh', username: 'minh' })),
+      new Promise<'timed-out'>((resolve) => setTimeout(() => resolve('timed-out'), 100)),
+    ]);
+
+    expect(result).not.toBe('timed-out');
+    expect(result).toEqual(expect.objectContaining({ statusCode: 200 }));
   });
 
   it('returns 409 when username is already used by another user', async () => {

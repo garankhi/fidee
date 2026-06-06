@@ -11,8 +11,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../features/auth/friends_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/error.dart';
+import 'camera_friends_sheet.dart';
 import 'premium_upgrade_sheet.dart';
 import 'send_image_screen.dart';
 
@@ -251,6 +253,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
     }
 
+    final friendsState = ref.watch(friendsControllerProvider);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -275,30 +279,33 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.people, color: Colors.white, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              '24 người bạn',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                      GestureDetector(
+                        onTap: () => showCameraFriendsSheet(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.people, color: Colors.white, size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${friendsState.friends.length} người bạn',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      Container(
+                        Container(
                         width: 36,
                         height: 36,
                         decoration: const BoxDecoration(

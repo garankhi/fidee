@@ -114,6 +114,49 @@ class UsernameAvailabilityResult {
   });
 }
 
+
+Map<String, dynamic> decodeResponseObject(String responseBody) {
+  if (responseBody.trim().isEmpty) {
+    return <String, dynamic>{};
+  }
+
+  try {
+    final decoded = jsonDecode(responseBody);
+    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+  } catch (_) {
+    return <String, dynamic>{};
+  }
+}
+
+@visibleForTesting
+String profileUpdateErrorMessage(int statusCode, String responseBody) {
+  final prefix = 'Cập nhật profile thất bại (HTTP $statusCode)';
+  final trimmedBody = responseBody.trim();
+  if (trimmedBody.isEmpty) {
+    return prefix;
+  }
+
+  try {
+    final decoded = jsonDecode(trimmedBody);
+    if (decoded is Map<String, dynamic>) {
+      final serverMessage = decoded['error'] as String? ?? decoded['message'] as String?;
+      final code = decoded['code'] as String?;
+      if (serverMessage != null && serverMessage.trim().isNotEmpty) {
+        return code == null || code.trim().isEmpty
+            ? '$prefix: $serverMessage'
+            : '$prefix: $serverMessage [$code]';
+      }
+      if (code != null && code.trim().isNotEmpty) {
+        return '$prefix: $code';
+      }
+    }
+  } catch (_) {
+    // Fall through to raw body below.
+  }
+
+  return '$prefix: $trimmedBody';
+}
+
 // Auth service.
 class AuthService {
   final bool isTestMode;
@@ -613,9 +656,7 @@ class AuthService {
       final uri = Uri.parse('${Config.apiBaseUrl}/profile/username-availability')
           .replace(queryParameters: {'username': normalizedUsername});
       final response = await http.get(uri, headers: {'Authorization': token});
-      final body = response.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(response.body) as Map<String, dynamic>;
+      final body = decodeResponseObject(response.body);
 
       if (response.statusCode == 200) {
         final available = body['available'] == true;
@@ -737,9 +778,7 @@ class AuthService {
         }),
       );
 
-      final body = response.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(response.body) as Map<String, dynamic>;
+      final body = decodeResponseObject(response.body);
 
       if (response.statusCode == 200) {
         final profile = body['profile'] as Map<String, dynamic>?;
@@ -759,19 +798,17 @@ class AuthService {
         return const AuthResult(success: true);
       }
 
-      final code = body['code'] as String?;
-      if (response.statusCode == 409 && code == 'USERNAME_TAKEN') {
-        return const AuthResult(
+        final code = body['code'] as String?;
+        if (response.statusCode == 409 && code == 'USERNAME_TAKEN') {
+          return const AuthResult(
+            success: false,
+            errorMessage: 'Username đã được sử dụng',
+          );
+        }
+        return AuthResult(
           success: false,
-          errorMessage: 'Username đã được sử dụng',
+          errorMessage: profileUpdateErrorMessage(response.statusCode, response.body),
         );
-      }
-
-      final error = body['error'] as String?;
-      return AuthResult(
-        success: false,
-        errorMessage: error ?? 'Cập nhật profile thất bại',
-      );
     } catch (_) {
       return const AuthResult(
         success: false,

@@ -15,20 +15,39 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGat
   };
 }
 
+function readTargetUserId(event: APIGatewayProxyEvent): string | null {
+  const body = JSON.parse(event.body || '{}') as { targetUserId?: unknown };
+  return typeof body.targetUserId === 'string' && body.targetUserId.trim().length > 0
+    ? body.targetUserId.trim()
+    : null;
+}
+
+function normalizeUsernameQuery(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const username = value.trim().toLowerCase();
+  if (username.length < 2) return null;
+  return username;
+}
+
+function canRequest(relationStatus: string): boolean {
+  return relationStatus === 'NONE';
+}
+
 /**
  * GET /friends
- * Fetch all accepted friends.
+ * Fetch all accepted, visible friends.
  */
 export const getFriends = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     const auth = await extractAuth(event);
-    
-    // Get profiles of accepted friends
+
     const sql = `
       SELECT u.id, u.display_name as name, u.username, u.avatar_url as "avatarUrl"
       FROM friendships f
       JOIN users u ON u.id = f.friend_id
-      WHERE f.user_id = $1 AND f.status = 'ACCEPTED'
+      WHERE f.user_id = $1
+        AND f.status = 'ACCEPTED'
+        AND COALESCE(f.is_hidden, FALSE) = FALSE
       ORDER BY u.display_name ASC
     `;
     const res = await query(sql, [auth.sub]);
@@ -40,14 +59,68 @@ export const getFriends = async (event: APIGatewayProxyEvent): Promise<APIGatewa
 };
 
 /**
+ * GET /friends/search?username=minh
+ * Search users by username prefix and include current relationship metadata.
+ */
+export const searchUsersByUsername = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
+  try {
+    const auth = await extractAuth(event);
+    const username = normalizeUsernameQuery(event.queryStringParameters?.username);
+    if (!username) {
+      return jsonResponse(400, { error: 'username query must be at least 2 characters' });
+    }
+
+    const res = await query(
+      `
+        SELECT
+          u.id,
+          u.display_name as name,
+          u.username,
+          u.avatar_url as "avatarUrl",
+          f.status as "relationStatus"
+        FROM users u
+        LEFT JOIN friendships f ON f.user_id = $1 AND f.friend_id = u.id
+        WHERE u.id <> $1
+          AND u.username IS NOT NULL
+          AND u.username LIKE $2
+          AND COALESCE(f.status, 'NONE') <> 'BLOCKED'
+        ORDER BY CASE WHEN u.username = $3 THEN 0 ELSE 1 END, u.username ASC
+        LIMIT 20
+      `,
+      [auth.sub, `${username}%`, username],
+    );
+
+    const users = res.rows.map((row: any) => {
+      const relationStatus = row.relationStatus ?? 'NONE';
+      return {
+        id: row.id,
+        name: row.name,
+        username: row.username,
+        avatarUrl: row.avatarUrl ?? null,
+        relationStatus,
+        canRequest: canRequest(relationStatus),
+      };
+    });
+
+    return jsonResponse(200, { users });
+  } catch (error) {
+    console.error('searchUsersByUsername error', error);
+    return jsonResponse(500, { error: 'Internal server error' });
+  }
+};
+
+/**
  * GET /friends/requests
  * Fetch all pending friend requests (received).
  */
-export const getFriendRequests = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const getFriendRequests = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   try {
     const auth = await extractAuth(event);
-    
-    // Get pending requests initiated by OTHERS
+
     const sql = `
       SELECT u.id, u.display_name as name, u.username, u.avatar_url as "avatarUrl"
       FROM friendships f
@@ -67,11 +140,12 @@ export const getFriendRequests = async (event: APIGatewayProxyEvent): Promise<AP
  * POST /friends/request
  * Send a friend request to another user.
  */
-export const sendFriendRequest = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const sendFriendRequest = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   try {
     const auth = await extractAuth(event);
-    const body = JSON.parse(event.body || '{}');
-    const { targetUserId } = body;
+    const targetUserId = readTargetUserId(event);
 
     if (!targetUserId) {
       return jsonResponse(400, { error: 'targetUserId is required' });
@@ -81,30 +155,30 @@ export const sendFriendRequest = async (event: APIGatewayProxyEvent): Promise<AP
       return jsonResponse(400, { error: 'Cannot friend yourself' });
     }
 
-    // Check if relation already exists
-    const checkSql = 'SELECT status, initiated_by FROM friendships WHERE user_id = $1 AND friend_id = $2';
+    const checkSql =
+      'SELECT status, initiated_by FROM friendships WHERE user_id = $1 AND friend_id = $2';
     const check = await query(checkSql, [auth.sub, targetUserId]);
 
     if (check.rowCount && check.rowCount > 0) {
       const status = check.rows[0].status;
-      return jsonResponse(400, { error: `Friend relationship already exists with status: ${status}` });
+      return jsonResponse(400, {
+        error: `Friend relationship already exists with status: ${status}`,
+      });
     }
 
-    // Insert two PENDING rows for bidirectional model
     const now = new Date().toISOString();
-    
-    // Transaction block
+
     await query('BEGIN');
     try {
       await query(
         `INSERT INTO friendships (user_id, friend_id, status, initiated_by, created_at)
          VALUES ($1, $2, 'PENDING', $3, $4)`,
-        [auth.sub, targetUserId, auth.sub, now]
+        [auth.sub, targetUserId, auth.sub, now],
       );
       await query(
         `INSERT INTO friendships (user_id, friend_id, status, initiated_by, created_at)
          VALUES ($1, $2, 'PENDING', $3, $4)`,
-        [targetUserId, auth.sub, auth.sub, now]
+        [targetUserId, auth.sub, auth.sub, now],
       );
       await query('COMMIT');
     } catch (e) {
@@ -126,8 +200,7 @@ export const sendFriendRequest = async (event: APIGatewayProxyEvent): Promise<AP
 export const acceptFriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     const auth = await extractAuth(event);
-    const body = JSON.parse(event.body || '{}');
-    const { targetUserId } = body;
+    const targetUserId = readTargetUserId(event);
 
     if (!targetUserId) {
       return jsonResponse(400, { error: 'targetUserId is required' });
@@ -135,15 +208,14 @@ export const acceptFriend = async (event: APIGatewayProxyEvent): Promise<APIGate
 
     const now = new Date().toISOString();
 
-    // Transaction to update both rows and counters
     await query('BEGIN');
     try {
       const update1 = await query(
-        `UPDATE friendships 
-         SET status = 'ACCEPTED', accepted_at = $3
+        `UPDATE friendships
+         SET status = 'ACCEPTED', accepted_at = $3, is_hidden = FALSE
          WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING'
          RETURNING status`,
-        [auth.sub, targetUserId, now]
+        [auth.sub, targetUserId, now],
       );
 
       if (update1.rowCount === 0) {
@@ -152,13 +224,12 @@ export const acceptFriend = async (event: APIGatewayProxyEvent): Promise<APIGate
       }
 
       await query(
-        `UPDATE friendships 
-         SET status = 'ACCEPTED', accepted_at = $3
+        `UPDATE friendships
+         SET status = 'ACCEPTED', accepted_at = $3, is_hidden = FALSE
          WHERE user_id = $2 AND friend_id = $1 AND status = 'PENDING'`,
-        [auth.sub, targetUserId, now]
+        [auth.sub, targetUserId, now],
       );
 
-      // Increment counters in users table
       await query('UPDATE users SET friend_count = friend_count + 1 WHERE id = $1', [auth.sub]);
       await query('UPDATE users SET friend_count = friend_count + 1 WHERE id = $1', [targetUserId]);
 
@@ -179,23 +250,23 @@ export const acceptFriend = async (event: APIGatewayProxyEvent): Promise<APIGate
  * POST /friends/decline
  * Decline a friend request.
  */
-export const declineFriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const declineFriend = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   try {
     const auth = await extractAuth(event);
-    const body = JSON.parse(event.body || '{}');
-    const { targetUserId } = body;
+    const targetUserId = readTargetUserId(event);
 
     if (!targetUserId) {
       return jsonResponse(400, { error: 'targetUserId is required' });
     }
 
-    // Decline is just deleting the PENDING rows
     await query('BEGIN');
     try {
       const del1 = await query(
-        `DELETE FROM friendships 
+        `DELETE FROM friendships
          WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING'`,
-        [auth.sub, targetUserId]
+        [auth.sub, targetUserId],
       );
 
       if (del1.rowCount === 0) {
@@ -204,9 +275,9 @@ export const declineFriend = async (event: APIGatewayProxyEvent): Promise<APIGat
       }
 
       await query(
-        `DELETE FROM friendships 
+        `DELETE FROM friendships
          WHERE user_id = $2 AND friend_id = $1 AND status = 'PENDING'`,
-        [auth.sub, targetUserId]
+        [auth.sub, targetUserId],
       );
 
       await query('COMMIT');
@@ -223,14 +294,45 @@ export const declineFriend = async (event: APIGatewayProxyEvent): Promise<APIGat
 };
 
 /**
+ * POST /friends/hide
+ * Hide a friend from the current users friend list only.
+ */
+export const hideFriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  try {
+    const auth = await extractAuth(event);
+    const targetUserId = readTargetUserId(event);
+
+    if (!targetUserId) {
+      return jsonResponse(400, { error: 'targetUserId is required' });
+    }
+
+    const update = await query(
+      `UPDATE friendships
+       SET is_hidden = TRUE
+       WHERE user_id = $1 AND friend_id = $2 AND status = 'ACCEPTED'
+       RETURNING status`,
+      [auth.sub, targetUserId],
+    );
+
+    if (update.rowCount === 0) {
+      return jsonResponse(400, { error: 'Not currently friends' });
+    }
+
+    return jsonResponse(200, { success: true, message: 'Friend hidden' });
+  } catch (error) {
+    console.error('hideFriend error', error);
+    return jsonResponse(500, { error: 'Internal server error' });
+  }
+};
+
+/**
  * POST /friends/unfriend
  * Remove friendship relationship.
  */
 export const unfriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     const auth = await extractAuth(event);
-    const body = JSON.parse(event.body || '{}');
-    const { targetUserId } = body;
+    const targetUserId = readTargetUserId(event);
 
     if (!targetUserId) {
       return jsonResponse(400, { error: 'targetUserId is required' });
@@ -239,10 +341,10 @@ export const unfriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayP
     await query('BEGIN');
     try {
       const del1 = await query(
-        `DELETE FROM friendships 
+        `DELETE FROM friendships
          WHERE user_id = $1 AND friend_id = $2 AND status = 'ACCEPTED'
          RETURNING status`,
-        [auth.sub, targetUserId]
+        [auth.sub, targetUserId],
       );
 
       if (del1.rowCount === 0) {
@@ -251,14 +353,17 @@ export const unfriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayP
       }
 
       await query(
-        `DELETE FROM friendships 
+        `DELETE FROM friendships
          WHERE user_id = $2 AND friend_id = $1 AND status = 'ACCEPTED'`,
-        [auth.sub, targetUserId]
+        [auth.sub, targetUserId],
       );
 
-      // Decrement counters in users table
-      await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [auth.sub]);
-      await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [targetUserId]);
+      await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [
+        auth.sub,
+      ]);
+      await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [
+        targetUserId,
+      ]);
 
       await query('COMMIT');
     } catch (e) {
@@ -269,6 +374,67 @@ export const unfriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayP
     return jsonResponse(200, { success: true, message: 'Unfriended successfully' });
   } catch (error) {
     console.error('unfriend error', error);
+    return jsonResponse(500, { error: 'Internal server error' });
+  }
+};
+
+/**
+ * POST /friends/block
+ * Block another user and remove accepted friendship visibility.
+ */
+export const blockFriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  try {
+    const auth = await extractAuth(event);
+    const targetUserId = readTargetUserId(event);
+
+    if (!targetUserId) {
+      return jsonResponse(400, { error: 'targetUserId is required' });
+    }
+
+    if (auth.sub === targetUserId) {
+      return jsonResponse(400, { error: 'Cannot block yourself' });
+    }
+
+    await query('BEGIN');
+    try {
+      const blockResult = await query(
+        `WITH previous AS (
+           SELECT status FROM friendships WHERE user_id = $1 AND friend_id = $2
+         ), upsert AS (
+           INSERT INTO friendships (user_id, friend_id, status, initiated_by, is_hidden, created_at)
+           VALUES ($1, $2, 'BLOCKED', $1, FALSE, NOW())
+           ON CONFLICT (user_id, friend_id) DO UPDATE
+           SET status = 'BLOCKED', initiated_by = $1, is_hidden = FALSE, accepted_at = NULL
+         )
+         SELECT status FROM previous`,
+        [auth.sub, targetUserId],
+      );
+
+      await query(
+        `DELETE FROM friendships
+         WHERE user_id = $2 AND friend_id = $1 AND status IN ('ACCEPTED', 'PENDING')`,
+        [auth.sub, targetUserId],
+      );
+
+      const wasAccepted = blockResult.rows[0]?.status === 'ACCEPTED';
+      if (wasAccepted) {
+        await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [
+          auth.sub,
+        ]);
+        await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [
+          targetUserId,
+        ]);
+      }
+
+      await query('COMMIT');
+    } catch (e) {
+      await query('ROLLBACK');
+      throw e;
+    }
+
+    return jsonResponse(200, { success: true, message: 'Friend blocked' });
+  } catch (error) {
+    console.error('blockFriend error', error);
     return jsonResponse(500, { error: 'Internal server error' });
   }
 };

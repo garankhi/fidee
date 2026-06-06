@@ -677,5 +677,17 @@ DROP TRIGGER IF EXISTS trg_reviews_updated ON reviews;
 CREATE TRIGGER trg_reviews_updated
   BEFORE UPDATE ON reviews
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
-`
+`,
+  '012_friend_visibility_actions': `-- ============================================================================
+-- 012_friend_visibility_actions
+-- Add per-user hidden state for camera friends list actions
+-- ============================================================================
+
+ALTER TABLE friendships
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_friendships_visible_accepted
+  ON friendships (user_id, status, is_hidden)
+  WHERE status = 'ACCEPTED';
+`,
 };
