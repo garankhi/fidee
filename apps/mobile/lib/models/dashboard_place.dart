@@ -5,7 +5,7 @@ class DashboardPlace {
   final String name;
   final String category;
   final double rating;
-  final double distanceKm; // Lưu trữ dưới dạng km để hiển thị lên UI chuẩn
+  final double distanceKm;
   final String imageUrl;
   final int friendsCount;
 
