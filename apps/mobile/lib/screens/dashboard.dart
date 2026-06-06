@@ -255,11 +255,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           return GestureDetector(
             onTap: () {
+              // BẤM VÀO CARD: Mở BottomSheet chi tiết địa điểm, truyền ID động lấy từ API thật
               showModalBottomSheet<void>(
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
-                builder: (_) => PlaceDetailsFriends(placeId: place.id),
+                builder: (_) => PlaceDetailsFriends(placeId: place.id), // Truyền ID sang đây
               );
             },
             child: Container(
@@ -309,7 +310,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Text(place.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 2),
-                        Text('${place.category} · ${place.distanceKm} km', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        Text('${place.category} · ${place.distanceKm.toStringAsFixed(1)} km', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,

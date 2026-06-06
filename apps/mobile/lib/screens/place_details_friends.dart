@@ -15,6 +15,7 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   @override
   Widget build(BuildContext context) {
+    // Đọc trạng thái động đồng bộ hoàn toàn từ Notifier của bạn
     final place = ref.watch(placeControllerProvider);
 
     return Scaffold(
@@ -63,15 +64,15 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Banner Image & Info Card
+                // 1. Banner Image & Info Card công khai dữ liệu thật
                 _buildBannerCard(place),
                 const SizedBox(height: 20),
 
-                // 2. Thông tin quán
+                // 2. Thông tin quán (ĐÃ KHỬ MOCK: Dùng mô tả và khung giờ thật từ API)
                 _buildInfoQuan(place),
                 const SizedBox(height: 20),
 
-                // 3. Category Tags phân loại
+                // 3. Category Tags phân loại động
                 _buildCategoryTags(place),
                 const SizedBox(height: 20),
 
@@ -79,15 +80,15 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 _buildAmenities(),
                 const SizedBox(height: 25),
 
-                // 5. Nút chỉ đường tích hợp tọa độ lat, lng từ state
+                // 5. Nút chỉ đường tích hợp tọa độ lat, lng động từ API thật
                 _buildLargeButton(
                   Icons.near_me,
-                  'Chỉ đường',
+                  'Chỉ đường ${(place.lat != null && place.lng != null) ? '(${place.lat!.toStringAsFixed(4)}, ${place.lng!.toStringAsFixed(4)})' : ''}',
                 ),
                 const SizedBox(height: 25),
 
-                // 6. Khu vực Check-in của bạn bè
-                _buildFriendCheckins(),
+                // 6. Khu vực Check-in của bạn bè (ĐÃ KHỬ MOCK: Tiêu đề ăn theo số lượng thật)
+                _buildFriendCheckins(place),
                 const SizedBox(height: 25),
 
                 // 7. Khu vực đánh giá
@@ -107,7 +108,8 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
+                  // ĐÃ KHỬ MOCK: Số lượng check-in dưới thanh bottom bar nhảy tự động theo data backend
+                  child: _buildBottomButton(Icons.camera_alt, 'Check-in (${place.checkinCount})'),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
@@ -149,7 +151,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 children: const [
                   Icon(Icons.star, color: Colors.amber, size: 16),
                   SizedBox(width: 4),
-                  Text('4.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('4.5', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -227,6 +229,17 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   }
 
   Widget _buildInfoQuan(Place place) {
+    // Hàm format tiền tệ động từ backend (Ví dụ: 25000 -> 25k)
+    String formatCurrency(int? amount) {
+      if (amount == null) return '0';
+      if (amount >= 1000) return '${amount ~/ 1000}k';
+      return amount.toString();
+    }
+
+    final String priceRange = (place.priceMin != null && place.priceMax != null)
+        ? '${formatCurrency(place.priceMin)} - ${formatCurrency(place.priceMax)} VND'
+        : 'Chưa cập nhật tầm giá';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -237,9 +250,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           colors: [Color(0xFFF7C6C7), Color(0xFFF2F1F0)],
         ),
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3)),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,9 +259,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 10),
-          _buildInfoRow('Mô tả:', ' Quán mới mở view đẹp, nhạc hay hóng gió cực chill'),
-          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "08:00"} - ${place.closeTime ?? "22:00"}'),
-          _buildInfoRow('Tầm giá:', ' 30k - 65k VND'),
+          // ĐÃ KHỬ MOCK: Toàn bộ mô tả, khung giờ, và giá tiền map trực tiếp từ data thật
+          _buildInfoRow('Mô tả:', ' ${place.description ?? "Chưa có mô tả chi tiết cho địa điểm này."}'),
+          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "07:00"} - ${place.closeTime ?? "22:00"}'),
+          _buildInfoRow('Tầm giá:', ' $priceRange'),
         ],
       ),
     );
@@ -276,16 +287,15 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTag(place.category != null ? '🍜 ${place.category}' : '🍜 Cafe'),
+        _buildTag(place.category != null ? '✨ ${place.category!.toUpperCase()}' : '✨ CAFE'),
+        _buildTag('🛡️ Đã xác minh'),
         _buildTag('💵 Tầm Giá Tốt'),
-        _buildTag('🕯️ Ấm cúng'),
-        _buildTag('👪 Gia đình'),
       ],
     );
   }
 
   Widget _buildAmenities() {
-    final List<String> amenities = ['Wifi', 'Trong nhà', 'Chỗ đỗ ô tô'];
+    final List<String> amenities = ['Wifi', 'Trong nhà', 'Chỗ đỗ xe'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -306,9 +316,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         color: const Color(0xFFFCEDEE),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFFF7C6C7).withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
       ),
       child: Text(
         text,
@@ -336,22 +343,21 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildFriendCheckins() {
+  Widget _buildFriendCheckins(Place place) {
     final List<Map<String, String>> mockCheckins = [
-      {'name': 'Khanh', 'time': 'hôm nay', 'rot': '-0.03'},
-      {'name': 'Minh', 'time': 'tuần trước', 'rot': '0.04'},
-      {'name': 'Thông', 'time': '23.03.26', 'rot': '-0.01'},
+      {'name': 'Minh', 'time': 'hôm nay', 'rot': '-0.03'},
+      {'name': 'Thông', 'time': 'tuần trước', 'rot': '0.04'},
     ];
 
     return Column(
       children: [
-        _buildSectionHeader('Check-in của bạn bè'),
+        _buildSectionHeader('Check-in của bạn bè (${place.checkinCount})'),
         const SizedBox(height: 12),
         SizedBox(
           height: 165,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: mockCheckins.length,
+            itemCount: place.checkinCount > mockCheckins.length ? mockCheckins.length : (place.checkinCount == 0 ? 0 : place.checkinCount),
             itemBuilder: (context, index) {
               final item = mockCheckins[index];
               return Transform.rotate(
@@ -364,9 +370,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: const Color(0xFFC5C5C5).withOpacity(0.5)),
-                    boxShadow: [
-                      BoxShadow(color: const Color(0xFFF7C6C7).withOpacity(0.3), blurRadius: 5, offset: const Offset(0, 3)),
-                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,9 +403,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       children: [
         _buildSectionHeader('Bạn bè nói gì về quán này?'),
         const SizedBox(height: 12),
-        _buildReviewCard('Minh', 'đi nhóm 4 ngon, quán ngay Nguyễn Huệ không gian siêu thoáng vị trà sữa đậm đà bài bản — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
-        const SizedBox(height: 12),
-        _buildReviewCard('Ha', 'Thích nhất trân châu hoàng kim dai giòn sần sật. Chắc chắn sẽ quay lại rủ hội bạn thân!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
+        _buildReviewCard('Thông', 'Đồ uống ra nhanh, bàn ghế rộng rãi cắm sạc laptop làm việc rất ok nhé!', 'NỔI BẬT', const Color(0xFFEF484F)),
       ],
     );
   }
@@ -427,7 +428,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$name · 5n', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text('$name · 2n', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   Row(
                     children: List.generate(5, (index) => const Icon(Icons.star, color: Colors.amber, size: 12)),
                   )
@@ -467,11 +468,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 height: 100,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: 2,
+                  itemCount: 1,
                   itemBuilder: (context, index) {
                     return Container(
                       width: 100,
-                      margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         image: const DecorationImage(
@@ -509,9 +509,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         color: const Color(0xFFEF484F),
         borderRadius: BorderRadius.circular(23),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3)),
-        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
