@@ -7,9 +7,11 @@ import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../models/map_feed_item.dart';
+import '../models/nearby_place.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
+import 'dashboard.dart';
 import 'profile_screen.dart';
 import 'explore_screen.dart';
 
@@ -185,7 +187,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => const ExploreScreen(),
+        builder: (_) => DashboardScreen(
+          onAddSpot: (List<NearbyPlace> spots) {},
+          spotSuggestions: const <NearbyPlace>[],
+        ),
       ),
     );
   }

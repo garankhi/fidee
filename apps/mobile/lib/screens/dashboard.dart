@@ -35,6 +35,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.black),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Hôm nay ăn gì cho vibe?',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
               _buildHeaderSearchBar(),
               const SizedBox(height: 25),
               _buildAddPlaceBanner(),
@@ -55,7 +84,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 15),
               _buildHotPlacesRow(places),
               const SizedBox(height: 28),
-              _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
+              _buildSubSectionHeader(
+                'Dành riêng cho bạn',
+              ),
+              const SizedBox(height: 15),
+              _buildHotPlacesRow(
+                dashboardState.recommendedPlaces,
+              ),
+              const SizedBox(height: 28),
+              _buildSubSectionHeader(
+                'Dựa trên hoạt động của bạn bè',
+              ),
               const SizedBox(height: 15),
               _buildFriendsActivityList(friendPlaces),
             ],
@@ -63,6 +102,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref
+          .read(
+        dashboardControllerProvider.notifier,
+      )
+          .loadDiscoveryFeed();
+    });
   }
 
   Widget _buildHeaderSearchBar() {
@@ -255,12 +307,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           return GestureDetector(
             onTap: () {
-              // BẤM VÀO CARD: Mở BottomSheet chi tiết địa điểm, truyền ID động lấy từ API thật
               showModalBottomSheet<void>(
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
-                builder: (_) => PlaceDetailsFriends(placeId: place.id), // Truyền ID sang đây
+                builder: (_) => PlaceDetailsFriends(placeId: place.id),
               );
             },
             child: Container(
@@ -310,7 +361,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Text(place.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 2),
-                        Text('${place.category} · ${place.distanceKm.toStringAsFixed(1)} km', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        Text('${place.category} · ${place.distanceKm} km', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
