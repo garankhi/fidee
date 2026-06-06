@@ -102,6 +102,10 @@ flutter:
         - asset: assets/fonts/SF-Pro-Italic.ttf
           style: italic
 
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/Anton-Regular.ttf
+
 flutter_launcher_icons:
   android: true
   ios: true
