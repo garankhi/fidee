@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -13,20 +11,23 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
 import '../models/nearby_place.dart';
+import '../models/selected_place_tag.dart';
+import '../services/location_service.dart';
 import '../services/nearby_service.dart';
+import '../services/place_candidate_service.dart';
 import '../services/upload_service.dart';
 import '../utils/error.dart';
-import 'add_spot_screen.dart';
 import 'camera_screen.dart';
+import 'place_picker_sheet.dart';
 
 class SendImageScreen extends ConsumerStatefulWidget {
   final String imagePath;
   final String source; // 'IN_APP_CAMERA' or 'EXIF_GALLERY'
 
-  /// GPS coordinates captured at photo time.
-  /// For camera: [latitude, longitude] from Geolocator at capture.
-  /// For gallery: [latitude, longitude] from EXIF data.
-  /// Null means no GPS proof available.
+  /// GPS coordinates supplied by the image source when available.
+  /// Gallery images may provide [latitude, longitude] from EXIF data.
+  /// Camera captures no longer block preview on a GPS lookup.
+
   final List<double>? gpsCoordinates;
 
   const SendImageScreen({
@@ -45,13 +46,9 @@ enum _UploadStatus { idle, pending, error }
 class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   _UploadStatus _uploadStatus = _UploadStatus.idle;
   List<NearbyPlace> _nearbySpots = [];
-  String? _selectedPlaceName; // Track selected place name
+  SelectedPlaceTag? _selectedPlace;
 
   // Data cho các caption
-  String _locationString = 'Đang tải...';
-  String _weatherString = 'Đang tải...';
-  IconData _weatherIcon = Icons.wb_sunny_rounded;
-  Color _weatherColor = Colors.amber;
   String _timeString = '00:00';
   Timer? _clockTimer;
 
@@ -62,42 +59,15 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   // Carousel state
   final PageController _pageController = PageController();
   int _currentIndex = 0;
-  final int _totalCaptions = 6;
+  final int _totalCaptions = 4;
 
   @override
   void initState() {
     super.initState();
     _startClock();
-    _fetchLocationAndWeather();
-    _fetchNearbySpots();
   }
 
-  Future<void> _fetchNearbySpots() async {
-    try {
-      // Use GPS coordinates if available, else default (Ho Chi Minh)
-      final lat = widget.gpsCoordinates?[0] ?? 10.762892;
-      final lng = widget.gpsCoordinates?[1] ?? 106.682586;
 
-      final authService = ref.read(authServiceProvider);
-      final nearbyService = NearbyService(authService);
-
-      final res = await nearbyService.fetchNearby(
-        lat: lat,
-        lng: lng,
-        mediaId: 'send_image_${DateTime.now().millisecondsSinceEpoch}',
-      );
-
-      setState(() {
-        _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
-        // If we have spots, set first as default
-        if (_nearbySpots.isNotEmpty) {
-          _selectedPlaceName = _nearbySpots[0].displayName;
-        }
-      });
-    } catch (e) {
-      debugPrint('Error loading nearby spots: $e');
-    }
-  }
 
   @override
   void dispose() {
@@ -106,7 +76,6 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     _pageController.dispose();
     super.dispose();
   }
-
   void _startClock() {
     _updateTime();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -120,136 +89,113 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       _timeString = DateFormat('h:mm a').format(now);
     });
   }
+  List<double> _placeLookupCoordinates() {
+    final locationService = ref.read(locationControllerProvider).valueOrNull;
+    final position = locationService?.currentPosition ?? LocationService.defaultLocation;
+    return [position.latitude, position.longitude];
+  }
 
-  Future<void> _fetchLocationAndWeather() async {
+  Future<List<NearbyPlace>> _fetchNearbySpots() async {
+    final coordinates = _placeLookupCoordinates();
+    final authService = ref.read(authServiceProvider);
+    final nearbyService = NearbyService(authService);
+
+    final res = await nearbyService.fetchNearby(
+      lat: coordinates[0],
+      lng: coordinates[1],
+      radius: 1000,
+    );
+
+    return res.data.where((p) => !p.isCustomFallback).toList();
+  }
+
+  Future<SelectedPlaceTag?> _createCustomPlaceTag(String name) async {
+    final coordinates = _placeLookupCoordinates();
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) setState(() => _locationString = 'Không có GPS');
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) setState(() => _locationString = 'Từ chối GPS');
-          return;
-        }
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-        ),
+      final response = await PlaceCandidateService(
+        ref.read(authServiceProvider),
+      ).createCandidate(
+        name: name,
+        category: 'restaurant',
+        lat: coordinates[0],
+        lng: coordinates[1],
       );
 
-      // Fetch reverse geocoding
-      final urlGeo = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?lat=${position.latitude}&lon=${position.longitude}&format=json&accept-language=vi',
+      if (!response.isCreated || response.data == null) return null;
+
+      final data = response.data!;
+      return SelectedPlaceTag(
+        id: data.candidateId,
+        displayName: data.name,
+        address: 'Được tạo bởi Bạn',
+        lat: coordinates[0],
+        lng: coordinates[1],
+        source: 'custom',
       );
-      final requestGeo = await HttpClient().getUrl(urlGeo);
-      requestGeo.headers.set('User-Agent', 'FideeApp/1.0');
-      final responseGeo = await requestGeo.close();
-      final stringDataGeo = await responseGeo.transform(utf8.decoder).join();
-      final jsonGeo = json.decode(stringDataGeo);
-
-      if (mounted) {
-        setState(() {
-          final address = jsonGeo['address'];
-          if (address != null) {
-            _locationString =
-                (address['city'] ??
-                        address['state'] ??
-                        address['country'] ??
-                        'Vị trí')
-                    as String;
-          } else {
-            _locationString = 'Vị trí';
-          }
-        });
-      }
-
-      // Fetch weather
-      final urlWeather = Uri.parse(
-        'https://api.open-meteo.com/v1/forecast?latitude=${position.latitude}&longitude=${position.longitude}&current=weather_code',
-      );
-      final requestWeather = await HttpClient().getUrl(urlWeather);
-      final responseWeather = await requestWeather.close();
-      final stringDataWeather = await responseWeather
-          .transform(utf8.decoder)
-          .join();
-      final jsonWeather = json.decode(stringDataWeather);
-
-      final code = jsonWeather['current']['weather_code'] as int;
-      _parseWeatherCode(code);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _locationString = 'Không rõ';
-          _weatherString = 'Không rõ';
-        });
-      }
+      debugPrint('Create custom place failed: $e');
+      return null;
     }
   }
 
-  void _parseWeatherCode(int code) {
-    String text = 'Nhiều mây';
-    IconData icon = Icons.cloud_rounded;
-    Color color = Colors.white;
+  NearbyPlace _nearbyPlaceFromTag(SelectedPlaceTag place) {
+    return NearbyPlace(
+      id: place.id,
+      placeId: place.placeId,
+      source: place.source,
+      displayName: place.displayName,
+      address: place.address,
+      category: 'restaurant',
+      distanceMeters: 0,
+      confidence: 'high',
+      coordinates: NearbyPlaceCoordinates(lat: place.lat, lng: place.lng),
+      actions: const NearbyPlaceActions(primary: 'select'),
+    );
+  }
 
-    if (code == 0) {
-      text = 'Trời nắng';
-      icon = Icons.wb_sunny_rounded;
-      color = Colors.amber;
-    } else if (code <= 3) {
-      text = 'Nhiều mây';
-      icon = Icons.cloud_rounded;
-      color = Colors.white;
-    } else if (code <= 48) {
-      text = 'Có sương mù';
-      icon = Icons.foggy;
-      color = Colors.white70;
-    } else if (code <= 67) {
-      text = 'Có mưa';
-      icon = Icons.water_drop;
-      color = Colors.lightBlueAccent;
-    } else if (code <= 77) {
-      text = 'Có tuyết';
-      icon = Icons.ac_unit;
-      color = Colors.white;
-    } else if (code <= 99) {
-      text = 'Giông bão';
-      icon = Icons.flash_on;
-      color = Colors.amber;
-    }
+  void _selectPlaceTag(SelectedPlaceTag place) {
+    setState(() {
+      _selectedPlace = place;
+      final exists = _nearbySpots.any((spot) => spot.id == place.id);
+      if (!exists) {
+        _nearbySpots = [_nearbyPlaceFromTag(place), ..._nearbySpots];
+      }
+    });
+  }
 
-    if (mounted) {
-      setState(() {
-        _weatherString = text;
-        _weatherIcon = icon;
-        _weatherColor = color;
-      });
-    }
+  List<NearbyPlace> _mergeNearbyPlaces(List<NearbyPlace> loadedPlaces) {
+    final selectedPlace = _selectedPlace;
+    if (selectedPlace == null) return loadedPlaces;
+
+    final exists = loadedPlaces.any((place) => place.id == selectedPlace.id);
+    if (exists) return loadedPlaces;
+
+    return [_nearbyPlaceFromTag(selectedPlace), ...loadedPlaces];
   }
 
   Future<void> _handleSend() async {
     if (_uploadStatus == _UploadStatus.pending) return;
+
+    final selectedPlace = _selectedPlace;
+    if (selectedPlace == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chọn địa điểm trước khi chia sẻ')),
+      );
+      _showPlacePickerSheet(errorMessage: 'Chọn địa điểm trước khi chia sẻ');
+      return;
+    }
 
     setState(() => _uploadStatus = _UploadStatus.pending);
 
     try {
       final authService = ref.read(authServiceProvider);
       final uploadService = UploadService(authService: authService);
-
-      final latitude = widget.gpsCoordinates?[0] ?? 0.0;
-      final longitude = widget.gpsCoordinates?[1] ?? 0.0;
       final source = widget.source;
 
       await uploadService.upload(
         imagePath: widget.imagePath,
-        latitude: latitude,
-        longitude: longitude,
+        latitude: selectedPlace.lat,
+        longitude: selectedPlace.lng,
         source: source,
       );
 
@@ -288,182 +234,53 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     Navigator.pop(context); // Close bottom sheet
   }
 
-  void _showNearbySpotsSheet() {
+  void _showPlacePickerSheet({String? errorMessage}) {
+    var isLoading = _nearbySpots.isEmpty;
+    var places = List<NearbyPlace>.from(_nearbySpots);
+    var sheetError = errorMessage;
+    var didStartLoad = false;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          width: double.infinity,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
-          ),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          padding: const EdgeInsets.only(top: 12, bottom: 40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[600],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.search, color: Colors.white54),
-                      SizedBox(width: 8),
-                      Text(
-                        'Tìm gần đây...',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Nearby spots list
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: _nearbySpots.length + 1, // +1 for custom place
-                  itemBuilder: (context, index) {
-                    if (index == _nearbySpots.length) {
-                      // Custom place button
-                      return Column(
-                        children: [
-                          const SizedBox(height: 16),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => AddSpotScreen(
-                                    spotSuggestions: _nearbySpots,
-                                    authService: ref.read(authServiceProvider),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4050),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'Thêm địa điểm tùy chỉnh',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    final spot = _nearbySpots[index];
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedPlaceName = spot.displayName;
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: Colors.grey[800]!,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4050),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.restaurant,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    spot.displayName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    spot.address,
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 13,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            if (!didStartLoad) {
+                didStartLoad = true;
+                Future<void>(() async {
+                  try {
+                    final loadedPlaces = _mergeNearbyPlaces(
+                      await _fetchNearbySpots(),
                     );
-                  },
-                ),
-              ),
-            ],
-          ),
+                  if (!mounted) return;
+                  setState(() => _nearbySpots = loadedPlaces);
+                  setSheetState(() {
+                    places = loadedPlaces;
+                    isLoading = false;
+                  });
+                } catch (e) {
+                  debugPrint('Error loading nearby spots: $e');
+                  setSheetState(() {
+                    isLoading = false;
+                    sheetError ??= 'Không tải được địa điểm gần đây';
+                  });
+                }
+              });
+            }
+
+              return PlacePickerSheetContent(
+                places: places,
+                isLoading: isLoading,
+                errorMessage: sheetError,
+                onSelected: (place) {
+                  _selectPlaceTag(place);
+                  Navigator.pop(context);
+                },
+              onCreateCustomPlace: _createCustomPlaceTag,
+            );
+          },
         );
       },
     );
@@ -532,24 +349,10 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                           onTap: () => _selectCaption(0),
                         ),
                         _buildBottomSheetPill(
-                          icon: Icons.location_on_rounded,
-                          label: _locationString,
-                          isActive: _currentIndex == 1,
-                          onTap: () => _selectCaption(1),
-                        ),
-                        _buildBottomSheetPill(
-                          icon: _weatherIcon,
-                          label: _weatherString,
-                          iconColor: _weatherColor,
-                          backgroundColor: Colors.blue,
-                          isActive: _currentIndex == 2,
-                          onTap: () => _selectCaption(2),
-                        ),
-                        _buildBottomSheetPill(
                           icon: Icons.access_time_filled_rounded,
                           label: _timeString,
-                          isActive: _currentIndex == 3,
-                          onTap: () => _selectCaption(3),
+                            isActive: _currentIndex == 1,
+                            onTap: () => _selectCaption(1),
                         ),
                       ],
                     ),
@@ -574,15 +377,15 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                           isEmoji: true,
                           backgroundColor: const Color(0xFFC0FF61),
                           textColor: Colors.black,
-                          isActive: _currentIndex == 4,
-                          onTap: () => _selectCaption(4),
+                            isActive: _currentIndex == 2,
+                            onTap: () => _selectCaption(2),
                         ),
                         _buildBottomSheetPill(
                           icon: '🎆',
                           label: 'Boombayah',
                           isEmoji: true,
-                          isActive: _currentIndex == 5,
-                          onTap: () => _selectCaption(5),
+                            isActive: _currentIndex == 3,
+                            onTap: () => _selectCaption(3),
                         ),
                       ],
                     ),
@@ -840,55 +643,58 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                 ),
                           ),
 
-                          // GPS proof badge
+                          // Place tag pill
                           Positioned(
                             top: 16,
                             left: 16,
-                            child: _buildGpsBadge(),
-                          ),
-
-                          // Venue label (clickable)
-                          Positioned(
-                            top: 60,
-                            left: 16,
-                            child: GestureDetector(
-                              onTap: _showNearbySpotsSheet,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.25),
-                                        width: 1,
+                            right: 16,
+                            child: Center(
+                              child: GestureDetector(
+                                onTap: _showPlacePickerSheet,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 260,
                                       ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.location_on,
-                                          color: Colors.white,
-                                          size: 16,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFEEF0),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.55),
+                                          width: 1,
                                         ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _selectedPlaceName ?? 'Chọn địa điểm',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: 'SF Pro',
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.location_on_rounded,
+                                            color: Color(0xFF6A2027),
+                                            size: 18,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              _selectedPlace?.displayName ?? 'Chọn địa điểm',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Color(0xFF6A2027),
+                                                fontFamily: 'SF Pro',
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -913,19 +719,9 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                               children: [
                                 _buildTextCaption(), // 0: Văn bản
                                 _buildStaticCaption(
-                                  icon: Icons.location_on_rounded,
-                                  label: _locationString,
-                                ), // 1: Vị trí
-                                _buildStaticCaption(
-                                  icon: _weatherIcon,
-                                  label: _weatherString,
-                                  icnColor: _weatherColor,
-                                  bg: Colors.blue.withValues(alpha: 0.6),
-                                ), // 2: Thời tiết
-                                _buildStaticCaption(
                                   icon: Icons.access_time_filled_rounded,
                                   label: _timeString,
-                                ), // 3: Thời gian
+                                ), // 1: Thời gian
                                 _buildStaticCaption(
                                   icon: '🪩',
                                   label: 'Quẩy thôi!',
@@ -934,15 +730,15 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                     0xFFC0FF61,
                                   ).withValues(alpha: 0.8),
                                   txt: Colors.black,
-                                ), // 4: Quẩy thôi
+                                ), // 2: Quẩy thôi
                                 _buildStaticCaption(
                                   icon: '🎆',
                                   label: 'Boombayah',
                                   isEmoji: true,
-                                ), // 5: Boombayah
+                                ), // 3: Boombayah
                               ],
                             ),
-                          ),
+                          )
                         ],
                       ),
                     ),
@@ -1281,79 +1077,17 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     );
   }
 
-  Widget _buildGpsBadge() {
-    final gps = widget.gpsCoordinates;
-    if (gps != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.greenAccent.withValues(alpha: 0.6),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.gps_fixed,
-                  color: Colors.greenAccent,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${gps[0].toStringAsFixed(4)}, ${gps[1].toStringAsFixed(4)}',
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontFamily: 'SF Pro',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.redAccent.withValues(alpha: 0.6),
-              width: 1,
-            ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.gps_off, color: Colors.redAccent, size: 14),
-              SizedBox(width: 4),
-              Text(
-                'Không có GPS',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontFamily: 'SF Pro',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:native_exif/native_exif.dart';
@@ -61,53 +60,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  /// Accuracy threshold for camera GPS proof (metres).
-  static const double _kGpsAccuracyThreshold = 50.0;
-
-  /// Fetches current GPS position for camera capture proof.
-  /// Returns [latitude, longitude] or null on permission/service failure.
-  /// Shows [showBadAccuracyError] and returns null if accuracy is poor.
-  Future<List<double>?> _captureGpsProof() async {
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          ErrorDialogs.showPermissionDeniedError(
-            context,
-            'Vị trí (GPS đang tắt)',
-          );
-        }
-
-        return null;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Vị trí');
-        return null;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
-
-      if (position.accuracy > _kGpsAccuracyThreshold) {
-        if (mounted) ErrorDialogs.showBadAccuracyError(context);
-        return null;
-      }
-
-      return [position.latitude, position.longitude];
-    } catch (e) {
-      debugPrint('GPS capture error: $e');
-      return null;
-    }
-  }
 
   Future<void> _initCamera() async {
     var status = await Permission.camera.status;
@@ -459,9 +411,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
                               final image = await _controller!.takePicture();
 
-                              // AC1: capture GPS proof at shoot time
-                              final gpsCoords = await _captureGpsProof();
-
                               if (_animationController.isAnimating) {
                                 await Future<void>.delayed(
                                   const Duration(milliseconds: 500),
@@ -484,7 +433,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                       ) => SendImageScreen(
                                         imagePath: image.path,
                                         source: 'IN_APP_CAMERA',
-                                        gpsCoordinates: gpsCoords,
                                       ),
                                   transitionsBuilder:
                                       (
@@ -1054,3 +1002,4 @@ class _CameraSkeleton extends StatelessWidget {
     );
   }
 }
+
