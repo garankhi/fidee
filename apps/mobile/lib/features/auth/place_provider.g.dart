@@ -6,7 +6,7 @@ part of 'place_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$placeControllerHash() => r'aa836231b27ca316e831e33a48ba93adc7838e1a';
+String _$placeControllerHash() => r'b10fb2db5d0e1b1248a38aacc333ecd73df1770d';
 
 /// See also [PlaceController].
 @ProviderFor(PlaceController)
