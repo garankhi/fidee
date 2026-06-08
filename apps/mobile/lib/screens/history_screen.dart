@@ -92,12 +92,22 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Widget _buildStoryTile(int index) {
+    // Use different image IDs to avoid errors
+    final imageIds = [
+      '1517248135467', '1541658016709', '1521017431713',
+      '1554679665', '1551288049', '1559925393',
+      '1567016432779', '1498654896293', '1534528741775',
+      '1517248135467', '1541658016709', '1521017431713',
+      '1554679665', '1551288049', '1559925393',
+      '1567016432779', '1498654896293', '1534528741775',
+    ];
+    
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         image: DecorationImage(
           image: NetworkImage(
-            'https://images.unsplash.com/photo-${1517248135467 + index}-4c7edcad34c4?w=400',
+            'https://images.unsplash.com/photo-${imageIds[index % imageIds.length]}?w=400',
           ),
           fit: BoxFit.cover,
         ),
