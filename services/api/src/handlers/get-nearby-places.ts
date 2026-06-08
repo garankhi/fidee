@@ -8,7 +8,7 @@ const CORS_HEADERS = {
 };
 
 const DEFAULT_RADIUS = 100;
-const MAX_RADIUS = 300;
+const MAX_RADIUS = 1000;
 
 type Confidence = 'high' | 'medium' | 'low';
 
@@ -31,7 +31,7 @@ function getConfidence(distanceMeters: number): Confidence {
  * Query params:
  *   - lat (required): GPS latitude
  *   - lng (required): GPS longitude
- *   - radius (optional): search radius in meters (default 100, max 300)
+ *   - radius (optional): search radius in meters (default 100, max 1000)
  *   - context (optional): e.g. 'camera_check_in'
  *   - media_id (optional): associated media ID
  */

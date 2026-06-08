@@ -139,6 +139,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
   }
 
+  Future<UsernameAvailabilityResult> _checkUsernameAvailability(String username) {
+    return ref.read(authServiceProvider).checkUsernameAvailability(username);
+  }
+
   void _showEditProfileSheet({
     required String firstName,
     required String lastName,
@@ -154,6 +158,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           lastName: lastName,
           preferredUsername: preferredUsername,
           onSave: _updateProfileInfo,
+          onCheckUsername: _checkUsernameAvailability,
           onSaved: () {
             if (mounted) {
               setState(() {});

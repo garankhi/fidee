@@ -54,6 +54,7 @@ dependencies:
   dio: ^5.9.2
   uuid: ^4.5.3
   lucide_icons_flutter: ^3.1.14+2
+  photo_manager: ^3.9.0
 
 dev_dependencies:
   flutter_test:
@@ -101,6 +102,10 @@ flutter:
         - asset: assets/fonts/SF-Pro.ttf
         - asset: assets/fonts/SF-Pro-Italic.ttf
           style: italic
+
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/Anton-Regular.ttf
 
 flutter_launcher_icons:
   android: true

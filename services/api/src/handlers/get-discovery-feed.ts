@@ -22,14 +22,15 @@ const VIBES = [
 /**
  * GET /discovery/feed
  *
- * Returns aggregated discovery feed data for the home screen.
- * Sections: weather (TODO), vibes, hotPlaces, recommendedPlaces, friendsActivity
+ * BFF endpoint returning all data for the Discovery screen:
+ * - vibes (category tags)
+ * - hotPlaces (sorted by checkin_count)
+ * - recommendedPlaces (category match, not visited)
+ * - friendsActivity (friends' recent check-ins)
  *
  * Query params:
- * - lat (required) — for weather (later) and distance calculation
- * - lng (required) — for weather (later) and distance calculation
- *
- * lat/lng are used to calculate distance for display only, NOT to filter results.
+ *   - lat (required): user latitude
+ *   - lng (required): user longitude
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
