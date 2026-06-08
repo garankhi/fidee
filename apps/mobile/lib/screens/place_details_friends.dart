@@ -468,42 +468,52 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   item['mediaId']?.toString() ??
                   'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
 
-              return Container(
-                width: 130,
-                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                return Container(
+                  width: 130,
+                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text(
+                        item['name']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300', fit: BoxFit.cover, width: double.infinity),
+                          child: Image.network(
+                            checkinPhoto,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        item['createdAt']?.toString() ?? '',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Text(
+                          item['createdAt']?.toString() ?? '',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
+                    ],
+                  ),
+                );
             },
           ),
         ),
@@ -769,7 +779,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       ),
     );
   }
-}
 
   void _showRatingBottomSheet() {
     int rating = 0;
@@ -868,3 +877,4 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       },
     );
   }
+}

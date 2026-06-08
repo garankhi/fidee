@@ -11,14 +11,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
 import '../models/nearby_place.dart';
-import '../services/nearby_service.dart';
 import '../models/selected_place_tag.dart';
 import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import '../services/place_candidate_service.dart';
 import '../services/upload_service.dart';
 import '../utils/error.dart';
-import 'add_spot_screen.dart';
 import 'camera_screen.dart';
 import 'place_picker_sheet.dart';
 
@@ -48,7 +46,9 @@ enum _UploadStatus { idle, pending, error }
 class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   _UploadStatus _uploadStatus = _UploadStatus.idle;
   List<NearbyPlace> _nearbySpots = [];
-  String? _selectedPlaceName; // Track selected place name
+  SelectedPlaceTag? _selectedPlace;
+  bool _isLoadingNearbySpots = false;
+  String? _nearbySpotsError;
 
   // Data cho các caption
   String _timeString = '00:00';
@@ -67,36 +67,9 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   void initState() {
     super.initState();
     _startClock();
-    _fetchLocationAndWeather();
-    _fetchNearbySpots();
+    _loadNearbySpots();
   }
 
-  Future<void> _fetchNearbySpots() async {
-    try {
-      // Use GPS coordinates if available, else default (Ho Chi Minh)
-      final lat = widget.gpsCoordinates?[0] ?? 10.762892;
-      final lng = widget.gpsCoordinates?[1] ?? 106.682586;
-
-      final authService = ref.read(authServiceProvider);
-      final nearbyService = NearbyService(authService);
-
-      final res = await nearbyService.fetchNearby(
-        lat: lat,
-        lng: lng,
-        mediaId: 'send_image_${DateTime.now().millisecondsSinceEpoch}',
-      );
-
-      setState(() {
-        _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
-        // If we have spots, set first as default
-        if (_nearbySpots.isNotEmpty) {
-          _selectedPlaceName = _nearbySpots[0].displayName;
-        }
-      });
-    } catch (e) {
-      debugPrint('Error loading nearby spots: $e');
-    }
-  }
 
 
 
@@ -121,9 +94,43 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     });
   }
   List<double> _placeLookupCoordinates() {
+    final gps = widget.gpsCoordinates;
+    if (gps != null && gps.length >= 2) {
+      return [gps[0], gps[1]];
+    }
+
     final locationService = ref.read(locationControllerProvider).valueOrNull;
-    final position = locationService?.currentPosition ?? LocationService.defaultLocation;
+    final position =
+        locationService?.currentPosition ?? LocationService.defaultLocation;
     return [position.latitude, position.longitude];
+  }
+
+  Future<void> _loadNearbySpots() async {
+    setState(() {
+      _isLoadingNearbySpots = true;
+      _nearbySpotsError = null;
+    });
+
+    try {
+      final spots = await _fetchNearbySpots();
+      if (!mounted) return;
+
+      setState(() {
+        _nearbySpots = spots;
+        if (_selectedPlace == null && spots.isNotEmpty) {
+          _selectedPlace = SelectedPlaceTag.fromNearby(spots.first);
+        }
+        _isLoadingNearbySpots = false;
+      });
+    } catch (error) {
+      debugPrint('Error loading nearby spots: $error');
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingNearbySpots = false;
+        _nearbySpotsError = 'Không tải được địa điểm gần đây';
+      });
+    }
   }
 
   Future<List<NearbyPlace>> _fetchNearbySpots() async {
@@ -134,6 +141,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     final res = await nearbyService.fetchNearby(
       lat: coordinates[0],
       lng: coordinates[1],
+      mediaId: 'send_image_${DateTime.now().millisecondsSinceEpoch}',
       radius: 1000,
     );
 
@@ -266,186 +274,20 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   }
 
   void _showPlacePickerSheet({String? errorMessage}) {
-    var isLoading = _nearbySpots.isEmpty;
-    var places = List<NearbyPlace>.from(_nearbySpots);
-    var sheetError = errorMessage;
-    var didStartLoad = false;
-
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          width: double.infinity,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
-          ),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          padding: const EdgeInsets.only(top: 12, bottom: 40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[600],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.search, color: Colors.white54),
-                      SizedBox(width: 8),
-                      Text(
-                        'Tìm gần đây...',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Nearby spots list
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: _nearbySpots.length + 1, // +1 for custom place
-                  itemBuilder: (context, index) {
-                    if (index == _nearbySpots.length) {
-                      // Custom place button
-                      return Column(
-                        children: [
-                          const SizedBox(height: 16),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => AddSpotScreen(
-                                    spotSuggestions: _nearbySpots,
-                                    authService: ref.read(authServiceProvider),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4050),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'Thêm địa điểm tùy chỉnh',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    final spot = _nearbySpots[index];
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedPlaceName = spot.displayName;
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: Colors.grey[800]!,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4050),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.restaurant,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    spot.displayName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    spot.address,
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 13,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+        return PlacePickerSheetContent(
+          places: _mergeNearbyPlaces(_nearbySpots),
+          isLoading: _isLoadingNearbySpots,
+          errorMessage: errorMessage ?? _nearbySpotsError,
+          onCreateCustomPlace: _createCustomPlaceTag,
+          onSelected: (place) {
+            _selectPlaceTag(place);
+            Navigator.pop(context);
+          },
         );
       },
     );
@@ -872,7 +714,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                             top: 60,
                             left: 16,
                             child: GestureDetector(
-                              onTap: _showNearbySpotsSheet,
+                              onTap: _showPlacePickerSheet,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
                                 child: BackdropFilter(
@@ -900,7 +742,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          _selectedPlaceName ?? 'Chọn địa điểm',
+                                          _selectedPlace?.displayName ?? 'Chọn địa điểm',
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontFamily: 'SF Pro',
@@ -1292,16 +1134,3 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

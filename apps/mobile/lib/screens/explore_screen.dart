@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:fidee_mobile/screens/add_spot_screen.dart';
 import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import 'package:fidee_mobile/screens/place_details_friends.dart';
@@ -656,6 +658,7 @@ class _PlaceCard extends StatelessWidget {
           ],
         ],
       ),
+    ),
     );
   }
 }
