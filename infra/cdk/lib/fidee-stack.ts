@@ -1186,6 +1186,73 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── GET /journey/checkins & /journey/reviews (VPC, connects to Aurora) ────────────
+    const getJourneyCheckinsFn = new nodejs.NodejsFunction(this, 'GetJourneyCheckinsFunction', {
+      functionName: resourceName(stage, 'get-journey-checkins'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-journey-checkins.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    });
+    dbCluster.secret!.grantRead(getJourneyCheckinsFn);
+
+    const getJourneyReviewsFn = new nodejs.NodejsFunction(this, 'GetJourneyReviewsFunction', {
+      functionName: resourceName(stage, 'get-journey-reviews'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-journey-reviews.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    });
+    dbCluster.secret!.grantRead(getJourneyReviewsFn);
+
+    const journeyResource = api.root.addResource('journey');
+    
+    const journeyCheckinsResource = journeyResource.addResource('checkins');
+    journeyCheckinsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    journeyCheckinsResource.addMethod('GET', new apigateway.LambdaIntegration(getJourneyCheckinsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const journeyReviewsResource = journeyResource.addResource('reviews');
+    journeyReviewsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    journeyReviewsResource.addMethod('GET', new apigateway.LambdaIntegration(getJourneyReviewsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // ─── GET /admin/users (VPC, connects to Aurora) ────────────
     const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {
       functionName: resourceName(stage, 'get-users'),
