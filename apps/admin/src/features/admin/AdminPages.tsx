@@ -40,6 +40,41 @@ function pageTone(status: string) {
   return 'neutral';
 }
 
+function getApiErrorStatus(error: unknown) {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return null;
+  }
+
+  const response = (error as { response?: { status?: number } }).response;
+  return typeof response?.status === 'number' ? response.status : null;
+}
+
+function isAuthRejected(error: unknown) {
+  const status = getApiErrorStatus(error);
+  return status === 401 || status === 403;
+}
+
+function redirectToLogin() {
+  window.localStorage.removeItem('admin_token');
+  navigateToPath('/login');
+}
+
+function normalizeUser(user: User): User {
+  const username = user.username || user.email || user.fullName || 'unknown-user';
+
+  return {
+    ...user,
+    username,
+    fullName: user.fullName || username,
+    email: user.email || '',
+    phone: user.phone || '',
+    contributions: user.contributions ?? 0,
+    status: user.status || 'active',
+    license: user.license || 'Free',
+    role: user.role || 'User',
+  };
+}
+
 function formatStatus(status: ModerationStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
@@ -577,10 +612,15 @@ export function UsersPage() {
       try {
         const realUsers = await fetchUsers();
         if (active) {
-          setUsers(realUsers);
+          setUsers(realUsers.map(normalizeUser));
           setIsOfflineMode(false);
         }
       } catch (error) {
+        if (isAuthRejected(error)) {
+          redirectToLogin();
+          return;
+        }
+
         console.warn('API error, falling back to mock users:', error);
         if (active) {
           setUsers(mockUsers);
@@ -716,20 +756,25 @@ export function UsersPage() {
                   setToast({
                     title: 'Cập nhật thành công (Ngoại tuyến)',
                     message: `Đã cập nhật giả lập cho tài khoản ${editingUser.username}.`
-                  });
-                } else {
-                  const updated = await updateUserData(editingUser.id, editingUser);
-                  setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
-                  setToast({
+                    });
+                  } else {
+                    const updated = normalizeUser(await updateUserData(editingUser.id, editingUser));
+                    setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
+                    setToast({
                     title: 'Cập nhật thành công (API thực)',
                     message: `Đã lưu thông tin người dùng ${editingUser.username} lên hệ thống thực.`
                   });
                 }
-              } catch (error) {
-                console.error('Update user error:', error);
-                setToast({
-                  title: 'Lỗi cập nhật API',
-                  message: error instanceof Error ? error.message : 'Không thể kết nối máy chủ.'
+                } catch (error) {
+                  if (isAuthRejected(error)) {
+                    redirectToLogin();
+                    return;
+                  }
+
+                  console.error('Update user error:', error);
+                  setToast({
+                    title: 'Lỗi cập nhật API',
+                    message: error instanceof Error ? error.message : 'Không thể kết nối máy chủ.'
                 });
               } finally {
                 setIsSaving(false);
@@ -790,7 +835,7 @@ export function UsersPage() {
                     <select
                       className="control-input"
                       value={editingUser.role}
-                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as any })}
+                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as User['role'] })}
                     >
                       <option value="User">User</option>
                       <option value="Moderator">Moderator</option>
@@ -802,7 +847,7 @@ export function UsersPage() {
                     <select
                       className="control-input"
                       value={editingUser.license}
-                      onChange={(e) => setEditingUser({ ...editingUser, license: e.target.value as any })}
+                      onChange={(e) => setEditingUser({ ...editingUser, license: e.target.value as User['license'] })}
                     >
                       <option value="Free">Free</option>
                       <option value="Basic">Basic</option>
@@ -818,7 +863,7 @@ export function UsersPage() {
                     <select
                       className="control-input"
                       value={editingUser.status}
-                      onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value as any })}
+                      onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value as User['status'] })}
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>

@@ -16,6 +16,8 @@ class AuthUiState {
   final String? firstName;
   final String? lastName;
   final String? preferredUsername;
+  final String? avatarUrl;
+  final String? since;
 
   const AuthUiState({
     required this.authState,
@@ -28,6 +30,8 @@ class AuthUiState {
     this.firstName,
     this.lastName,
     this.preferredUsername,
+    this.avatarUrl,
+    this.since,
   });
 
   factory AuthUiState.fromService(
@@ -47,6 +51,8 @@ class AuthUiState {
       firstName: service.firstName,
       lastName: service.lastName,
       preferredUsername: service.preferredUsername,
+      avatarUrl: service.avatarUrl,
+      since: service.since,
     );
   }
 
@@ -61,6 +67,8 @@ class AuthUiState {
     String? firstName,
     String? lastName,
     String? preferredUsername,
+    String? avatarUrl,
+    String? since,
     bool clearError = false,
   }) {
     return AuthUiState(
@@ -75,6 +83,8 @@ class AuthUiState {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       preferredUsername: preferredUsername ?? this.preferredUsername,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      since: since ?? this.since,
     );
   }
 }

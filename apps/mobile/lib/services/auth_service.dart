@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../config.dart';
+import 'profile_details.dart';
 
 // Persistent Cognito storage.
 /// Stores Cognito tokens in platform secure storage so they survive app
@@ -114,7 +115,6 @@ class UsernameAvailabilityResult {
   });
 }
 
-
 Map<String, dynamic> decodeResponseObject(String responseBody) {
   if (responseBody.trim().isEmpty) {
     return <String, dynamic>{};
@@ -139,7 +139,8 @@ String profileUpdateErrorMessage(int statusCode, String responseBody) {
   try {
     final decoded = jsonDecode(trimmedBody);
     if (decoded is Map<String, dynamic>) {
-      final serverMessage = decoded['error'] as String? ?? decoded['message'] as String?;
+      final serverMessage =
+          decoded['error'] as String? ?? decoded['message'] as String?;
       final code = decoded['code'] as String?;
       if (serverMessage != null && serverMessage.trim().isNotEmpty) {
         return code == null || code.trim().isEmpty
@@ -212,6 +213,46 @@ class AuthService {
 
   bool get canResendOtp => resendCooldownRemaining == 0;
 
+  void _applyProfileDetails(ProfileDetails details) {
+    _firstName = details.firstName ?? _firstName;
+    _lastName = details.lastName ?? _lastName;
+    _preferredUsername = details.preferredUsername ?? _preferredUsername;
+    _avatarUrl = details.avatarUrl ?? _avatarUrl;
+    _tier = details.tier;
+    _since = details.since ?? _since;
+  }
+
+  @visibleForTesting
+  Future<void> applyProfileDetailsForTesting(Map<String, dynamic> data) async {
+    _applyProfileDetails(ProfileDetails.fromJson(data));
+  }
+
+  Future<bool> _hydrateAuthenticatedProfile() async {
+    if (_cognitoUser != null) {
+      final attributes = await _cognitoUser!.getUserAttributes();
+      if (attributes != null) {
+        for (final attr in attributes) {
+          final name = attr.getName();
+          final value = attr.getValue() ?? '';
+          if (name == 'given_name') {
+            _firstName = value;
+          } else if (name == 'family_name') {
+            _lastName = value;
+          } else if (name == 'preferred_username') {
+            _preferredUsername = value;
+          } else if (name == 'picture') {
+            _avatarUrl = value;
+          } else if (name == 'custom:tier') {
+            _tier = value == 'pro' ? UserTier.pro : UserTier.free;
+          }
+        }
+      }
+    }
+
+    await fetchProfileDetails();
+    return _firstName?.trim().isNotEmpty ?? false;
+  }
+
   /// Initialize: create persistent storage, restore session if available.
   Future<void> initialize() async {
     if (isTestMode) {
@@ -244,38 +285,10 @@ class AuthService {
 
       if (session != null && session.isValid()) {
         _username = user.getUsername();
-
-        // Fetch attributes to check if profile is complete
-        final attributes = await user.getUserAttributes();
-        bool hasName = false;
-
-        if (attributes != null) {
-          for (var attr in attributes) {
-            final name = attr.getName();
-            final value = attr.getValue() ?? '';
-            if (name == 'given_name') {
-              _firstName = value;
-              if (value.isNotEmpty) hasName = true;
-            } else if (name == 'family_name') {
-              _lastName = value;
-            } else if (name == 'preferred_username') {
-              _preferredUsername = value;
-            } else if (name == 'picture') {
-              _avatarUrl = value;
-            } else if (name == 'custom:tier') {
-              _tier = value == 'pro' ? UserTier.pro : UserTier.free;
-            }
-          }
-        }
-
-        // Fetch full profile details from PostgreSQL (createdAt, friendCount, etc.)
-        await fetchProfileDetails();
-
-        if (hasName) {
-          _state = AuthState.authenticated;
-        } else {
-          _state = AuthState.incompleteProfile;
-        }
+        final hasName = await _hydrateAuthenticatedProfile();
+        _state = hasName
+            ? AuthState.authenticated
+            : AuthState.incompleteProfile;
       } else {
         await user.signOut();
         _state = AuthState.unauthenticated;
@@ -307,7 +320,11 @@ class AuthService {
       );
 
       if (session != null && session.isValid()) {
-        _state = AuthState.authenticated;
+        _username = _cognitoUser?.getUsername() ?? _username;
+        final hasName = await _hydrateAuthenticatedProfile();
+        _state = hasName
+            ? AuthState.authenticated
+            : AuthState.incompleteProfile;
         return const AuthResult(success: true);
       } else {
         return const AuthResult(success: false, errorMessage: 'Login failed');
@@ -367,7 +384,8 @@ class AuthService {
 
     try {
       await GoogleSignIn.instance.initialize(
-        serverClientId: '255813663531-rd534l11ckmgrobpo4imj2kdnshpq3ap.apps.googleusercontent.com',
+        serverClientId:
+            '255813663531-rd534l11ckmgrobpo4imj2kdnshpq3ap.apps.googleusercontent.com',
       );
 
       final googleUser = await GoogleSignIn.instance.authenticate();
@@ -387,15 +405,21 @@ class AuthService {
       _cognitoUser!.setAuthenticationFlowType('CUSTOM_AUTH');
 
       try {
-        final randomPassword = 'GoogleAuth_${const Uuid().v4().replaceAll('-', '')}';
+        final randomPassword =
+            'GoogleAuth_${const Uuid().v4().replaceAll('-', '')}';
         final attributes = [
           AttributeArg(name: 'email', value: _username),
-          if (googleUser.displayName != null && googleUser.displayName!.isNotEmpty) ...[
+          if (googleUser.displayName != null &&
+              googleUser.displayName!.isNotEmpty) ...[
             AttributeArg(name: 'given_name', value: googleUser.displayName),
             const AttributeArg(name: 'family_name', value: 'Google User'),
-          ]
+          ],
         ];
-        await _userPool.signUp(_username!, randomPassword, userAttributes: attributes);
+        await _userPool.signUp(
+          _username!,
+          randomPassword,
+          userAttributes: attributes,
+        );
       } on CognitoClientException catch (e) {
         if (e.code != 'UsernameExistsException') {
           return AuthResult(
@@ -419,7 +443,10 @@ class AuthService {
         );
 
         if (session != null && session.isValid()) {
-          _state = AuthState.authenticated;
+          final hasName = await _hydrateAuthenticatedProfile();
+          _state = hasName
+              ? AuthState.authenticated
+              : AuthState.incompleteProfile;
           return const AuthResult(success: true);
         }
 
@@ -430,35 +457,14 @@ class AuthService {
       } on CognitoUserCustomChallengeException catch (e) {
         if (e.challengeParameters != null &&
             e.challengeParameters['provider'] == 'google') {
-          
-          final challengeSession = await _cognitoUser!.sendCustomChallengeAnswer(
-            idToken,
-            {'provider': 'google'},
-          );
+          final challengeSession = await _cognitoUser!
+              .sendCustomChallengeAnswer(idToken, {'provider': 'google'});
 
           if (challengeSession != null && challengeSession.isValid()) {
-            _state = AuthState.authenticated;
-
-            try {
-              final attributes = await _cognitoUser!.getUserAttributes();
-              bool hasName = false;
-              if (attributes != null) {
-                for (var attr in attributes) {
-                  if (attr.getName() == 'given_name' && (attr.getValue()?.isNotEmpty ?? false)) {
-                    hasName = true;
-                  }
-                  if (attr.getName() == 'custom:tier') {
-                    _tier = attr.getValue() == 'pro' ? UserTier.pro : UserTier.free;
-                  }
-                }
-              }
-              if (!hasName) {
-                _state = AuthState.incompleteProfile;
-              }
-            } catch (_) {
-              // fallback
-            }
-
+            final hasName = await _hydrateAuthenticatedProfile();
+            _state = hasName
+                ? AuthState.authenticated
+                : AuthState.incompleteProfile;
             return const AuthResult(success: true);
           } else {
             return const AuthResult(
@@ -559,7 +565,9 @@ class AuthService {
       try {
         await _userPool.storage.clear();
       } catch (storageError) {
-        debugPrint('DEBUG [AuthService]: Failed to clear storage: $storageError');
+        debugPrint(
+          'DEBUG [AuthService]: Failed to clear storage: $storageError',
+        );
       }
     } finally {
       _state = AuthState.unauthenticated;
@@ -598,7 +606,7 @@ class AuthService {
   Future<void> fetchProfileDetails() async {
     final token = await getToken();
     if (token == null) return;
-    
+
     try {
       final response = await http.get(
         Uri.parse('${Config.apiBaseUrl}/profile'),
@@ -606,33 +614,16 @@ class AuthService {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final String? displayName = data['displayName'] as String?;
-        if (displayName != null) {
-          final parts = displayName.split(' ');
-          _firstName = parts.isNotEmpty ? parts.first : _firstName;
-          _lastName = parts.length > 1 ? parts.skip(1).join(' ') : _lastName;
-        }
-        _preferredUsername = data['username'] as String? ?? _preferredUsername;
-        _avatarUrl = data['avatarUrl'] as String? ?? _avatarUrl;
-        if (data['plan'] == 'PRO') {
-          _tier = UserTier.pro;
-        } else {
-          _tier = UserTier.free;
-        }
-        
-        // Parse "since" year
-        final createdAtStr = data['createdAt'] as String?;
-        if (createdAtStr != null) {
-          final dt = DateTime.parse(createdAtStr);
-          _since = dt.year.toString();
-        }
+        _applyProfileDetails(ProfileDetails.fromJson(data));
       }
     } catch (_) {
       // ignore
     }
   }
 
-  Future<UsernameAvailabilityResult> checkUsernameAvailability(String username) async {
+  Future<UsernameAvailabilityResult> checkUsernameAvailability(
+    String username,
+  ) async {
     final normalizedUsername = username.trim().toLowerCase();
 
     if (isTestMode) {
@@ -653,8 +644,9 @@ class AuthService {
     }
 
     try {
-      final uri = Uri.parse('${Config.apiBaseUrl}/profile/username-availability')
-          .replace(queryParameters: {'username': normalizedUsername});
+      final uri = Uri.parse(
+        '${Config.apiBaseUrl}/profile/username-availability',
+      ).replace(queryParameters: {'username': normalizedUsername});
       final response = await http.get(uri, headers: {'Authorization': token});
       final body = decodeResponseObject(response.body);
 
@@ -681,7 +673,8 @@ class AuthService {
       return UsernameAvailabilityResult(
         success: false,
         available: false,
-        errorMessage: error ?? 'Không kiểm tra được username. Vui lòng thử lại.',
+        errorMessage:
+            error ?? 'Không kiểm tra được username. Vui lòng thử lại.',
       );
     } catch (_) {
       return const UsernameAvailabilityResult(
@@ -722,16 +715,27 @@ class AuthService {
       if (_cognitoUser != null) {
         final attributes = <CognitoUserAttribute>[];
         if (firstName != null) {
-          attributes.add(CognitoUserAttribute(name: 'given_name', value: firstName));
+          attributes.add(
+            CognitoUserAttribute(name: 'given_name', value: firstName),
+          );
         }
         if (lastName != null) {
-          attributes.add(CognitoUserAttribute(name: 'family_name', value: lastName));
+          attributes.add(
+            CognitoUserAttribute(name: 'family_name', value: lastName),
+          );
         }
         if (preferredUsername != null) {
-          attributes.add(CognitoUserAttribute(name: 'preferred_username', value: preferredUsername));
+          attributes.add(
+            CognitoUserAttribute(
+              name: 'preferred_username',
+              value: preferredUsername,
+            ),
+          );
         }
         if (avatarUrl != null) {
-          attributes.add(CognitoUserAttribute(name: 'picture', value: avatarUrl));
+          attributes.add(
+            CognitoUserAttribute(name: 'picture', value: avatarUrl),
+          );
         }
 
         if (attributes.isNotEmpty) {
@@ -767,10 +771,7 @@ class AuthService {
     try {
       final response = await http.patch(
         Uri.parse('${Config.apiBaseUrl}/profile'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
+        headers: {'Authorization': token, 'Content-Type': 'application/json'},
         body: jsonEncode({
           'firstName': firstName.trim(),
           'lastName': lastName.trim(),
@@ -784,7 +785,8 @@ class AuthService {
         final profile = body['profile'] as Map<String, dynamic>?;
         _firstName = firstName.trim();
         _lastName = lastName.trim();
-        _preferredUsername = profile?['username'] as String? ?? username.trim().toLowerCase();
+        _preferredUsername =
+            profile?['username'] as String? ?? username.trim().toLowerCase();
         _avatarUrl = profile?['avatarUrl'] as String? ?? _avatarUrl;
 
         final plan = profile?['plan'] as String?;
@@ -798,17 +800,20 @@ class AuthService {
         return const AuthResult(success: true);
       }
 
-        final code = body['code'] as String?;
-        if (response.statusCode == 409 && code == 'USERNAME_TAKEN') {
-          return const AuthResult(
-            success: false,
-            errorMessage: 'Username đã được sử dụng',
-          );
-        }
-        return AuthResult(
+      final code = body['code'] as String?;
+      if (response.statusCode == 409 && code == 'USERNAME_TAKEN') {
+        return const AuthResult(
           success: false,
-          errorMessage: profileUpdateErrorMessage(response.statusCode, response.body),
+          errorMessage: 'Username đã được sử dụng',
         );
+      }
+      return AuthResult(
+        success: false,
+        errorMessage: profileUpdateErrorMessage(
+          response.statusCode,
+          response.body,
+        ),
+      );
     } catch (_) {
       return const AuthResult(
         success: false,

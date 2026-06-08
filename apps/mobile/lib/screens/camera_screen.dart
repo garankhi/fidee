@@ -5,18 +5,21 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:native_exif/native_exif.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
 import '../services/auth_service.dart';
+import '../services/camera_startup_permission_flow.dart';
+import '../services/gallery_asset_picker_service.dart';
+import '../services/gallery_permission_service.dart';
 import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
 import 'camera_friends_sheet.dart';
+import 'gallery_asset_picker_sheet.dart';
+import 'gallery_permission_sheet.dart';
 import 'gallery_preview_button.dart';
 import 'premium_upgrade_sheet.dart';
 import 'send_image_screen.dart';
@@ -37,9 +40,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _selectedCameraIndex = 0;
   bool _isFlashOn = false;
   bool _isLoading = false;
-  final GalleryPreviewService _galleryPreviewService =
-      const GalleryPreviewService();
+  late final GalleryPermissionService _galleryPermissionService =
+      const GalleryPermissionService();
+  late final GalleryPreviewService _galleryPreviewService =
+      GalleryPreviewService(permissionService: _galleryPermissionService);
   List<Uint8List> _galleryThumbnails = const <Uint8List>[];
+  GalleryPermissionStatus _galleryPermissionStatus =
+      GalleryPermissionStatus.notDetermined;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -47,8 +54,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   @override
   void initState() {
     super.initState();
-    _initCamera();
-    unawaited(_loadGalleryPreview());
+    unawaited(_initCameraAndGalleryPreview());
 
     _animationController = AnimationController(
       vsync: this,
@@ -68,29 +74,37 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-
   Future<void> _loadGalleryPreview() async {
-    final thumbnails = await _galleryPreviewService.loadRecentThumbnails();
+    final result = await _galleryPreviewService.loadRecentThumbnails();
     if (!mounted) return;
 
     setState(() {
-      _galleryThumbnails = thumbnails;
+      _galleryPermissionStatus = result.permissionStatus;
+      _galleryThumbnails = result.thumbnails;
     });
   }
 
-  Future<void> _initCamera() async {
-    var status = await Permission.camera.status;
-    if (status.isDenied) {
-      status = await Permission.camera.request();
-      if (status.isPermanentlyDenied || status.isDenied) {
-        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Camera');
-        return;
-      }
+  Future<void> _initCameraAndGalleryPreview() async {
+    final startupFlow = CameraStartupPermissionFlow.live(
+      galleryPreviewService: _galleryPreviewService,
+    );
+
+    final startupResult = await startupFlow.resolve();
+    if (!mounted) return;
+
+    setState(() {
+      _galleryPermissionStatus = startupResult.galleryPreview.permissionStatus;
+      _galleryThumbnails = startupResult.galleryPreview.thumbnails;
+    });
+
+    if (!startupResult.cameraGranted) {
+      ErrorDialogs.showPermissionDeniedError(context, 'Camera');
+      return;
     }
 
     _cameras = await availableCameras();
     if (_cameras != null && _cameras!.isNotEmpty) {
-      _setCamera(_selectedCameraIndex);
+      unawaited(_setCamera(_selectedCameraIndex));
     }
   }
 
@@ -121,65 +135,122 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       return;
     }
 
+    final hasGalleryAccess = await _ensureGalleryPermissionForUpload();
+    if (!hasGalleryAccess) return;
+
     final prefs = await SharedPreferences.getInstance();
     final hideNotice = prefs.getBool('hide_gallery_gps_notice') ?? false;
 
     if (!hideNotice) {
       if (!mounted) return;
       final shouldContinue = await showDialog<bool>(
-        context: context,
-        builder: (context) => const GalleryGpsNoticeDialog(),
-      );
+          context: context,
+          builder: (context) => const GalleryGpsNoticeDialog(),
+        );
       if (shouldContinue != true) return;
     }
 
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (!mounted) return;
+    final selectedImagePath = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => GalleryAssetPickerSheet(
+        loadAssets: () => GalleryAssetPickerService(
+          permissionService: _galleryPermissionService,
+        ).loadRecentImages(),
+      ),
+    );
 
     if (mounted) unawaited(_loadGalleryPreview());
-    if (pickedFile != null) {
-      _setLoading(true); // Bật loading khi bắt đầu xử lý ảnh
-      try {
-        final exif = await Exif.fromPath(pickedFile.path);
-        final latLong = await exif.getLatLong();
-        await exif.close();
+    if (selectedImagePath == null) return;
 
-        if (latLong == null) {
-          _setLoading(false);
-          debugPrint('Missing EXIF GPS data');
-          if (mounted) ErrorDialogs.showMissingGpsError(context);
-          return;
-        }
+    _setLoading(true); // Bật loading khi bắt đầu xử lý ảnh
+    try {
+      final exif = await Exif.fromPath(selectedImagePath);
+      final latLong = await exif.getLatLong();
+      await exif.close();
 
-        debugPrint(
-          'Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}',
-        );
-
+      if (latLong == null) {
         _setLoading(false);
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder<void>(
-            transitionDuration: const Duration(milliseconds: 300),
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                SendImageScreen(
-                  imagePath: pickedFile.path,
-                  source: 'EXIF_GALLERY',
-                  // AC2: pass EXIF GPS to preview screen
-                  gpsCoordinates: [latLong.latitude, latLong.longitude],
-                ),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-          ),
-        );
-      } catch (e) {
-        _setLoading(false);
-        debugPrint('Lỗi đọc EXIF: $e');
+        debugPrint('Missing EXIF GPS data');
         if (mounted) ErrorDialogs.showMissingGpsError(context);
+        return;
       }
+
+      debugPrint(
+        'Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}',
+      );
+
+      _setLoading(false);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder<void>(
+          transitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              SendImageScreen(
+                imagePath: selectedImagePath,
+                source: 'EXIF_GALLERY',
+                // AC2: pass EXIF GPS to preview screen
+                gpsCoordinates: [latLong.latitude, latLong.longitude],
+              ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    } catch (e) {
+      _setLoading(false);
+      debugPrint('Lỗi đọc EXIF: $e');
+      if (mounted) ErrorDialogs.showMissingGpsError(context);
     }
+  }
+
+  Future<bool> _ensureGalleryPermissionForUpload() async {
+    var status = _galleryPermissionStatus;
+    status = await _galleryPermissionService.currentStatus();
+    if (!mounted) return false;
+
+    setState(() {
+      _galleryPermissionStatus = status;
+    });
+
+    if (status.hasAccess) return true;
+
+    final action = await showModalBottomSheet<GalleryPermissionAction>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => GalleryPermissionSheet(status: status),
+    );
+
+    if (!mounted || action == null || action == GalleryPermissionAction.deny) {
+      return false;
+    }
+
+    switch (action) {
+      case GalleryPermissionAction.requestAccess:
+        status = await _galleryPermissionService.requestAccess();
+        break;
+      case GalleryPermissionAction.selectMore:
+        status = await _galleryPermissionService.presentLimitedPicker();
+        break;
+      case GalleryPermissionAction.openSettings:
+        await _galleryPermissionService.openPhotoSettings();
+        status = await _galleryPermissionService.currentStatus();
+        break;
+      case GalleryPermissionAction.deny:
+        return false;
+    }
+
+    if (!mounted) return false;
+    setState(() {
+      _galleryPermissionStatus = status;
+    });
+    await _loadGalleryPreview();
+
+    return status.hasAccess;
   }
 
   void _showProFeatureDialog() {
@@ -245,8 +316,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                         onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                          child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            LucideIcons.map,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
                       ),
                       GestureDetector(
@@ -262,7 +340,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.people, color: Colors.white, size: 16),
+                              const Icon(
+                                Icons.people,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 '${friendsState.friends.length} người bạn',
@@ -275,7 +357,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           ),
                         ),
                       ),
-                        Container(
+                      Container(
                         width: 36,
                         height: 36,
                         decoration: const BoxDecoration(
@@ -369,9 +451,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Gallery Button
-                        GalleryPreviewButton(
-                          thumbnails: _galleryThumbnails,
-                          onTap: _pickFromGallery,
+                      GalleryPreviewButton(
+                        thumbnails: _galleryThumbnails,
+                        onTap: _pickFromGallery,
                       ),
 
                       // Capture Button
@@ -467,7 +549,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                             onTap: _switchCamera,
                             child: Transform.rotate(
                               angle: -36 * math.pi / 180,
-                              child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 38),
+                              child: const Icon(
+                                LucideIcons.refreshCcw,
+                                color: Colors.white,
+                                size: 38,
+                              ),
                             ),
                           ),
                         ),
@@ -822,22 +908,22 @@ class _CameraSkeleton extends StatelessWidget {
                 SizedBox(
                   width: 55,
                   height: 55,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        width: 45,
-                        height: 45,
-                        decoration: BoxDecoration(
-                          color: const Color(0x1FFFFFFF),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0x2EFFFFFF)),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 45,
+                      height: 45,
+                      decoration: BoxDecoration(
+                        color: const Color(0x1FFFFFFF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0x2EFFFFFF)),
                       ),
-                        child: const Icon(
-                          Icons.photo_library_outlined,
-                          color: Color(0xB3FFFFFF),
-                          size: 24,
+                      child: const Icon(
+                        Icons.photo_library_outlined,
+                        color: Color(0xB3FFFFFF),
+                        size: 24,
                       ),
-                      ),
+                    ),
                   ),
                 ),
 
@@ -972,4 +1058,3 @@ class _CameraSkeleton extends StatelessWidget {
     );
   }
 }
-
