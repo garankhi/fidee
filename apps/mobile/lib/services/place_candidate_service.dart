@@ -132,13 +132,13 @@ class PlaceCandidateService {
       'category': category,
       'coordinates': {'lat': lat, 'lng': lng},
       'force': force,
-      if (address != null) 'address': address,
-      if (openTime != null) 'openTime': openTime,
-      if (closeTime != null) 'closeTime': closeTime,
-      if (priceMin != null) 'priceMin': priceMin,
-      if (priceMax != null) 'priceMax': priceMax,
-      if (phoneNumber != null) 'phoneNumber': phoneNumber,
-      if (description != null) 'description': description,
+      'address': ?address,
+      'openTime': ?openTime,
+      'closeTime': ?closeTime,
+      'priceMin': ?priceMin,
+      'priceMax': ?priceMax,
+      'phoneNumber': ?phoneNumber,
+      'description': ?description,
     };
     if (mediaId != null) {
       payload['mediaId'] = mediaId;

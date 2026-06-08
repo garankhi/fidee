@@ -148,7 +148,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     final String coverUrl =
         (place.photos.isNotEmpty && place.photos.first['mediaId'] != null)
         ? place.photos.first['mediaId'].toString()
-        : "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600";
+        : 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600';
 
     return Container(
       width: double.infinity,
@@ -168,7 +168,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -190,7 +190,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             top: 15,
             right: 15,
             child: CircleAvatar(
-              backgroundColor: Colors.black.withOpacity(0.5),
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
               radius: 18,
               child: const Icon(
                 Icons.favorite_border,
@@ -206,7 +206,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Row(
@@ -264,7 +264,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       Text(
                         'Đóng ${place.closeTime ?? "22:00"}',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 10,
                         ),
                       ),
@@ -451,7 +451,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               final item = checkins[index] as Map<String, dynamic>;
               final String checkinPhoto =
                   item['mediaId']?.toString() ??
-                  "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300";
+                  'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
 
               return Container(
                 width: 130,
@@ -461,7 +461,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
-                    color: const Color(0xFFC5C5C5).withOpacity(0.5),
+                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
                   ),
                 ),
                 child: Column(
@@ -520,7 +520,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             padding: const EdgeInsets.all(16),
             child: const Text(
               'Chưa có đánh giá từ bạn bè',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.black,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -567,7 +567,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               const CircleAvatar(
                 radius: 18,
                 backgroundImage: NetworkImage(
-                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
                 ),
               ),
 
@@ -677,7 +677,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                               borderRadius: BorderRadius.circular(15),
                               image: const DecorationImage(
                                 image: NetworkImage(
-                                  "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200",
+                                  'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200',
                                 ),
                                 fit: BoxFit.cover,
                               ),

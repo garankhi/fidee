@@ -31,7 +31,7 @@ class DashboardPlace {
     final String rawImageUrl = metadata['image_url'] as String? ?? '';
     final String validImageUrl = rawImageUrl.startsWith('http')
         ? rawImageUrl
-        : "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500";
+        : 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500';
 
     return DashboardPlace(
       id: json['id'] as String? ?? '',

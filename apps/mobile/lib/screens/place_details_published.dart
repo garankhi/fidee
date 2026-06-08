@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/place_provider.dart';
@@ -130,7 +129,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         image: const DecorationImage(
-          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600"),
+          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600'),
           fit: BoxFit.cover,
         ),
       ),
@@ -142,11 +141,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                children: const [
+              child: const Row(
+                children: [
                   Icon(Icons.star, color: Colors.amber, size: 16),
                   SizedBox(width: 4),
                   Text('4.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -158,7 +157,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             top: 15,
             right: 15,
             child: CircleAvatar(
-              backgroundColor: Colors.black.withOpacity(0.5),
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
               radius: 18,
               child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
             ),
@@ -170,7 +169,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Row(
@@ -213,7 +212,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       const SizedBox(height: 4),
                       Text(
                         'Đóng ${place.closeTime ?? "22:00"}',
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 10),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10),
                       ),
                     ],
                   )
@@ -238,7 +237,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         ),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 3)),
         ],
       ),
       child: Column(
@@ -307,7 +306,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         color: const Color(0xFFFCEDEE),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: const Color(0xFFF7C6C7).withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 2)),
+          BoxShadow(color: const Color(0xFFF7C6C7).withValues(alpha: 0.4), blurRadius: 4, offset: const Offset(0, 2)),
         ],
       ),
       child: Text(
@@ -363,9 +362,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: const Color(0xFFC5C5C5).withOpacity(0.5)),
+                    border: Border.all(color: const Color(0xFFC5C5C5).withValues(alpha: 0.5)),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFFF7C6C7).withOpacity(0.3), blurRadius: 5, offset: const Offset(0, 3)),
+                      BoxShadow(color: const Color(0xFFF7C6C7).withValues(alpha: 0.3), blurRadius: 5, offset: const Offset(0, 3)),
                     ],
                   ),
                   child: Column(
@@ -376,7 +375,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300", fit: BoxFit.cover, width: double.infinity),
+                          child: Image.network('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300', fit: BoxFit.cover, width: double.infinity),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -421,7 +420,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"),
+                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'),
               ),
               const SizedBox(width: 10),
               Column(
@@ -475,7 +474,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         image: const DecorationImage(
-                          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200"),
+                          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200'),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -510,7 +509,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         color: const Color(0xFFEF484F),
         borderRadius: BorderRadius.circular(23),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 3)),
         ],
       ),
       child: Row(

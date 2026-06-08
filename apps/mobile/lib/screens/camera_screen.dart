@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -12,8 +14,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
 import '../services/auth_service.dart';
+import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
 import 'camera_friends_sheet.dart';
+import 'gallery_preview_button.dart';
 import 'premium_upgrade_sheet.dart';
 import 'send_image_screen.dart';
 
@@ -33,6 +37,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _selectedCameraIndex = 0;
   bool _isFlashOn = false;
   bool _isLoading = false;
+  final GalleryPreviewService _galleryPreviewService =
+      const GalleryPreviewService();
+  List<Uint8List> _galleryThumbnails = const <Uint8List>[];
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -41,6 +48,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   void initState() {
     super.initState();
     _initCamera();
+    unawaited(_loadGalleryPreview());
 
     _animationController = AnimationController(
       vsync: this,
@@ -60,6 +68,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
+
+  Future<void> _loadGalleryPreview() async {
+    final thumbnails = await _galleryPreviewService.loadRecentThumbnails();
+    if (!mounted) return;
+
+    setState(() {
+      _galleryThumbnails = thumbnails;
+    });
+  }
 
   Future<void> _initCamera() async {
     var status = await Permission.camera.status;
@@ -119,6 +136,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
+    if (mounted) unawaited(_loadGalleryPreview());
     if (pickedFile != null) {
       _setLoading(true); // Bật loading khi bắt đầu xử lý ảnh
       try {
@@ -351,43 +369,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Gallery Button
-                      GestureDetector(
-                        onTap: _pickFromGallery,
-                        child: SizedBox(
-                          width: 55,
-                          height: 55,
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                left: 0,
-                                top: 5,
-                                child: Container(
-                                  width: 45,
-                                  height: 45,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDB8787),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 6,
-                                top: 8,
-                                child: Transform.rotate(
-                                  angle: 17 * math.pi / 180,
-                                  child: Container(
-                                    width: 45,
-                                    height: 45,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE0E0E0),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        GalleryPreviewButton(
+                          thumbnails: _galleryThumbnails,
+                          onTap: _pickFromGallery,
                       ),
 
                       // Capture Button
@@ -838,36 +822,22 @@ class _CameraSkeleton extends StatelessWidget {
                 SizedBox(
                   width: 55,
                   height: 55,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        left: 0,
-                        top: 5,
-                        child: Container(
-                          width: 45,
-                          height: 45,
-                          decoration: BoxDecoration(
-                            color: const Color(0x0DFFFFFF),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: const Color(0x1FFFFFFF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0x2EFFFFFF)),
                       ),
-                      Positioned(
-                        left: 6,
-                        top: 8,
-                        child: Transform.rotate(
-                          angle: 17 * math.pi / 180,
-                          child: Container(
-                            width: 45,
-                            height: 45,
-                            decoration: BoxDecoration(
-                              color: const Color(0x1AFFFFFF),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
+                        child: const Icon(
+                          Icons.photo_library_outlined,
+                          color: Color(0xB3FFFFFF),
+                          size: 24,
                       ),
-                    ],
+                      ),
                   ),
                 ),
 

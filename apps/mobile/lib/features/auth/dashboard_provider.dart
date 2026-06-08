@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -108,8 +109,13 @@ class DashboardController extends _$DashboardController {
         friendActivities: friendActivities,
         vibes: vibes,
       );
-    } catch (e) {
-      print('loadDiscoveryFeed error: $e');
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to load discovery feed.',
+        name: 'DashboardController',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -119,33 +125,37 @@ class DashboardController extends _$DashboardController {
 
   Map<String, dynamic> _convertPlace(Map<String, dynamic> item) {
     return {
-      "id": item["placeId"],
-      "name": item["name"],
-      "category": item["category"],
-      "avg_rating": item["avgRating"],
-      "checkin_count": item["checkinCount"],
-      "distance_meters": item["distanceMeters"],
-      "metadata": {"image_url": _buildImageUrl(item["coverMediaId"])},
+      'id': item['placeId'],
+      'name': item['name'],
+      'category': item['category'],
+      'avg_rating': item['avgRating'],
+      'checkin_count': item['checkinCount'],
+      'distance_meters': item['distanceMeters'],
+      'metadata': {'image_url': _buildImageUrl(item['coverMediaId'])},
     };
   }
 
   Map<String, dynamic> _convertFriendPlace(Map<String, dynamic> item) {
     return {
-      "id": item["placeId"],
-      "name": item["name"],
-      "category": item["category"],
-      "avg_rating": item["avgRating"],
-      "checkin_count": item["friendCheckinCount"],
-      "distance_meters": item["distanceMeters"],
-      "metadata": {"image_url": _buildImageUrl(item["coverMediaId"])},
+      'id': item['placeId'],
+      'name': item['name'],
+      'category': item['category'],
+      'avg_rating': item['avgRating'],
+      'checkin_count': item['friendCheckinCount'],
+      'distance_meters': item['distanceMeters'],
+      'metadata': {'image_url': _buildImageUrl(item['coverMediaId'])},
     };
   }
 
   String _buildImageUrl(dynamic mediaId) {
     if (mediaId == null) {
-      return "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500";
+      return 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500';
     }
 
-    return "https://api.fidee.site/media/$mediaId";
+    return 'https://api.fidee.site/media/$mediaId';
   }
 }
+
+
+
+
