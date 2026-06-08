@@ -1,7 +1,6 @@
-import 'dart:developer' as developer;
-
 import 'package:fidee_mobile/screens/add_spot_screen.dart';
 import 'package:fidee_mobile/screens/ai_chat_screen.dart';
+import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -293,10 +292,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 const SizedBox(height: 24),
 
                 // === Category Chips ===
-                const Wrap(
+                Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: [
+                  children: const [
                     _CategoryChip(label: 'Hẹn hò'),
                     _CategoryChip(label: 'Nhậu'),
                     _CategoryChip(label: 'Họp làm'),
@@ -539,7 +538,16 @@ class _PlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const PlaceDetailsFriends(placeId: 'mock-place-id'),
+          ),
+        );
+      },
+      child: Container(
       width: 200,
       decoration: BoxDecoration(
         color: Colors.white,
