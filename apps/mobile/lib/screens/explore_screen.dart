@@ -294,10 +294,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 const SizedBox(height: 24),
 
                 // === Category Chips ===
-                Wrap(
+                const Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: const [
+                  children: [
                     _CategoryChip(label: 'Hẹn hò'),
                     _CategoryChip(label: 'Nhậu'),
                     _CategoryChip(label: 'Họp làm'),
@@ -719,3 +719,4 @@ class _ExploreFilterSheet extends StatelessWidget {
     );
   }
 }
+
