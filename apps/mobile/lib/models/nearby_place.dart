@@ -50,7 +50,8 @@ class NearbyPlace {
     required this.actions,
   });
 
-  bool get isCustomFallback => source == 'custom';
+  bool get isCustomFallback =>
+      id == 'custom_fallback' || actions.primary == 'create_custom_place';
   bool get isGoong => source == 'goong_places';
 
   factory NearbyPlace.fromJson(Map<String, dynamic> json) {
@@ -59,16 +60,18 @@ class NearbyPlace {
       placeId: json['place_id'] as String?,
       source: json['source'] as String,
       displayName: json['display_name'] as String,
-      address: json['address'] as String,
+      address: (json['address'] as String?)?.trim().isNotEmpty == true
+          ? (json['address'] as String).trim()
+          : 'Địa điểm tùy chỉnh',
       category: json['category'] as String,
       distanceMeters: json['distance_meters'] as int,
       confidence: json['confidence'] as String,
       coordinates: NearbyPlaceCoordinates.fromJson(
         json['coordinates'] as Map<String, dynamic>,
       ),
-      actions: NearbyPlaceActions.fromJson(
-        json['actions'] as Map<String, dynamic>,
-      ),
+      actions: json['actions'] is Map<String, dynamic>
+          ? NearbyPlaceActions.fromJson(json['actions'] as Map<String, dynamic>)
+          : const NearbyPlaceActions(primary: 'select'),
     );
   }
 }

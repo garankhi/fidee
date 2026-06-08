@@ -38,8 +38,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       setState(() {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
-    } catch (e) {
-      // Do nothing
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to load nearby spots for explore add-spot suggestions.',
+        name: 'ExploreScreen',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -57,8 +62,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   }
 
   void _onFilterTap() {
-    // TODO: Implement filter functionality
-    print('Filter tapped');
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => const _ExploreFilterSheet(),
+    );
   }
 
   @override
@@ -645,7 +656,63 @@ class _PlaceCard extends StatelessWidget {
           ],
         ],
       ),
-    ),
+    );
+  }
+}
+class _ExploreFilterSheet extends StatelessWidget {
+  const _ExploreFilterSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    const filters = [
+      'Gần nhất',
+      'Đang hot',
+      'Cafe',
+      'Ăn tối',
+      'Yên tĩnh',
+      'Có bạn bè check-in',
+    ];
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Lọc địa điểm',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: filters
+                  .map(
+                    (filter) => FilterChip(
+                      label: Text(filter),
+                      selected: false,
+                      onSelected: (_) => Navigator.pop(context),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

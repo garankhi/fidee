@@ -7,15 +7,79 @@ class AiChatScreen extends StatefulWidget {
   State<AiChatScreen> createState() => _AiChatScreenState();
 }
 
+class _ChatMessage {
+  final String text;
+  final bool isUser;
+
+  const _ChatMessage({required this.text, required this.isUser});
+}
+
+class _Recommendation {
+  final String name;
+  final String category;
+  final String distance;
+  final String duration;
+  final String rating;
+  final List<String> tags;
+
+  const _Recommendation({
+    required this.name,
+    required this.category,
+    required this.distance,
+    required this.duration,
+    required this.rating,
+    required this.tags,
+  });
+}
+
 class _AiChatScreenState extends State<AiChatScreen> {
   final TextEditingController _chatController = TextEditingController();
+  final List<_ChatMessage> _messages = [];
+
+  static const List<_Recommendation> _recommendations = [
+    _Recommendation(
+      name: 'Sân Vườn Cafe',
+      category: 'Cafe',
+      distance: '0,3 km',
+      duration: '5-7 phút',
+      rating: '4.8',
+      tags: ['Yên tĩnh', 'Đẹp mắt', 'Phù hợp học/làm việc'],
+    ),
+    _Recommendation(
+      name: 'Ramen Ánh Trăng',
+      category: 'Món Nhật',
+      distance: '0,8 km',
+      duration: '5-7 phút',
+      rating: '4.8',
+      tags: ['Ấm cúng', 'Lãng mạn', 'Yên tĩnh'],
+    ),
+    _Recommendation(
+      name: 'Bún Chả Góc Phố',
+      category: 'Món Việt',
+      distance: '0,5 km',
+      duration: '6-8 phút',
+      rating: '4.8',
+      tags: ['Đậm vị địa phương', 'Nhanh gọn', 'Dễ ăn'],
+    ),
+  ];
 
   void _sendMessage(String message) {
-    // TODO: Implement actual sending logic
-    if (message.isNotEmpty) {
-      print('Sending message: $message');
-      _chatController.clear();
+    final trimmedMessage = message.trim();
+    if (trimmedMessage.isEmpty) {
+      return;
     }
+
+    setState(() {
+      _messages.add(_ChatMessage(text: trimmedMessage, isUser: true));
+      _messages.add(
+        const _ChatMessage(
+          text:
+              'Fidee đã nhận vibe của bạn. Mình sẽ tiếp tục lọc các địa điểm phù hợp hơn cho bạn.',
+          isUser: false,
+        ),
+      );
+    });
+    _chatController.clear();
   }
 
   @override

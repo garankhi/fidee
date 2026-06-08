@@ -555,6 +555,29 @@ export class FideeStack extends cdk.Stack {
       handler: 'unfriend',
     });
     dbCluster.secret!.grantRead(unfriendFn);
+    const searchFriendsFn = new nodejs.NodejsFunction(this, 'SearchFriendsFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'search-friends'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'searchUsersByUsername',
+    });
+    dbCluster.secret!.grantRead(searchFriendsFn);
+
+    const hideFriendFn = new nodejs.NodejsFunction(this, 'HideFriendFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'hide-friend'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'hideFriend',
+    });
+    dbCluster.secret!.grantRead(hideFriendFn);
+
+    const blockFriendFn = new nodejs.NodejsFunction(this, 'BlockFriendFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'block-friend'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'blockFriend',
+    });
+    dbCluster.secret!.grantRead(blockFriendFn);
 
     const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
       queueName: resourceName(stage, 'media-upload-events-dlq'),
@@ -800,9 +823,26 @@ export class FideeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+    const searchFriendsResource = friendsResource.addResource('search');
+    searchFriendsResource.addMethod('GET', new apigateway.LambdaIntegration(searchFriendsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     const unfriendActionResource = friendsResource.addResource('unfriend');
     unfriendActionResource.addMethod('POST', new apigateway.LambdaIntegration(unfriendFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const hideFriendActionResource = friendsResource.addResource('hide');
+    hideFriendActionResource.addMethod('POST', new apigateway.LambdaIntegration(hideFriendFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const blockFriendActionResource = friendsResource.addResource('block');
+    blockFriendActionResource.addMethod('POST', new apigateway.LambdaIntegration(blockFriendFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
@@ -873,8 +913,7 @@ export class FideeStack extends cdk.Stack {
       allowMethods: ['POST', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
     });
-    quickPlaceResource.addMethod('POST',
-      new apigateway.LambdaIntegration(createQuickPlaceFn), {
+    quickPlaceResource.addMethod('POST', new apigateway.LambdaIntegration(createQuickPlaceFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
@@ -1023,14 +1062,14 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
-    // ─── GET /places/{id} (protected) ───────────────────────────
+    // ─── GET /places/{id} (protected, BFF) ──────────────────────
     const getPlaceDetailFn = new nodejs.NodejsFunction(this, 'GetPlaceDetailFunction', {
       functionName: resourceName(stage, 'get-place-detail'),
       runtime: lambda.Runtime.NODEJS_20_X,
       entry: '../../services/api/src/handlers/get-place-detail.ts',
       handler: 'handler',
       memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
+      timeout: cdk.Duration.seconds(15),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1050,6 +1089,68 @@ export class FideeStack extends cdk.Stack {
       allowHeaders: ['Content-Type', 'Authorization'],
     });
     placeIdResource.addMethod('GET', new apigateway.LambdaIntegration(getPlaceDetailFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── GET /places/{id}/reviews (protected) ────────────────────
+    const getPlaceReviewsFn = new nodejs.NodejsFunction(this, 'GetPlaceReviewsFunction', {
+      functionName: resourceName(stage, 'get-place-reviews'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-place-reviews.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getPlaceReviewsFn);
+
+    const placeReviewsResource = placeIdResource.addResource('reviews');
+    placeReviewsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    placeReviewsResource.addMethod('GET', new apigateway.LambdaIntegration(getPlaceReviewsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ─── POST /reviews (protected) ──────────────────────────────
+    const createReviewFn = new nodejs.NodejsFunction(this, 'CreateReviewFunction', {
+      functionName: resourceName(stage, 'create-review'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/create-review.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(createReviewFn);
+
+    const reviewsResource = api.root.addResource('reviews');
+    reviewsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    reviewsResource.addMethod('POST', new apigateway.LambdaIntegration(createReviewFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
@@ -1084,7 +1185,6 @@ export class FideeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
-
 
     // ─── GET /admin/users (VPC, connects to Aurora) ────────────
     const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {

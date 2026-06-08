@@ -108,4 +108,38 @@ void main() {
     );
     expect(saveButton.onPressed, isNotNull);
   });
+  testWidgets('saves a changed available username', (tester) async {
+    String? savedUsername;
+
+    await tester.pumpWidget(
+      buildSheet(
+        onSave: ({
+          required firstName,
+          required lastName,
+          required preferredUsername,
+        }) async {
+          savedUsername = preferredUsername;
+          return const AuthResult(success: true);
+        },
+        onCheckUsername: (username) async => UsernameAvailabilityResult(
+          success: true,
+          available: true,
+          normalizedUsername: username.trim().toLowerCase(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(2), 'new_name');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(find.text('Username có thể sử dụng'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Lưu'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(savedUsername, 'new_name');
+  });
 }

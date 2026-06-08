@@ -45,6 +45,7 @@ class FideeApp extends ConsumerWidget {
           selectionHandleColor: Color(0xFFEF4050),
         ),
         fontFamily: 'SF Pro',
+
       ),
       // Giữ SplashScreen cho đến khi CẢ auth VÀ location đã resolve.
       // Luồng: SplashScreen (đỏ) → HomeScreen với map sẵn sàng, không có spinner trắng.

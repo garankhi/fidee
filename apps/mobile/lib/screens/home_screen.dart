@@ -208,7 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               children: [
                 TileLayer(
                   urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.fidee.fidee',
                   maxZoom: 20,
@@ -229,15 +229,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     markers: _feedItems
                         .map(
                           (item) => Marker(
-                        point: LatLng(item.lat, item.lng),
-                        width: 48,
-                        height: 48,
-                        child: GestureDetector(
-                          onTap: () => _showFeedItemDetails(context, item),
-                          child: _FeedMarker(item: item),
-                        ),
-                      ),
-                    )
+                            point: LatLng(item.lat, item.lng),
+                            width: 48,
+                            height: 48,
+                            child: GestureDetector(
+                              onTap: () => _showFeedItemDetails(context, item),
+                              child: _FeedMarker(item: item),
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
               ],
@@ -255,74 +255,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Image.asset(
-                          'assets/images/logo_red.png',
-                          height: 25,
-                          cacheHeight: 96,
+                        const Expanded(child: SizedBox.shrink()),
+                        Expanded(
+                          child: Center(
+                            child: Image.asset(
+                              'assets/images/logo_red.png',
+                              height: 25,
+                              cacheHeight: 96,
+                            ),
+                          ),
                         ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => const ProfileScreen(),
-                              ),
-                            );
-                          },
-                          child: Consumer(
-                            builder: (context, ref, _) {
-                              final authService = ref.watch(authServiceProvider);
-                              final firstName = authService.firstName ?? '';
-                              final lastName = authService.lastName ?? '';
-                              String initials = 'U';
-                              if (firstName.isNotEmpty || lastName.isNotEmpty) {
-                                final first = firstName.trim().isNotEmpty
-                                    ? firstName.trim().substring(0, 1)
-                                    : '';
-                                final last = lastName.trim().isNotEmpty
-                                    ? lastName.trim().substring(0, 1)
-                                    : '';
-                                initials = '$first$last'.toUpperCase();
-                                if (initials.isEmpty) initials = 'U';
-                              } else if (authService.username != null &&
-                                  authService.username!.isNotEmpty) {
-                                initials = authService.username!
-                                    .substring(0, 1)
-                                    .toUpperCase();
-                              }
-
-                              return Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4050),
-                                  shape: BoxShape.circle,
-                                  image: authService.avatarUrl != null &&
-                                      authService.avatarUrl!.isNotEmpty
-                                      ? DecorationImage(
-                                    image: authService.avatarUrl!.startsWith('http')
-                                        ? NetworkImage(authService.avatarUrl!) as ImageProvider
-                                        : FileImage(File(authService.avatarUrl!)),
-                                    fit: BoxFit.cover,
-                                  )
-                                      : null,
-                                ),
-                                child: authService.avatarUrl == null ||
-                                    authService.avatarUrl!.isEmpty
-                                    ? Center(
-                                  child: Text(
-                                    initials,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const ProfileScreen(),
                                   ),
-                                )
-                                    : null,
-                              );
-                            },
+                                );
+                              },
+                              child: Consumer(
+                                builder: (context, ref, _) {
+                                  final authService = ref.watch(
+                                    authServiceProvider,
+                                  );
+                                  final firstName = authService.firstName ?? '';
+                                  final lastName = authService.lastName ?? '';
+                                  String initials = 'U';
+                                  if (firstName.isNotEmpty ||
+                                      lastName.isNotEmpty) {
+                                    final first = firstName.trim().isNotEmpty
+                                        ? firstName.trim().substring(0, 1)
+                                        : '';
+                                    final last = lastName.trim().isNotEmpty
+                                        ? lastName.trim().substring(0, 1)
+                                        : '';
+                                    initials = '$first$last'.toUpperCase();
+                                    if (initials.isEmpty) initials = 'U';
+                                  } else if (authService.username != null &&
+                                      authService.username!.isNotEmpty) {
+                                    initials = authService.username!
+                                        .substring(0, 1)
+                                        .toUpperCase();
+                                  }
+
+                                  return Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4050),
+                                      shape: BoxShape.circle,
+                                      image:
+                                          authService.avatarUrl != null &&
+                                              authService.avatarUrl!.isNotEmpty
+                                          ? DecorationImage(
+                                              image:
+                                                  authService.avatarUrl!
+                                                      .startsWith('http')
+                                                  ? NetworkImage(
+                                                          authService
+                                                              .avatarUrl!,
+                                                        )
+                                                        as ImageProvider
+                                                  : FileImage(
+                                                      File(
+                                                        authService.avatarUrl!,
+                                                      ),
+                                                    ),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child:
+                                        authService.avatarUrl == null ||
+                                            authService.avatarUrl!.isEmpty
+                                        ? Center(
+                                            child: Text(
+                                              initials,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  );
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -379,14 +403,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: _LocationDeniedBanner(
                   status: _locationService.status,
                   onAllow: () async {
-                    if (_locationService.status == LocationStatus.deniedForever) {
+                    if (_locationService.status ==
+                        LocationStatus.deniedForever) {
                       await _locationService.openSettings();
                     } else {
                       await _locationService.initialize();
                     }
                     if (!mounted) return;
                     setState(() {
-                      _showLocationBanner = _locationService.status != LocationStatus.granted;
+                      _showLocationBanner =
+                          _locationService.status != LocationStatus.granted;
                     });
                     if (_locationService.hasRealLocation) {
                       _animateToLocation(_locationService.currentPosition);
@@ -454,8 +480,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-
-
 class _BottomNavIcon extends StatelessWidget {
   final String assetPath;
   final VoidCallback onTap;
@@ -507,7 +531,7 @@ class _BottomNavIcon extends StatelessWidget {
                   fit: BoxFit.contain,
                   cacheWidth: 152,
                   errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.error, color: Colors.grey),
+                      const Icon(Icons.error, color: Colors.grey),
                 ),
               ),
             ),
@@ -578,7 +602,9 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
               height: 60 * _animation.value,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.2 * (1 - _animation.value)),
+                color: const Color(
+                  0xFF3B82F6,
+                ).withValues(alpha: 0.2 * (1 - _animation.value)),
               ),
             ),
             Container(
@@ -695,6 +721,7 @@ class _LocationDeniedBanner extends StatelessWidget {
 
 class _LimitedModeBanner extends StatelessWidget {
   final VoidCallback onEnable;
+
   const _LimitedModeBanner({required this.onEnable});
 
   @override
@@ -717,12 +744,20 @@ class _LimitedModeBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.location_off_rounded, color: Color(0xFFEF4050), size: 18),
+          const Icon(
+            Icons.location_off_rounded,
+            color: Color(0xFFEF4050),
+            size: 18,
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
               'Chế độ giới hạn — chỉ có AI search',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -736,7 +771,11 @@ class _LimitedModeBanner extends StatelessWidget {
               ),
               child: const Text(
                 'Bật GPS',
-                style: TextStyle(color: Color(0xFFEF4050), fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Color(0xFFEF4050),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -748,6 +787,7 @@ class _LimitedModeBanner extends StatelessWidget {
 
 class _FeedMarker extends StatelessWidget {
   final MapFeedItem item;
+
   const _FeedMarker({required this.item});
 
   @override
@@ -768,7 +808,11 @@ class _FeedMarker extends StatelessWidget {
       child: Center(
         child: Text(
           item.userName.substring(0, 1).toUpperCase(),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
       ),
     );
@@ -777,6 +821,7 @@ class _FeedMarker extends StatelessWidget {
 
 class _FeedItemSheet extends StatelessWidget {
   final MapFeedItem item;
+
   const _FeedItemSheet({required this.item});
 
   @override
@@ -804,11 +849,18 @@ class _FeedItemSheet extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  shape: BoxShape.circle,
+                ),
                 child: Center(
                   child: Text(
                     item.userName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
                   ),
                 ),
               ),
@@ -817,27 +869,51 @@ class _FeedItemSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.userName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      item.userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(item.placeName, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
+                    Text(
+                      item.placeName,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Text(
                 '${item.createdAt.hour}:${item.createdAt.minute.toString().padLeft(2, '0')}',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
           if (item.caption.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text(item.caption, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            Text(
+              item.caption,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
           ],
           const SizedBox(height: 16),
           Container(
             height: 200,
-            decoration: BoxDecoration(color: const Color(0xFF0A0E17), borderRadius: BorderRadius.circular(16)),
-            child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 48)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0E17),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: Icon(Icons.image, color: Colors.white24, size: 48),
+            ),
           ),
         ],
       ),

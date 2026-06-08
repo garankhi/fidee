@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/place_provider.dart';
@@ -10,14 +9,25 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
   const PlaceDetailsFriends({super.key, required this.placeId});
 
   @override
-  ConsumerState<PlaceDetailsFriends> createState() => _PlaceDetailsFriendsState();
+  ConsumerState<PlaceDetailsFriends> createState() =>
+      _PlaceDetailsFriendsState();
 }
 
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref
+          .read(placeControllerProvider.notifier)
+          .fetchPlaceDetail(widget.placeId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final place = ref.watch(placeControllerProvider);
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -29,7 +39,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           child: CircleAvatar(
             backgroundColor: const Color(0x19EF484F),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, size: 16, color: Color(0xFFEF484F)),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                size: 16,
+                color: Color(0xFFEF484F),
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -50,7 +64,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: CircleAvatar(
               backgroundColor: const Color(0x19EF484F),
               child: IconButton(
-                icon: const Icon(Icons.share, size: 18, color: Color(0xFFEF484F)),
+                icon: const Icon(
+                  Icons.share,
+                  size: 18,
+                  color: Color(0xFFEF484F),
+                ),
                 onPressed: () {},
               ),
             ),
@@ -60,19 +78,24 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 100),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 100,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Banner Image & Info Card
+                // 1. Banner Image & Info Card công khai dữ liệu thật
                 _buildBannerCard(place),
                 const SizedBox(height: 20),
 
-                // 2. Thông tin quán
-                _buildInfoQuan(place),
+                // 2. Thông tin quán (ĐÃ KHỬ MOCK: Dùng mô tả và khung giờ thật từ API)
+                _buildInfoSpot(place),
                 const SizedBox(height: 20),
 
-                // 3. Category Tags phân loại
+                // 3. Category Tags phân loại động
                 _buildCategoryTags(place),
                 const SizedBox(height: 20),
 
@@ -80,23 +103,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 _buildAmenities(),
                 const SizedBox(height: 25),
 
-                // 5. Nút chỉ đường tích hợp tọa độ lat, lng từ state
-                _buildLargeButton(
-                  Icons.near_me,
-                  'Chỉ đường',
-                ),
+                // 5. Nút chỉ đường tích hợp tọa độ lat, lng động từ API thật
+                _buildLargeButton(Icons.near_me, 'Chỉ đường'),
                 const SizedBox(height: 25),
 
-                // 6. Khu vực Check-in của bạn bè
-                _buildFriendCheckins(),
+                // 6. Khu vực Check-in của bạn bè (ĐÃ KHỬ MOCK: Tiêu đề ăn theo số lượng thật)
+                _buildFriendCheckins(place),
                 const SizedBox(height: 25),
 
                 // 7. Khu vực đánh giá
-                _buildFriendReviews(),
+                _buildFriendReviews(place),
                 const SizedBox(height: 25),
 
                 // 8. Thư viện Ảnh
-                _buildPhotoGallery(),
+                _buildPhotoGallery(place),
               ],
             ),
           ),
@@ -140,6 +160,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   // --- COMPONENT WIDGETS ---
 
   Widget _buildBannerCard(Place place) {
+    final String coverUrl =
+        (place.photos.isNotEmpty && place.photos.first['mediaId'] != null)
+        ? place.photos.first['mediaId'].toString()
+        : 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600';
+
     return Container(
       width: double.infinity,
       height: 220,
@@ -158,14 +183,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
-                children: const [
-                  Icon(Icons.star, color: Colors.amber, size: 16),
-                  SizedBox(width: 4),
-                  Text('4.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                children: [
+                  const Icon(Icons.star, color: Colors.amber, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    place.avgRating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -174,9 +205,13 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             top: 15,
             right: 15,
             child: CircleAvatar(
-              backgroundColor: Colors.black.withOpacity(0.5),
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
               radius: 18,
-              child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.favorite_border,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
           Positioned(
@@ -186,7 +221,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Row(
@@ -199,13 +234,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       children: [
                         Text(
                           place.name ?? 'Chưa cập nhật tên',
-                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '📍 ${place.address ?? "Chưa cập nhật địa chỉ"}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -216,23 +258,33 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF229D00),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           'Đang mở cửa',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Đóng ${place.closeTime ?? "22:00"}',
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 10),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 10,
+                        ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -242,7 +294,17 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildInfoQuan(Place place) {
+  Widget _buildInfoSpot(Place place) {
+    String formatCurrency(int? amount) {
+      if (amount == null) return '0';
+      if (amount >= 1000) return '${amount ~/ 1000}k';
+      return amount.toString();
+    }
+
+    final String priceRange = (place.priceMin != null && place.priceMax != null)
+        ? '${formatCurrency(place.priceMin)} - ${formatCurrency(place.priceMax)} VND'
+        : 'Chưa cập nhật tầm giá';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -253,21 +315,28 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           colors: [Color(0xFFF7C6C7), Color(0xFFF2F1F0)],
         ),
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3)),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'THÔNG TIN QUÁN',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 10),
-          _buildInfoRow('Mô tả:', ' Quán mới mở view đẹp, nhạc hay hóng gió cực chill'),
-          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "08:00"} - ${place.closeTime ?? "22:00"}'),
-          _buildInfoRow('Tầm giá:', ' 30k - 65k VND'),
+          _buildInfoRow(
+            'Mô tả:',
+            ' ${place.description ?? "Chưa có mô tả chi tiết cho địa điểm này."}',
+          ),
+          _buildInfoRow(
+            'Khung giờ hoạt động:',
+            ' ${place.openTime ?? "07:00"} - ${place.closeTime ?? "22:00"}',
+          ),
+          _buildInfoRow('Tầm giá:', ' $priceRange'),
         ],
       ),
     );
@@ -279,8 +348,18 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       child: Text.rich(
         TextSpan(
           children: [
-            TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
-            TextSpan(text: value, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+            TextSpan(
+              text: label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
+            ),
           ],
         ),
       ),
@@ -292,20 +371,30 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTag(place.category != null ? '🍜 ${place.category}' : '🍜 Cafe'),
+        _buildTag(
+          place.category != null
+              ? '✨ ${place.category!.toUpperCase()}'
+              : '✨ CAFE',
+        ),
+        _buildTag('🛡️ Đã xác minh'),
         _buildTag('💵 Tầm Giá Tốt'),
-        _buildTag('🕯️ Ấm cúng'),
-        _buildTag('👪 Gia đình'),
       ],
     );
   }
 
   Widget _buildAmenities() {
-    final List<String> amenities = ['Wifi', 'Trong nhà', 'Chỗ đỗ ô tô'];
+    final List<String> amenities = ['Wifi', 'Trong nhà', 'Chỗ đỗ xe'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tiện nghi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text(
+          'Tiện nghi',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -322,13 +411,14 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         color: const Color(0xFFFCEDEE),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFFF7C6C7).withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFF46090C), fontWeight: FontWeight.w600, fontSize: 13),
+        style: const TextStyle(
+          color: Color(0xFF46090C),
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
       ),
     );
   }
@@ -346,43 +436,47 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         children: [
           Icon(icon, color: Colors.white, size: 20),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFriendCheckins() {
-    final List<Map<String, String>> mockCheckins = [
-      {'name': 'Khanh', 'time': 'hôm nay', 'rot': '-0.03'},
-      {'name': 'Minh', 'time': 'tuần trước', 'rot': '0.04'},
-      {'name': 'Thông', 'time': '23.03.26', 'rot': '-0.01'},
-    ];
+  Widget _buildFriendCheckins(Place place) {
+    final checkins = place.friendCheckins;
 
     return Column(
       children: [
-        _buildSectionHeader('Check-in của bạn bè'),
+        _buildSectionHeader('Check-in của bạn bè (${place.checkinCount})'),
+        const SizedBox(height: 12),
         const SizedBox(height: 12),
         SizedBox(
           height: 165,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: mockCheckins.length,
+            itemCount: checkins.length,
             itemBuilder: (context, index) {
-              final item = mockCheckins[index];
-              return Transform.rotate(
-                angle: double.parse(item['rot']!),
-                child: Container(
-                  width: 130,
-                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: const Color(0xFFC5C5C5).withOpacity(0.5)),
-                    boxShadow: [
-                      BoxShadow(color: const Color(0xFFF7C6C7).withOpacity(0.3), blurRadius: 5, offset: const Offset(0, 3)),
-                    ],
+              final item = checkins[index] as Map<String, dynamic>;
+              final String checkinPhoto =
+                  item['mediaId']?.toString() ??
+                  'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
+
+              return Container(
+                width: 130,
+                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,13 +489,19 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                           child: Image.network('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300', fit: BoxFit.cover, width: double.infinity),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Text(item['time']!, style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w500)),
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        item['createdAt']?.toString() ?? '',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -411,23 +511,56 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildFriendReviews() {
+  Widget _buildFriendReviews(Place place) {
+    final reviews = place.friendReviews;
+
+    if (reviews.isEmpty) {
+      return Column(
+        children: [
+          _buildSectionHeader('Bạn bè nói gì về quán này?'),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: const Text(
+              'Chưa có đánh giá từ bạn bè',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
-        _buildSectionHeader('Bạn bè nói gì về quán này?'),
+        _buildSectionHeader('Bạn bè nói gì về quán này? (${reviews.length})'),
         const SizedBox(height: 12),
-        _buildReviewCard('Minh', 'đi nhóm 4 ngon, quán ngay Nguyễn Huệ không gian siêu thoáng vị trà sữa đậm đà bài bản — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
-        const SizedBox(height: 12),
-        _buildReviewCard('Ha', 'Thích nhất trân châu hoàng kim dai giòn sần sật. Chắc chắn sẽ quay lại rủ hội bạn thân!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
+
+        ...reviews.map((review) {
+          final item = review as Map<String, dynamic>;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildReviewCard(item),
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildReviewCard(String name, String comment, String tag, Color tagColor) {
+  Widget _buildReviewCard(Map<String, dynamic> review) {
+    final bool isFeatured = review['isFeatured'] == true;
+
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFF7C6C7), Color(0x91EAE9E8)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF7C6C7), Color(0x91EAE9E8)],
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -439,69 +572,148 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 radius: 18,
                 backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'),
               ),
+
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$name · 5n', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Row(
-                    children: List.generate(5, (index) => const Icon(Icons.star, color: Colors.amber, size: 12)),
-                  )
-                ],
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review['userName']?.toString() ?? 'Người dùng',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+
+                    Row(
+                      children: List.generate(
+                        (review['rating'] ?? 0) as int,
+                        (index) => const Icon(
+                          Icons.star,
+                          color: Colors.amber,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const Spacer(),
+
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: tagColor, borderRadius: BorderRadius.circular(12)),
-                child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-              )
+                decoration: BoxDecoration(
+                  color: isFeatured ? const Color(0xFFEF484F) : Colors.grey,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isFeatured ? 'NỔI BẬT' : 'ĐÁNH GIÁ',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
+
           const SizedBox(height: 10),
-          Text(comment, style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)),
+
+          Text(
+            review['content']?.toString() ?? '',
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPhotoGallery() {
+  Widget _buildPhotoGallery(Place place) {
+    final photos = place.photos;
+
     return Column(
       children: [
-        _buildSectionHeader('Ảnh'),
+        _buildSectionHeader('Ảnh (${photos.length})'),
+
         const SizedBox(height: 12),
+
         Row(
           children: [
             Container(
               width: 100,
               height: 100,
-              decoration: BoxDecoration(color: const Color(0xFFE6E6E6), borderRadius: BorderRadius.circular(15)),
-              child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 32),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE6E6E6),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Icon(
+                Icons.add_photo_alternate_outlined,
+                color: Colors.grey,
+                size: 32,
+              ),
             ),
+
             const SizedBox(width: 10),
+
             Expanded(
               child: SizedBox(
                 height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 2,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      width: 100,
-                      margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        image: const DecorationImage(
-                          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200'),
-                          fit: BoxFit.cover,
-                        ),
+                child: photos.isEmpty
+                    ? const Center(child: Text('Chưa có ảnh'))
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: photos.length,
+                        itemBuilder: (context, index) {
+                          final photo = photos[index] as Map<String, dynamic>;
+
+                          return Container(
+                            width: 100,
+                            margin: const EdgeInsets.only(right: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              image: const DecorationImage(
+                                image: NetworkImage(
+                                  'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200',
+                                ),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.only(
+                                    bottomLeft: Radius.circular(15),
+                                    bottomRight: Radius.circular(15),
+                                  ),
+                                ),
+                                child: Text(
+                                  photo['userName']?.toString() ?? '',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
-            )
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -510,10 +722,24 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
         TextButton(
           onPressed: () {},
-          child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.bold)),
+          child: const Text(
+            'Xem tất cả',
+            style: TextStyle(
+              color: Color(0xFFEF484F),
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );
@@ -525,16 +751,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         color: const Color(0xFFEF484F),
         borderRadius: BorderRadius.circular(23),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3)),
-        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: Colors.white, size: 18),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
         ],
       ),
     );

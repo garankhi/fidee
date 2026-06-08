@@ -8,6 +8,7 @@ import { extractAuth } from '../middleware/auth';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 const USERNAME_PATTERN = /^[a-z0-9._]{3,30}$/;
+const DEFAULT_COGNITO_MIRROR_TIMEOUT_MS = 1_500;
 
 type ProfileRow = {
   id: string;
@@ -103,6 +104,17 @@ async function mirrorCognitoProfile(
   const userPoolId = process.env.COGNITO_USER_POOL_ID;
   if (!userPoolId) return;
 
+  const configuredTimeout = Number.parseInt(
+    process.env.COGNITO_PROFILE_MIRROR_TIMEOUT_MS ?? '',
+    10,
+  );
+  const timeoutMs = Number.isFinite(configuredTimeout)
+    ? Math.max(1, configuredTimeout)
+    : DEFAULT_COGNITO_MIRROR_TIMEOUT_MS;
+
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), timeoutMs);
+
   try {
     await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
@@ -114,12 +126,15 @@ async function mirrorCognitoProfile(
           { Name: 'preferred_username', Value: username },
         ],
       }),
+      { abortSignal: abortController.signal },
     );
   } catch (error) {
     console.error(
       `[Update Profile] Failed to mirror Cognito attributes for ${cognitoUsername}`,
       error,
     );
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

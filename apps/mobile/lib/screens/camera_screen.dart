@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:native_exif/native_exif.dart';
@@ -11,8 +12,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../features/auth/friends_provider.dart';
 import '../services/auth_service.dart';
+import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
+import 'camera_friends_sheet.dart';
+import 'gallery_preview_button.dart';
 import 'premium_upgrade_sheet.dart';
 import 'send_image_screen.dart';
 
@@ -32,6 +37,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _selectedCameraIndex = 0;
   bool _isFlashOn = false;
   bool _isLoading = false;
+  final GalleryPreviewService _galleryPreviewService =
+      const GalleryPreviewService();
+  List<Uint8List> _galleryThumbnails = const <Uint8List>[];
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -40,6 +48,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   void initState() {
     super.initState();
     _initCamera();
+    unawaited(_loadGalleryPreview());
 
     _animationController = AnimationController(
       vsync: this,
@@ -59,52 +68,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  /// Accuracy threshold for camera GPS proof (metres).
-  static const double _kGpsAccuracyThreshold = 50.0;
 
-  /// Fetches current GPS position for camera capture proof.
-  /// Returns [latitude, longitude] or null on permission/service failure.
-  /// Shows [showBadAccuracyError] and returns null if accuracy is poor.
-  Future<List<double>?> _captureGpsProof() async {
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          ErrorDialogs.showPermissionDeniedError(
-            context,
-            'Vị trí (GPS đang tắt)',
-          );
-        }
+  Future<void> _loadGalleryPreview() async {
+    final thumbnails = await _galleryPreviewService.loadRecentThumbnails();
+    if (!mounted) return;
 
-        return null;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        if (mounted) ErrorDialogs.showPermissionDeniedError(context, 'Vị trí');
-        return null;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
-
-      if (position.accuracy > _kGpsAccuracyThreshold) {
-        if (mounted) ErrorDialogs.showBadAccuracyError(context);
-        return null;
-      }
-
-      return [position.latitude, position.longitude];
-    } catch (e) {
-      debugPrint('GPS capture error: $e');
-      return null;
-    }
+    setState(() {
+      _galleryThumbnails = thumbnails;
+    });
   }
 
   Future<void> _initCamera() async {
@@ -165,6 +136,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
+    if (mounted) unawaited(_loadGalleryPreview());
     if (pickedFile != null) {
       _setLoading(true); // Bật loading khi bắt đầu xử lý ảnh
       try {
@@ -251,6 +223,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
     }
 
+    final friendsState = ref.watch(friendsControllerProvider);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -275,30 +249,33 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.people, color: Colors.white, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              '24 người bạn',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                      GestureDetector(
+                        onTap: () => showCameraFriendsSheet(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.people, color: Colors.white, size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${friendsState.friends.length} người bạn',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      Container(
+                        Container(
                         width: 36,
                         height: 36,
                         decoration: const BoxDecoration(
@@ -392,43 +369,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Gallery Button
-                      GestureDetector(
-                        onTap: _pickFromGallery,
-                        child: SizedBox(
-                          width: 55,
-                          height: 55,
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                left: 0,
-                                top: 5,
-                                child: Container(
-                                  width: 45,
-                                  height: 45,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDB8787),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 6,
-                                top: 8,
-                                child: Transform.rotate(
-                                  angle: 17 * math.pi / 180,
-                                  child: Container(
-                                    width: 45,
-                                    height: 45,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE0E0E0),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        GalleryPreviewButton(
+                          thumbnails: _galleryThumbnails,
+                          onTap: _pickFromGallery,
                       ),
 
                       // Capture Button
@@ -452,9 +395,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
                               final image = await _controller!.takePicture();
 
-                              // AC1: capture GPS proof at shoot time
-                              final gpsCoords = await _captureGpsProof();
-
                               if (_animationController.isAnimating) {
                                 await Future<void>.delayed(
                                   const Duration(milliseconds: 500),
@@ -477,7 +417,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                       ) => SendImageScreen(
                                         imagePath: image.path,
                                         source: 'IN_APP_CAMERA',
-                                        gpsCoordinates: gpsCoords,
                                       ),
                                   transitionsBuilder:
                                       (
@@ -883,36 +822,22 @@ class _CameraSkeleton extends StatelessWidget {
                 SizedBox(
                   width: 55,
                   height: 55,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        left: 0,
-                        top: 5,
-                        child: Container(
-                          width: 45,
-                          height: 45,
-                          decoration: BoxDecoration(
-                            color: const Color(0x0DFFFFFF),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: const Color(0x1FFFFFFF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0x2EFFFFFF)),
                       ),
-                      Positioned(
-                        left: 6,
-                        top: 8,
-                        child: Transform.rotate(
-                          angle: 17 * math.pi / 180,
-                          child: Container(
-                            width: 45,
-                            height: 45,
-                            decoration: BoxDecoration(
-                              color: const Color(0x1AFFFFFF),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
+                        child: const Icon(
+                          Icons.photo_library_outlined,
+                          color: Color(0xB3FFFFFF),
+                          size: 24,
                       ),
-                    ],
+                      ),
                   ),
                 ),
 
@@ -1047,3 +972,4 @@ class _CameraSkeleton extends StatelessWidget {
     );
   }
 }
+

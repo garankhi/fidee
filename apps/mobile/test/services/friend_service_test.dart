@@ -120,5 +120,66 @@ void main() {
       expect(await service.unfriend('user-2'), isFalse);
       expect(called, isFalse);
     });
+    test('searchUsersByUsername gets matching users from /friends/search', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/search?username=minh');
+        expect(request.headers['Authorization'], 'token-123');
+
+        return http.Response(
+          jsonEncode({
+            'users': [
+              {
+                'id': 'user-2',
+                'name': 'Minh Tran',
+                'username': 'minh',
+                'avatarUrl': 'https://cdn.example/minh.png',
+                'relationStatus': 'NONE',
+                'canRequest': true,
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final service = FriendService(FakeAuthService('token-123'), client: client);
+
+      final results = await service.searchUsersByUsername(' Minh ');
+
+      expect(results, hasLength(1));
+      expect(results.single.profile.id, 'user-2');
+      expect(results.single.profile.name, 'Minh Tran');
+      expect(results.single.profile.handle, 'minh');
+      expect(results.single.relationStatus, FriendRelationStatus.none);
+      expect(results.single.canRequest, isTrue);
+    });
+
+    test('hideFriend posts targetUserId to /friends/hide', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/hide');
+        expect(jsonDecode(request.body), {'targetUserId': 'user-2'});
+        return http.Response(jsonEncode({'success': true}), 200);
+      });
+
+      final service = FriendService(FakeAuthService('token-123'), client: client);
+
+      expect(await service.hideFriend('user-2'), isTrue);
+    });
+
+    test('blockFriend posts targetUserId to /friends/block', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/block');
+        expect(jsonDecode(request.body), {'targetUserId': 'user-2'});
+        return http.Response(jsonEncode({'success': true}), 200);
+      });
+
+      final service = FriendService(FakeAuthService('token-123'), client: client);
+
+      expect(await service.blockFriend('user-2'), isTrue);
+    });
   });
 }

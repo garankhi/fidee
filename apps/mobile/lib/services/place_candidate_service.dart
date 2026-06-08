@@ -104,7 +104,7 @@ class PlaceCandidateService {
   Future<PlaceCandidateResponse> createCandidate({
     required String name,
     required String category,
-    required String mediaId,
+    String? mediaId,
     required double lat,
     required double lng,
     bool force = false,
@@ -127,26 +127,30 @@ class PlaceCandidateService {
       );
     }
 
+    final payload = {
+      'name': name,
+      'category': category,
+      'coordinates': {'lat': lat, 'lng': lng},
+      'force': force,
+      'address': ?address,
+      'openTime': ?openTime,
+      'closeTime': ?closeTime,
+      'priceMin': ?priceMin,
+      'priceMax': ?priceMax,
+      'phoneNumber': ?phoneNumber,
+      'description': ?description,
+    };
+    if (mediaId != null) {
+      payload['mediaId'] = mediaId;
+    }
+
     final response = await http.post(
       Uri.parse('${Config.apiBaseUrl}/place-candidates'),
       headers: {
         'Authorization': token,
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'name': name,
-        'category': category,
-        'mediaId': mediaId,
-        'coordinates': {'lat': lat, 'lng': lng},
-        'force': force,
-        if (address != null) 'address': address,
-        if (openTime != null) 'openTime': openTime,
-        if (closeTime != null) 'closeTime': closeTime,
-        if (priceMin != null) 'priceMin': priceMin,
-        if (priceMax != null) 'priceMax': priceMax,
-        if (phoneNumber != null) 'phoneNumber': phoneNumber,
-        if (description != null) 'description': description,
-      }),
+      body: jsonEncode(payload),
     );
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -179,6 +183,9 @@ class PlaceCandidateService {
     // no-op after real API wiring
   }
 }
+
+
+
 
 
 
