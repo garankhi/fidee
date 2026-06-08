@@ -130,7 +130,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         image: const DecorationImage(
-          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600"),
+          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600'),
           fit: BoxFit.cover,
         ),
       ),
@@ -376,7 +376,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300", fit: BoxFit.cover, width: double.infinity),
+                          child: Image.network('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300', fit: BoxFit.cover, width: double.infinity),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -421,7 +421,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"),
+                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'),
               ),
               const SizedBox(width: 10),
               Column(
@@ -475,7 +475,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         image: const DecorationImage(
-                          image: NetworkImage("https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200"),
+                          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200'),
                           fit: BoxFit.cover,
                         ),
                       ),

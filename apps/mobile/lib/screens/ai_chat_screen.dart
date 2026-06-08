@@ -178,24 +178,24 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _RecommendedPlaceItem(
+                    const _RecommendedPlaceItem(
                       index: 1,
                       name: 'The Garden',
-                      tags: const ['Nhà hàng', 'Cafe', 'Thoải mái'],
+                      tags: ['Nhà hàng', 'Cafe', 'Thoải mái'],
                       distance: '0.5 km',
                     ),
                     const SizedBox(height: 14),
-                    _RecommendedPlaceItem(
+                    const _RecommendedPlaceItem(
                       index: 2,
                       name: 'Moonlight Ramen',
-                      tags: const ['Nhật Bản', 'Yêu thích', 'Ramen'],
+                      tags: ['Nhật Bản', 'Yêu thích', 'Ramen'],
                       distance: '0.7 km',
                     ),
                     const SizedBox(height: 14),
-                    _RecommendedPlaceItem(
+                    const _RecommendedPlaceItem(
                       index: 3,
                       name: 'B2Q Saigon',
-                      tags: const ['Bar', 'Lounge', 'Nhạc chill'],
+                      tags: ['Bar', 'Lounge', 'Nhạc chill'],
                       distance: '0.9 km',
                     ),
                   ],

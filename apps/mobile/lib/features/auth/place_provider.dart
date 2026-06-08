@@ -57,14 +57,14 @@ class PlaceController extends _$PlaceController {
   @override
   Place build() {
   return const Place(
-  id: "fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd",
-  name: "Quán Trà Sữa Full Option",
-  category: "Cafe",
-  address: "Phố đi bộ Nguyễn Huệ, Quận 1",
+  id: 'fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd',
+  name: 'Quán Trà Sữa Full Option',
+  category: 'Cafe',
+  address: 'Phố đi bộ Nguyễn Huệ, Quận 1',
   lat: 10.7738,
   lng: 106.7035,
-  openTime: "08:00",
-  closeTime: "22:00",
+  openTime: '08:00',
+  closeTime: '22:00',
   );
   }
 

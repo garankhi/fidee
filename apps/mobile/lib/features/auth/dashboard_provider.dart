@@ -40,27 +40,27 @@ class DashboardController extends _$DashboardController {
     return const DashboardState(
       hotPlaces: [
         DashboardPlace(
-          id: "fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd",
-          name: "Quán Trà Sữa Full Option",
-          category: "Cafe",
+          id: 'fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd',
+          name: 'Quán Trà Sữa Full Option',
+          category: 'Cafe',
           rating: 4.0,
           distanceKm: 0.3,
-          imageUrl: "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500",
+          imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500',
           friendsCount: 1,
         ),
       ],
       friendActivities: [
         DashboardPlace(
-          id: "fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd",
-          name: "Quán Trà Sữa Full Option",
-          category: "Cafe",
+          id: 'fea3bae4-9fb7-4fea-abe0-521d3e6ef2fd',
+          name: 'Quán Trà Sữa Full Option',
+          category: 'Cafe',
           rating: 4.0,
           distanceKm: 0.8,
-          imageUrl: "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=150",
+          imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=150',
           friendsCount: 1,
         ),
       ],
-      selectedVibe: "Cafe",
+      selectedVibe: 'Cafe',
     );
   }
 

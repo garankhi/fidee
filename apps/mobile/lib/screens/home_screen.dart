@@ -10,8 +10,8 @@ import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
 import 'camera_screen.dart';
-import 'profile_screen.dart';
 import 'explore_screen.dart';
+import 'profile_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
 class HomeScreen extends ConsumerStatefulWidget {
