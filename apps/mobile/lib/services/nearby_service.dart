@@ -10,15 +10,17 @@ import 'auth_service.dart';
 /// Service that provides nearby places data from the backend.
 class NearbyService {
   final AuthService _authService;
+  final http.Client _client;
 
-  const NearbyService(this._authService);
+  NearbyService(this._authService, {http.Client? client})
+      : _client = client ?? http.Client();
 
   /// Fetch nearby places based on coordinates.
   Future<NearbyResponse> fetchNearby({
     required double lat,
     required double lng,
     int radius = 50,
-    required String mediaId,
+    String? mediaId,
   }) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
@@ -26,10 +28,15 @@ class NearbyService {
     }
 
     try {
-      final uri = Uri.parse(
-        '${Config.apiBaseUrl}/places/nearby?lat=$lat&lng=$lng&radius=$radius&media_id=$mediaId',
+      final uri = Uri.parse('${Config.apiBaseUrl}/places/nearby').replace(
+        queryParameters: {
+          'lat': lat.toString(),
+          'lng': lng.toString(),
+          'radius': radius.toString(),
+          if (mediaId != null && mediaId.isNotEmpty) 'media_id': mediaId,
+        },
       );
-      final response = await http.get(
+      final response = await _client.get(
         uri,
         headers: {'Authorization': token},
       );

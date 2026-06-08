@@ -41,7 +41,7 @@ class FriendsController extends _$FriendsController {
   @override
   FriendsState build() {
     _service = ref.watch(friendServiceProvider);
-    // Fetch background data without blocking initial frame
+    // Fetch background data without blocking initial frame.
     Future.microtask(() => load());
     return const FriendsState(isLoading: true);
   }
@@ -50,7 +50,7 @@ class FriendsController extends _$FriendsController {
     state = state.copyWith(isLoading: true);
     final friendsList = await _service.fetchFriends();
     final requestsList = await _service.fetchFriendRequests();
-    
+
     state = FriendsState(
       friends: friendsList,
       requests: requestsList,
@@ -58,11 +58,14 @@ class FriendsController extends _$FriendsController {
     );
   }
 
+  Future<List<FriendSearchResult>> searchUsers(String username) {
+    return _service.searchUsersByUsername(username);
+  }
+
   Future<bool> accept(String userId) async {
     final success = await _service.acceptFriend(userId);
     if (success) {
       await load();
-      // Tải lại thông tin profile để cập nhật friend_count trên Postgres
       final authService = ref.read(authServiceProvider);
       await authService.fetchProfileDetails();
     }
@@ -81,7 +84,24 @@ class FriendsController extends _$FriendsController {
     final success = await _service.unfriend(userId);
     if (success) {
       await load();
-      // Tải lại thông tin profile để cập nhật friend_count trên Postgres
+      final authService = ref.read(authServiceProvider);
+      await authService.fetchProfileDetails();
+    }
+    return success;
+  }
+
+  Future<bool> hide(String userId) async {
+    final success = await _service.hideFriend(userId);
+    if (success) {
+      await load();
+    }
+    return success;
+  }
+
+  Future<bool> block(String userId) async {
+    final success = await _service.blockFriend(userId);
+    if (success) {
+      await load();
       final authService = ref.read(authServiceProvider);
       await authService.fetchProfileDetails();
     }

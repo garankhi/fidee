@@ -11,7 +11,7 @@
 
 Khi user không tìm thấy địa điểm phù hợp trong nearby results, tap "Tạo địa điểm mới tại đây" → mobile mở form nhập tên + chọn category → POST request tới endpoint này.
 
-Backend xử lý: validate GPS proof, normalize tên, check duplicate, enforce quota, tạo candidate.
+Backend xử lý: validate input, verify media GPS proof khi `mediaId` được gửi, normalize tên, check duplicate, enforce quota, tạo candidate.
 
 ### Flow
 
@@ -58,7 +58,7 @@ Content-Type: application/json
 |-------|------|----------|-------------|
 | `name` | String | ✅ Yes | Tên địa điểm. Min 2, max 100 ký tự |
 | `category` | String | ✅ Yes | Phân loại (xem bảng dưới) |
-| `mediaId` | String | ✅ Yes | ID ảnh đã upload (verify GPS proof) |
+| `mediaId` | String | No | ID ảnh đã upload. Nếu gửi lên, backend verify GPS proof; nếu bỏ trống, candidate dùng `coordinates` request |
 | `coordinates.lat` | Float | ✅ Yes | Vĩ độ (-90 to 90) |
 | `coordinates.lng` | Float | ✅ Yes | Kinh độ (-180 to 180) |
 | `force` | Boolean | No | `true` = tạo dù có near-duplicate |
@@ -176,8 +176,8 @@ Content-Type: application/json
 | PRO | 15 |
 
 ### GPS Proof Validation
-- Coordinates từ request phải khớp với GPS metadata trong S3 object (HeadObject)
-- S3 metadata fields: `x-amz-meta-gps-latitude`, `x-amz-meta-gps-longitude`
+- Nếu request có `mediaId`, backend verify S3 object và GPS metadata bằng HeadObject
+- Nếu request không có `mediaId`, backend bỏ qua media verification và dùng `coordinates` trong request
 
 ### DynamoDB Schema
 
@@ -206,3 +206,4 @@ GSI2PK: GEO#{geohash4}    GSI2SK: CANDIDATE#{normalizedName}#{candidateId}
 - ❌ Image moderation (Rekognition)
 - ❌ AI categorization (Bedrock)
 - ❌ PostgreSQL migration (Phase 3)
+

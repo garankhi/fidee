@@ -77,5 +77,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Fidee cần truy cập camera để bạn chụp ảnh check-in.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Fidee cần đọc thư viện ảnh để hiển thị ảnh gần đây và chọn ảnh check-in.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Fidee cần quyền thư viện ảnh để lưu hoặc cập nhật ảnh khi bạn sử dụng tính năng ảnh.</string>
 </dict>
 </plist>

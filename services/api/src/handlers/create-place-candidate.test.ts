@@ -1,9 +1,25 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createPlaceCandidateHandler } from './create-place-candidate';
 import { APIGatewayProxyEvent } from 'aws-lambda';
-import { NearbyCandidate, PlaceCandidate } from '../repositories/place-candidates';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserPlan } from '../repositories/user-profiles';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+
+const { mockQuery, mockRandomUUID } = vi.hoisted(() => ({
+  mockQuery: vi.fn(),
+  mockRandomUUID: vi.fn(),
+}));
+
+vi.mock('../db/client', () => ({
+  query: mockQuery,
+}));
+
+vi.mock('crypto', async () => {
+  const actual = await vi.importActual<typeof import('crypto')>('crypto');
+  return {
+    ...actual,
+    randomUUID: mockRandomUUID,
+  };
+});
+
+import { createPlaceCandidateHandler } from './create-place-candidate';
 
 function mockEvent(body: Record<string, unknown>, sub = 'user-123'): APIGatewayProxyEvent {
   return {
@@ -19,13 +35,11 @@ function mockEvent(body: Record<string, unknown>, sub = 'user-123'): APIGatewayP
 function mockDeps(overrides: Partial<Parameters<typeof createPlaceCandidateHandler>[0]> = {}) {
   return {
     getPlan: vi.fn<[string], Promise<UserPlan>>().mockResolvedValue('FREE'),
-    putCandidate: vi.fn<[string, PlaceCandidate, DynamoDBDocumentClient?], Promise<'created' | 'duplicate'>>().mockResolvedValue('created'),
-    countToday: vi.fn<[string, string, string, DynamoDBDocumentClient?], Promise<number>>().mockResolvedValue(0),
-    findNearby: vi.fn<[string, number, number, number, string, DynamoDBDocumentClient?], Promise<NearbyCandidate[]>>().mockResolvedValue([]),
-    verifyMedia: vi.fn<[string, string], Promise<{ lat: number; lng: number } | null>>().mockResolvedValue({ lat: 10.77, lng: 106.70 }),
+    verifyMedia: vi
+      .fn<[string, string], Promise<{ lat: number; lng: number } | null>>()
+      .mockResolvedValue({ lat: 10.77, lng: 106.7 }),
     candidateIdFactory: vi.fn().mockReturnValue('cand_test123'),
     env: {
-      placesTable: 'test-places',
       mediaBucket: 'test-media',
       userProfilesTable: 'test-profiles',
     },
@@ -40,8 +54,22 @@ const validBody = {
   coordinates: { lat: 10.7716, lng: 106.7042 },
 };
 
+function mockSuccessfulQueries() {
+  mockQuery
+    .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+    .mockResolvedValueOnce({ rows: [] })
+    .mockResolvedValueOnce({ rows: [{ created_at: '2026-06-06T12:00:00.000Z' }] });
+}
+
 describe('createPlaceCandidateHandler', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockRandomUUID.mockReset();
+    mockRandomUUID.mockReturnValue('11111111-2222-4333-8444-555555555555');
+  });
+
   it('creates candidate successfully (201)', async () => {
+    mockSuccessfulQueries();
     const deps = mockDeps();
     const handler = createPlaceCandidateHandler(deps);
     const result = await handler(mockEvent(validBody));
@@ -49,11 +77,25 @@ describe('createPlaceCandidateHandler', () => {
     expect(result.statusCode).toBe(201);
     const body = JSON.parse(result.body);
     expect(body.status).toBe('created');
-    expect(body.data.candidate_id).toBe('cand_test123');
+    expect(body.data.candidate_id).toBe('11111111-2222-4333-8444-555555555555');
     expect(body.data.name).toBe('Quán Cà Phê Bình Minh');
     expect(body.data.status).toBe('PENDING_REVIEW');
     expect(body.data.visibility).toBe('FRIENDS');
-    expect(deps.putCandidate).toHaveBeenCalledOnce();
+    expect(deps.verifyMedia).toHaveBeenCalledWith('test-media', 'photo-abc-123');
+    expect(mockQuery).toHaveBeenCalledTimes(3);
+  });
+
+  it('creates candidate without mediaId and skips media verification', async () => {
+    mockSuccessfulQueries();
+    const deps = mockDeps();
+    const handler = createPlaceCandidateHandler(deps);
+    const { mediaId: _mediaId, ...bodyWithoutMedia } = validBody;
+
+    const result = await handler(mockEvent(bodyWithoutMedia));
+
+    expect(result.statusCode).toBe(201);
+    expect(deps.verifyMedia).not.toHaveBeenCalled();
+    expect(mockQuery.mock.calls[2][1][6]).toBeNull();
   });
 
   it('returns 400 for missing name', async () => {
@@ -63,6 +105,7 @@ describe('createPlaceCandidateHandler', () => {
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body).error.code).toBe('VALIDATION_ERROR');
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('returns 400 for invalid category', async () => {
@@ -71,9 +114,10 @@ describe('createPlaceCandidateHandler', () => {
     const result = await handler(mockEvent({ ...validBody, category: 'invalid' }));
 
     expect(result.statusCode).toBe(400);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for invalid media', async () => {
+  it('returns 400 for invalid media when mediaId is supplied', async () => {
     const deps = mockDeps({
       verifyMedia: vi.fn().mockResolvedValue(null),
     });
@@ -82,12 +126,12 @@ describe('createPlaceCandidateHandler', () => {
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body).error.code).toBe('INVALID_MEDIA');
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('returns 429 when quota exceeded (FREE)', async () => {
-    const deps = mockDeps({
-      countToday: vi.fn().mockResolvedValue(5), // FREE limit is 5
-    });
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '5' }] });
+    const deps = mockDeps();
     const handler = createPlaceCandidateHandler(deps);
     const result = await handler(mockEvent(validBody));
 
@@ -98,9 +142,12 @@ describe('createPlaceCandidateHandler', () => {
   });
 
   it('allows PRO user higher quota', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ count: '10' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ created_at: '2026-06-06T12:00:00.000Z' }] });
     const deps = mockDeps({
       getPlan: vi.fn().mockResolvedValue('PRO'),
-      countToday: vi.fn().mockResolvedValue(10), // Above FREE limit but under PRO limit
     });
     const handler = createPlaceCandidateHandler(deps);
     const result = await handler(mockEvent(validBody));
@@ -109,11 +156,19 @@ describe('createPlaceCandidateHandler', () => {
   });
 
   it('returns 409 for near-duplicate', async () => {
-    const deps = mockDeps({
-      findNearby: vi.fn().mockResolvedValue([
-        { candidateId: 'cand_existing', name: 'Quán Cà Phê Bình Minh', normalizedName: 'quan ca phe binh minh', distanceMeters: 45 },
-      ]),
-    });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'cand_existing',
+            name: 'Quán Cà Phê Bình Minh',
+            normalized_name: 'quan ca phe binh minh',
+            distance_meters: '45',
+          },
+        ],
+      });
+    const deps = mockDeps();
     const handler = createPlaceCandidateHandler(deps);
     const result = await handler(mockEvent(validBody));
 
@@ -125,15 +180,15 @@ describe('createPlaceCandidateHandler', () => {
   });
 
   it('allows force create despite duplicates', async () => {
-    const deps = mockDeps({
-      findNearby: vi.fn().mockResolvedValue([
-        { candidateId: 'cand_existing', name: 'Quán Cà Phê Bình Minh', normalizedName: 'quan ca phe binh minh', distanceMeters: 45 },
-      ]),
-    });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+      .mockResolvedValueOnce({ rows: [{ created_at: '2026-06-06T12:00:00.000Z' }] });
+    const deps = mockDeps();
     const handler = createPlaceCandidateHandler(deps);
     const result = await handler(mockEvent({ ...validBody, force: true }));
 
     expect(result.statusCode).toBe(201);
+    expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 
   it('returns 401 for missing auth', async () => {

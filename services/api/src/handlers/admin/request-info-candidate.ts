@@ -38,7 +38,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // 1. Verify candidate exists
-    const fetchSql = `SELECT id, name FROM place_candidates WHERE id = $1;`;
+    const fetchSql = 'SELECT id, name FROM place_candidates WHERE id = $1;';
     const fetchResult = await query(fetchSql, [candidateId]);
     if (fetchResult.rows.length === 0) {
       return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };

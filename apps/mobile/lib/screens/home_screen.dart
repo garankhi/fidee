@@ -8,26 +8,18 @@ import 'package:latlong2/latlong.dart';
 import '../features/auth/auth_providers.dart';
 import '../models/nearby_place.dart';
 import '../models/map_feed_item.dart';
-import '../models/nearby_place.dart';
 import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
 import '../services/map_feed_service.dart';
-import '../services/nearby_service.dart';
-import 'add_spot_screen.dart';
 import 'camera_screen.dart';
+import 'explore_screen.dart';
 import 'profile_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
-///
-/// [locationService] được truyền vào từ main.dart đã resolve sẵn thông qua
-/// [locationControllerProvider]. HomeScreen không cần tự khởi động location
-/// và không hiển thị spinner trắng — map render ngay lập tức.
 class HomeScreen extends ConsumerStatefulWidget {
   final LocationService locationService;
 
-  /// Khi false, các tính năng cần vị trí bị ẩn/khoá.
-  /// User có thể mở khoá bằng cách cấp phép từ banner.
   const HomeScreen({super.key, required this.locationService});
 
   @override
@@ -41,19 +33,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _showLocationBanner = false;
   List<MapFeedItem> _feedItems = [];
 
-  /// True nếu user đang ở chế độ giới hạn (không có GPS).
   bool get _isLimitedMode => _locationService.status != LocationStatus.granted;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // LocationService đã được khởi động song song với auth trong main.dart.
-    // Không cần _initLocation() hay spinner — dùng thẳng kết quả đã có.
     _locationService = widget.locationService;
     _showLocationBanner = _locationService.status != LocationStatus.granted;
     if (_locationService.hasRealLocation) {
-      // Need to defer the fetch slightly so Riverpod ref is ready, or just do it after build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _fetchFeed();
       });
@@ -196,39 +184,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _onDiscover() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _DiscoverSheet(
-        lat: _locationService.currentPosition.latitude,
-        lng: _locationService.currentPosition.longitude,
-        nearbyService: NearbyService(ref.read(authServiceProvider)),
-        onAddSpot: (spots) {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (_) => AddSpotScreen(
-                spotSuggestions: spots,
-                authService: ref.read(authServiceProvider),
-              ),
-            ),
-          );
-        },
+  void _onExplore() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const ExploreScreen(),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Không còn _isLoading guard — map render ngay từ frame đầu tiên.
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // === MAP ===
           RepaintBoundary(
             child: FlutterMap(
               mapController: _mapController,
@@ -285,115 +255,147 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: RepaintBoundary(
               child: Column(
                 children: [
-                    // Logo & Avatar Row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _TopAddSpotButton(onTap: _onDiscover),
-                          Image.asset(
-                            'assets/images/logo_red.png',
-                            height: 25,
-                            cacheHeight: 96,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      children: [
+                        const Expanded(child: SizedBox.shrink()),
+                        Expanded(
+                          child: Center(
+                            child: Image.asset(
+                              'assets/images/logo_red.png',
+                              height: 25,
+                              cacheHeight: 96,
+                            ),
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-                              );
-                            },
-                            child: Consumer(
-                              builder: (context, ref, _) {
-                                final authService = ref.watch(authServiceProvider);
-                                
-                                final firstName = authService.firstName ?? '';
-                                final lastName = authService.lastName ?? '';
-                                String initials = 'U';
-                                if (firstName.isNotEmpty || lastName.isNotEmpty) {
-                                  final first = firstName.trim().isNotEmpty ? firstName.trim().substring(0, 1) : '';
-                                  final last = lastName.trim().isNotEmpty ? lastName.trim().substring(0, 1) : '';
-                                  initials = '$first$last'.toUpperCase();
-                                  if (initials.isEmpty) initials = 'U';
-                                } else if (authService.username != null && authService.username!.isNotEmpty) {
-                                  initials = authService.username!.substring(0, 1).toUpperCase();
-                                }
-
-                                return Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEF4050),
-                                    shape: BoxShape.circle,
-                                    image: authService.avatarUrl != null && authService.avatarUrl!.isNotEmpty
-                                        ? DecorationImage(
-                                            image: authService.avatarUrl!.startsWith('http')
-                                                ? NetworkImage(authService.avatarUrl!) as ImageProvider
-                                                : FileImage(File(authService.avatarUrl!)),
-                                            fit: BoxFit.cover,
-                                          )
-                                        : null,
+                        ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const ProfileScreen(),
                                   ),
-                                  child: authService.avatarUrl == null || authService.avatarUrl!.isEmpty
-                                      ? Center(
-                                          child: Text(
-                                            initials,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        )
-                                      : null,
                                 );
                               },
+                              child: Consumer(
+                                builder: (context, ref, _) {
+                                  final authService = ref.watch(
+                                    authServiceProvider,
+                                  );
+                                  final firstName = authService.firstName ?? '';
+                                  final lastName = authService.lastName ?? '';
+                                  String initials = 'U';
+                                  if (firstName.isNotEmpty ||
+                                      lastName.isNotEmpty) {
+                                    final first = firstName.trim().isNotEmpty
+                                        ? firstName.trim().substring(0, 1)
+                                        : '';
+                                    final last = lastName.trim().isNotEmpty
+                                        ? lastName.trim().substring(0, 1)
+                                        : '';
+                                    initials = '$first$last'.toUpperCase();
+                                    if (initials.isEmpty) initials = 'U';
+                                  } else if (authService.username != null &&
+                                      authService.username!.isNotEmpty) {
+                                    initials = authService.username!
+                                        .substring(0, 1)
+                                        .toUpperCase();
+                                  }
+
+                                  return Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4050),
+                                      shape: BoxShape.circle,
+                                      image:
+                                          authService.avatarUrl != null &&
+                                              authService.avatarUrl!.isNotEmpty
+                                          ? DecorationImage(
+                                              image:
+                                                  authService.avatarUrl!
+                                                      .startsWith('http')
+                                                  ? NetworkImage(
+                                                          authService
+                                                              .avatarUrl!,
+                                                        )
+                                                        as ImageProvider
+                                                  : FileImage(
+                                                      File(
+                                                        authService.avatarUrl!,
+                                                      ),
+                                                    ),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child:
+                                        authService.avatarUrl == null ||
+                                            authService.avatarUrl!.isEmpty
+                                        ? Center(
+                                            child: Text(
+                                              initials,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  );
+                                },
+                              ),
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Search Bar
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.95),
-                          borderRadius: BorderRadius.circular(25),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.search, color: Color(0xFFFF3B30)),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                'Want something today?',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search, color: Color(0xFFFF3B30)),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Want something today?',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            Icon(Icons.mic, color: Colors.grey.shade600),
-                          ],
-                        ),
+                          ),
+                          Icon(Icons.mic, color: Colors.grey.shade600),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
           ),
+
           // === LOCATION DENIED BANNER ===
           if (_showLocationBanner)
             Positioned(
@@ -445,16 +447,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Compass (Left)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Discovery.png',
-                    onTap: _onDiscover,
+                    onTap: _onExplore,
                     size: 60,
                     iconSize: 42,
                     locked: _isLimitedMode,
                   ),
                   const SizedBox(width: 24),
-                  // Camera (Center)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Camera.png',
                     onTap: _onCheckIn,
@@ -463,7 +463,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     locked: _isLimitedMode,
                   ),
                   const SizedBox(width: 24),
-                  // Messages (Right)
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Chat.png',
                     onTap: () {
@@ -562,7 +561,7 @@ class _BottomNavIcon extends StatelessWidget {
     required this.assetPath,
     required this.onTap,
     this.size = 60,
-    this.iconSize = 28, // <-- ĐÂY LÀ CHỖ TĂNG KÍCH THƯỚC ICON MẶC ĐỊNH
+    this.iconSize = 28,
     this.locked = false,
   });
 
@@ -629,7 +628,6 @@ class _BottomNavIcon extends StatelessWidget {
   }
 }
 
-// === PULSING LOCATION MARKER ===
 class _PulsingLocationMarker extends StatefulWidget {
   const _PulsingLocationMarker();
 
@@ -669,7 +667,6 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
         builder: (_, _) => Stack(
           alignment: Alignment.center,
           children: [
-            // Outer pulse
             Container(
               width: 60 * _animation.value,
               height: 60 * _animation.value,
@@ -680,7 +677,6 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
                 ).withValues(alpha: 0.2 * (1 - _animation.value)),
               ),
             ),
-            // Inner dot
             Container(
               width: 18,
               height: 18,
@@ -703,203 +699,6 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker>
   }
 }
 
-// === DISCOVER SHEET ===
-class _DiscoverSheet extends StatefulWidget {
-  final double lat;
-  final double lng;
-  final NearbyService nearbyService;
-  final void Function(List<NearbyPlace> spots) onAddSpot;
-
-  const _DiscoverSheet({
-    required this.lat,
-    required this.lng,
-    required this.nearbyService,
-    required this.onAddSpot,
-  });
-
-  @override
-  State<_DiscoverSheet> createState() => _DiscoverSheetState();
-}
-
-class _DiscoverSheetState extends State<_DiscoverSheet> {
-  List<NearbyPlace> _spots = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final res = await widget.nearbyService.fetchNearby(
-        lat: widget.lat,
-        lng: widget.lng,
-        mediaId: 'discover_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!mounted) return;
-      setState(() {
-        _spots = res.data.where((p) => !p.isCustomFallback).toList();
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E2E2),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Banner "Chưa tìm được quán yêu thích?"
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFE9EC), Color(0xFFFFF0F2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'CHƯA TÌM ĐƯỢC\nQUÁN YÊU THÍCH?',
-                  style: TextStyle(
-                    color: Color(0xFFEF4050),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
-                  style: TextStyle(
-                    color: Color(0xFF8D8D8D),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => widget.onAddSpot(_spots),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4050),
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFEF4050).withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Text(
-                      'Thêm ngay vào bản đồ!',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: CircularProgressIndicator(
-                  color: Color(0xFFEF4050),
-                  strokeWidth: 2,
-                ),
-              ),
-            )
-          else if (_spots.isNotEmpty) ...
-            [
-              const Text(
-                'Địa điểm gần bạn',
-                style: TextStyle(
-                  color: Color(0xFF151515),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ..._spots.take(5).map(
-                (p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.place_rounded,
-                        color: Color(0xFFEF4050),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          p.displayName,
-                          style: const TextStyle(
-                            color: Color(0xFF151515),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        '${p.distanceMeters}m',
-                        style: const TextStyle(
-                          color: Color(0xFF8D8D8D),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-        ],
-      ),
-    );
-  }
-}
-
-// === LOCATION DENIED BANNER ===
 class _LocationDeniedBanner extends StatelessWidget {
   final LocationStatus status;
   final VoidCallback onAllow;
@@ -990,7 +789,6 @@ class _LocationDeniedBanner extends StatelessWidget {
   }
 }
 
-// === LIMITED MODE BANNER ===
 class _LimitedModeBanner extends StatelessWidget {
   final VoidCallback onEnable;
 
@@ -1192,12 +990,3 @@ class _FeedItemSheet extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
