@@ -78,6 +78,65 @@ void main() {
 
     expect(find.text('Chưa có ảnh check-in từ bạn bè'), findsOneWidget);
   });
+
+  testWidgets('camera feed photo frame renders caption inside rounded image', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: CameraFeedPhotoFrame(
+              item: CameraCheckinFeedItem(
+                id: 'checkin-2',
+                caption: 'Nó vẫn chưa tha',
+                createdAt: '2026-06-09T14:48:00.000Z',
+                mediaId: 'media-2',
+                userId: 'friend-2',
+                userName: 'Tạ',
+                placeId: 'place-2',
+                placeName: 'Sân cầu lông',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('camera-feed-photo-frame-checkin-2')),
+      findsOneWidget,
+    );
+    expect(find.text('Nó vẫn chưa tha'), findsOneWidget);
+  });
+
+  testWidgets('camera feed author meta shows user and relative time', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: CameraFeedAuthorMeta(
+            item: const CameraCheckinFeedItem(
+              id: 'checkin-3',
+              createdAt: '2026-06-09T14:48:00.000Z',
+              mediaId: 'media-3',
+              userId: 'friend-3',
+              userName: 'Tạ',
+              placeId: 'place-3',
+              placeName: 'Sân cầu lông',
+            ),
+            now: DateTime.parse('2026-06-09T15:17:00.000Z'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Tạ'), findsOneWidget);
+    expect(find.text('29p'), findsOneWidget);
+  });
 }
 
 Future<void> _noop() async {}

@@ -196,108 +196,118 @@ class _CameraCheckinCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final caption = item.caption?.trim() ?? '';
-
     return Column(
       key: ValueKey('camera-checkin-card-${item.id}'),
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(34),
-          child: AspectRatio(
-            aspectRatio: 0.82,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  item.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const ColoredBox(
-                      color: Color(0xFF2A2A2A),
-                      child: Center(
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          color: Colors.white54,
-                          size: 36,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                if (caption.isNotEmpty)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 28,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.46),
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                        child: Text(
-                          caption,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+        CameraFeedPhotoFrame(item: item),
         const SizedBox(height: 18),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _FeedAvatar(name: item.userName, avatarUrl: item.userAvatar),
-            const SizedBox(width: 12),
-            Text(
-              item.relativeTime(now: now),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.64),
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
+        CameraFeedAuthorMeta(item: item, now: now),
       ],
     );
   }
 }
 
-class _FeedAvatar extends StatelessWidget {
-  final String name;
-  final String? avatarUrl;
+class CameraFeedPhotoFrame extends StatelessWidget {
+  final CameraCheckinFeedItem item;
 
-  const _FeedAvatar({required this.name, this.avatarUrl});
+  const CameraFeedPhotoFrame({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.trim().isEmpty ? '?' : name.trim().substring(0, 1).toUpperCase();
+    final caption = item.caption?.trim() ?? '';
 
-    return CircleAvatar(
-      radius: 18,
-      backgroundColor: const Color(0xFF292929),
-      backgroundImage: avatarUrl == null ? null : NetworkImage(avatarUrl!),
-      child: avatarUrl == null
-          ? Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(34),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Stack(
+          key: ValueKey('camera-feed-photo-frame-${item.id}'),
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              item.imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const ColoredBox(
+                  color: Color(0xFF2A2A2A),
+                  child: Center(
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white54,
+                      size: 36,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (caption.isNotEmpty)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 22,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Text(
+                      caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            )
-          : null,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CameraFeedAuthorMeta extends StatelessWidget {
+  final CameraCheckinFeedItem item;
+  final DateTime? now;
+
+  const CameraFeedAuthorMeta({super.key, required this.item, this.now});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            item.userName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          item.relativeTime(now: now),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.64),
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 }

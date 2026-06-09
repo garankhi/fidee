@@ -12,15 +12,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/camera_checkin_feed_provider.dart';
 import '../features/auth/friends_provider.dart';
+import '../models/camera_checkin_feed_item.dart';
 import '../services/auth_service.dart';
 import '../services/camera_startup_permission_flow.dart';
 import '../services/gallery_asset_picker_service.dart';
 import '../services/gallery_permission_service.dart';
 import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
-import 'camera_audience_selector.dart';
+import 'camera_bottom_section.dart';
+import 'camera_chat_inbox.dart';
 import 'camera_checkin_feed.dart';
+import 'camera_feed_action_area.dart';
+import 'camera_feed_message_composer.dart';
 import 'camera_friends_sheet.dart';
+import 'camera_viewfinder_pager.dart';
 import 'gallery_asset_picker_sheet.dart';
 import 'gallery_permission_sheet.dart';
 import 'gallery_preview_button.dart';
@@ -50,8 +55,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   List<Uint8List> _galleryThumbnails = const <Uint8List>[];
   GalleryPermissionStatus _galleryPermissionStatus =
       GalleryPermissionStatus.notDetermined;
-  late final ScrollController _scrollController;
-  bool _isFeedHeaderMode = false;
+  CameraCheckinFeedItem? _activeFeedItem;
+  bool _isViewingFeed = false;
+  List<CameraChatThread> _chatThreads = const <CameraChatThread>[];
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -59,7 +65,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()..addListener(_handleCameraScroll);
     unawaited(_initCameraAndGalleryPreview());
 
     _animationController = AnimationController(
@@ -80,16 +85,56 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  void _handleCameraScroll() {
-    if (!mounted || !_scrollController.hasClients) return;
+  void _handleFeedItemChanged(CameraCheckinFeedItem? item) {
+    if (!mounted || item?.id == _activeFeedItem?.id) return;
+    setState(() {
+      _activeFeedItem = item;
+    });
+  }
 
-    final threshold = MediaQuery.sizeOf(context).height * 0.45;
-    final nextValue = _scrollController.offset > threshold;
-    if (nextValue == _isFeedHeaderMode) return;
+  void _handleFeedModeChanged(bool value) {
+    if (!mounted || value == _isViewingFeed) return;
+    setState(() {
+      _isViewingFeed = value;
+    });
+  }
+
+  void _recordFeedMessage(String message) {
+    final item = _activeFeedItem;
+    if (item == null) return;
+    _upsertChatThread(item, message);
+  }
+
+  void _recordFeedReaction(String reaction) {
+    final item = _activeFeedItem;
+    if (item == null) return;
+    _upsertChatThread(item, 'đã phản ứng $reaction với ảnh của ${item.userName}');
+  }
+
+  void _upsertChatThread(CameraCheckinFeedItem item, String message) {
+    final nextThread = CameraChatThread(
+      id: item.userId,
+      name: item.userName,
+      lastMessage: message,
+      updatedAtLabel: 'vừa xong',
+      avatarUrl: item.userAvatar,
+    );
 
     setState(() {
-      _isFeedHeaderMode = nextValue;
+      _chatThreads = <CameraChatThread>[
+        nextThread,
+        ..._chatThreads.where((thread) => thread.id != nextThread.id),
+      ];
     });
+  }
+
+  void _openChatInbox() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => CameraChatInboxScreen(threads: _chatThreads),
+      ),
+    );
   }
 
   Future<void> _loadGalleryPreview() async {
@@ -294,10 +339,39 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     });
   }
 
+  Future<void> _handleCapture() async {
+    if (!_controller!.value.isInitialized || _animationController.isAnimating) {
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+
+    _animationController.forward();
+    _setLoading(true);
+
+    final image = await _controller!.takePicture();
+
+    if (_animationController.isAnimating) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+
+    _setLoading(false);
+
+    if (!mounted) return;
+    navigator.pushReplacement(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            SendImageScreen(imagePath: image.path, source: 'IN_APP_CAMERA'),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    _scrollController.removeListener(_handleCameraScroll);
-    _scrollController.dispose();
     _animationController.dispose();
     _controller?.dispose();
     super.dispose();
@@ -317,387 +391,93 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final friendsState = ref.watch(friendsControllerProvider);
     final feedState = ref.watch(cameraCheckinFeedControllerProvider);
     final feedController = ref.read(cameraCheckinFeedControllerProvider.notifier);
-    final cameraViewportHeight =
-        MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-            SafeArea(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                child: Column(
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isViewingFeed = _isViewingFeed;
+                final reservedFeedHeight = isViewingFeed ? 58.0 : 0.0;
+                final maxFrameSize = math.min(
+                  MediaQuery.sizeOf(context).width - 40,
+                  constraints.maxHeight - 312 - reservedFeedHeight,
+                );
+                final frameSize = math.max(260.0, maxFrameSize);
+
+                return Column(
                   children: [
+                    _CameraTopBar(
+                      friendsCount: friendsState.friends.length,
+                      onMapTap: () => Navigator.pop(context),
+                      onFriendsTap: () => showCameraFriendsSheet(context),
+                    ),
+                    const Spacer(flex: 1),
                     SizedBox(
-                      height: cameraViewportHeight,
-                      child: Column(
-                        children: [
-                // Top Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 60.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            LucideIcons.map,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                      width: frameSize,
+                      height: frameSize,
+                      child: CameraViewfinderPager(
+                        cameraPreview: CameraPreview(_controller!),
+                        cameraOverlay: _CameraPreviewControls(
+                          isFlashOn: _isFlashOn,
+                          onToggleFlash: _toggleFlash,
                         ),
-                      ),
-                        _isFeedHeaderMode
-                            ? CameraAudienceSelector(
-                                selectedAudience: feedState.audience,
-                                friends: friendsState.friends,
-                                onSelected: feedController.selectAudience,
-                              )
-                            : _FriendsCountPill(
-                                count: friendsState.friends.length,
-                                onTap: () => showCameraFriendsSheet(context),
-                              ),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Colors.blueAccent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Me',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const Spacer(flex: 1),
-
-                // Camera Preview (Square, Centered)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: AspectRatio(
-                    aspectRatio: 1 / 1,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CameraPreview(_controller!),
-                          // Flash Button
-                          Positioned(
-                            top: 16,
-                            left: 16,
-                            child: GestureDetector(
-                              onTap: _toggleFlash,
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Zoom Button
-                          Positioned(
-                            top: 16,
-                            right: 16,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Text(
-                                '1x',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        feedItems: feedState.items,
+                        isFeedLoading: feedState.isLoading,
+                        isFeedLoadingMore: feedState.isLoadingMore,
+                        hasMore: feedState.hasMore,
+                        onLoadMore: feedController.loadMore,
+                        onFeedItemChanged: _handleFeedItemChanged,
+                        onFeedModeChanged: _handleFeedModeChanged,
                       ),
                     ),
-                  ),
-                ),
-
-                const Spacer(flex: 1),
-                const SizedBox(height: 12),
-
-                // Bottom Controls (Gallery, Capture, Flip)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40.0,
-                    vertical: 24.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Gallery Button
-                      GalleryPreviewButton(
-                        thumbnails: _galleryThumbnails,
-                        onTap: _pickFromGallery,
-                      ),
-
-                      // Capture Button
-                      AnimatedBuilder(
-                        animation: _animationController,
-                        builder: (context, child) {
-                          final shrinkValue = _shrinkAnimation.value;
-                          final double currentInnerSize = 68.0 * shrinkValue;
-
-                          return GestureDetector(
-                            onTap: () async {
-                              if (!_controller!.value.isInitialized ||
-                                  _animationController.isAnimating) {
-                                return;
-                              }
-
-                              final navigator = Navigator.of(context);
-
-                              _animationController.forward();
-                              _setLoading(true);
-
-                              final image = await _controller!.takePicture();
-
-                              if (_animationController.isAnimating) {
-                                await Future<void>.delayed(
-                                  const Duration(milliseconds: 500),
-                                );
-                              }
-
-                              _setLoading(false);
-
-                              if (!mounted) return;
-                              navigator.pushReplacement(
-                                PageRouteBuilder<void>(
-                                  transitionDuration: const Duration(
-                                    milliseconds: 300,
-                                  ),
-                                  pageBuilder:
-                                      (
-                                        context,
-                                        animation,
-                                        secondaryAnimation,
-                                      ) => SendImageScreen(
-                                        imagePath: image.path,
-                                        source: 'IN_APP_CAMERA',
-                                      ),
-                                  transitionsBuilder:
-                                      (
-                                        context,
-                                        animation,
-                                        secondaryAnimation,
-                                        child,
-                                      ) {
-                                        return FadeTransition(
-                                          opacity: animation,
-                                          child: child,
-                                        );
-                                      },
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 86,
-                              height: 86,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFEF484F),
-                                  width: 5,
-                                ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: currentInnerSize,
-                                  height: currentInnerSize,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      // Flip Camera Button
-                      SizedBox(
-                        width: 55,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: _switchCamera,
-                            child: Transform.rotate(
-                              angle: -36 * math.pi / 180,
-                              child: const Icon(
-                                LucideIcons.refreshCcw,
-                                color: Colors.white,
-                                size: 38,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Bottom Section Height Match
-                SizedBox(
-                  height: 120,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey[700],
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Lịch sử',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        margin: const EdgeInsets.only(left: 110, right: 110),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[900],
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            const Icon(
-                              Icons.grid_view_rounded,
-                              color: Colors.grey,
-                              size: 28,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[800],
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.home_filled,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            Stack(
-                              clipBehavior: Clip.none,
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: _activeFeedItem != null
+                          ? Column(
+                              key: const ValueKey('camera-feed-reply-area'),
                               children: [
-                                const Icon(
-                                  Icons.chat_bubble_rounded,
-                                  color: Colors.grey,
-                                  size: 28,
-                                ),
-                                Positioned(
-                                  right: -4,
-                                  top: -4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.amber,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Text(
-                                      '1',
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                const SizedBox(height: 18),
+                                CameraFeedAuthorMeta(item: _activeFeedItem!),
                               ],
+                            )
+                          : const SizedBox(
+                              key: ValueKey('camera-capture-gap'),
+                              height: 12,
                             ),
-                          ],
+                    ),
+                    const Spacer(flex: 1),
+                    CameraFeedActionArea(
+                      isViewingFeed: isViewingFeed,
+                      hasFeedItem: _activeFeedItem != null,
+                      captureControls: _CameraCaptureControls(
+                        thumbnails: _galleryThumbnails,
+                        animationController: _animationController,
+                        shrinkAnimation: _shrinkAnimation,
+                        onGalleryTap: _pickFromGallery,
+                        onCapture: _handleCapture,
+                        onSwitchCamera: _switchCamera,
+                      ),
+                      messageComposer: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 28,
+                        ),
+                        child: CameraFeedMessageComposer(
+                          onSend: _recordFeedMessage,
+                          onReaction: _recordFeedReaction,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                          const SizedBox(height: 10),
-                        ],
-                      ),
                     ),
-                    const CameraCheckinFeed(),
+                    CameraBottomSection(onChatTap: _openChatInbox),
+                    const SizedBox(height: 10),
                   ],
-                ),
-              ),
+                );
+              },
             ),
+          ),
 
           if (_isLoading)
             Container(
@@ -731,6 +511,198 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraTopBar extends StatelessWidget {
+  final int friendsCount;
+  final VoidCallback onMapTap;
+  final VoidCallback onFriendsTap;
+
+  const _CameraTopBar({
+    required this.friendsCount,
+    required this.onMapTap,
+    required this.onFriendsTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          GestureDetector(
+            onTap: onMapTap,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.map,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+          _FriendsCountPill(count: friendsCount, onTap: onFriendsTap),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Colors.blueAccent,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                'Me',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraPreviewControls extends StatelessWidget {
+  final bool isFlashOn;
+  final VoidCallback onToggleFlash;
+
+  const _CameraPreviewControls({
+    required this.isFlashOn,
+    required this.onToggleFlash,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          top: 16,
+          left: 16,
+          child: GestureDetector(
+            onTap: onToggleFlash,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isFlashOn ? Icons.flash_on : Icons.flash_off,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: const Text(
+              '1x',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CameraCaptureControls extends StatelessWidget {
+  final List<Uint8List> thumbnails;
+  final AnimationController animationController;
+  final Animation<double> shrinkAnimation;
+  final VoidCallback onGalleryTap;
+  final Future<void> Function() onCapture;
+  final VoidCallback onSwitchCamera;
+
+  const _CameraCaptureControls({
+    required this.thumbnails,
+    required this.animationController,
+    required this.shrinkAnimation,
+    required this.onGalleryTap,
+    required this.onCapture,
+    required this.onSwitchCamera,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          GalleryPreviewButton(thumbnails: thumbnails, onTap: onGalleryTap),
+          AnimatedBuilder(
+            animation: animationController,
+            builder: (context, child) {
+              final shrinkValue = shrinkAnimation.value;
+              final currentInnerSize = 68.0 * shrinkValue;
+
+              return GestureDetector(
+                onTap: () => unawaited(onCapture()),
+                child: Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFEF484F),
+                      width: 5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: currentInnerSize,
+                      height: currentInnerSize,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(
+            width: 55,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: onSwitchCamera,
+                child: Transform.rotate(
+                  angle: -36 * math.pi / 180,
+                  child: const Icon(
+                    LucideIcons.refreshCcw,
+                    color: Colors.white,
+                    size: 38,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
