@@ -14,6 +14,7 @@ const CORS_HEADERS = {
  *   - cursor (ISO timestamp, optional): pagination cursor
  *   - limit (int, optional, default 20, max 50)
  *   - filter (everyone|friends|me, default everyone)
+ *   - friendId (optional): only show one accepted friend's check-ins
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -34,17 +35,37 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (limit > 50) limit = 50;
 
     const cursor = event.queryStringParameters?.cursor || null;
-    const filter = event.queryStringParameters?.filter || 'everyone';
+    const requestedFilter = event.queryStringParameters?.filter || 'everyone';
+    const filter = ['everyone', 'friends', 'me'].includes(requestedFilter)
+      ? requestedFilter
+      : 'everyone';
+    const friendId = event.queryStringParameters?.friendId?.trim() || null;
+
+    const params: any[] = [userId, limit + 1];
+    const pushParam = (value: unknown): string => {
+      params.push(value);
+      return `$${params.length}`;
+    };
 
     let cursorFilter = '';
-    const params: any[] = [userId, limit + 1];
     if (cursor) {
-      cursorFilter = `AND ci.created_at < $3`;
-      params.push(cursor);
+      cursorFilter = `AND ci.created_at < ${pushParam(cursor)}`;
     }
 
     let visibilityFilter = '';
-    if (filter === 'me') {
+    if (friendId) {
+      const friendParam = pushParam(friendId);
+      visibilityFilter = `
+        ci.visibility = 'FRIENDS'
+        AND ci.user_id = ${friendParam}
+        AND EXISTS (
+          SELECT 1 FROM friendships f
+          WHERE f.user_id = $1
+            AND f.friend_id = ${friendParam}
+            AND f.status = 'ACCEPTED'
+        )
+      `;
+    } else if (filter === 'me') {
       visibilityFilter = `ci.user_id = $1`;
     } else if (filter === 'friends') {
       visibilityFilter = `
