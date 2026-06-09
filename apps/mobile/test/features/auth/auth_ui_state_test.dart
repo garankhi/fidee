@@ -14,6 +14,22 @@ void main() {
       expect(state.firstName, 'Minh');
       expect(state.lastName, 'Nguyen');
       expect(state.preferredUsername, 'minh.nguyen');
+
+      await service.updateProfile(
+        avatarUrl: 'https://cdn.example.com/avatar.jpg',
+      );
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Minh Nguyen',
+        'username': 'minh.nguyen',
+        'avatarUrl': 'https://cdn.example.com/avatar.jpg',
+        'plan': 'PRO',
+        'createdAt': '2026-01-15T08:30:00.000Z',
+      });
+
+      final updatedState = AuthUiState.fromService(service);
+      expect(updatedState.avatarUrl, 'https://cdn.example.com/avatar.jpg');
+      expect(updatedState.since, '2026');
+      expect(updatedState.tier, UserTier.pro);
     });
   });
 }

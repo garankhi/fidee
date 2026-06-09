@@ -93,245 +93,251 @@ class _AiChatScreenState extends State<AiChatScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              // === Header: Back Button & Title ===
+              const SizedBox(height: 12),
+              Row(
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 20),
-                  _buildAssistantBubble(
-                    'Chào bạn, mình là Fidee. Hãy cho mình biết bạn đang muốn ăn gì, ngân sách, vị trí và phong cách quán. Fidee sẽ gợi ý địa điểm phù hợp cho bạn.',
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.black),
+                    ),
                   ),
-                  const SizedBox(height: 18),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _buildQuickPrompt(),
-                  ),
-                  const SizedBox(height: 18),
-                  _buildRecommendationSummary(),
-                  const SizedBox(height: 10),
-                  for (final recommendation in _recommendations) ...[
-                    _RecommendationCard(recommendation: recommendation),
-                    const SizedBox(height: 10),
-                  ],
-                  const SizedBox(height: 6),
-                  _buildQuickFilters(),
-                  for (final message in _messages) ...[
-                    const SizedBox(height: 12),
-                    message.isUser
-                        ? Align(
-                            alignment: Alignment.centerRight,
-                            child: _buildUserBubble(message.text),
-                          )
-                        : _buildAssistantBubble(message.text),
-                  ],
                 ],
               ),
-            ),
-            _buildInputBar(),
-          ],
-        ),
-      ),
-    );
-  }
+              const SizedBox(height: 24),
 
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-        ),
-        const SizedBox(width: 6),
-        ClipOval(
-          child: Image.asset(
-            'assets/images/Fidee_Red_Round.png',
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Fidee AI',
-              style: TextStyle(
-                color: Color(0xFFEF4050),
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+              // === Mavi AI Header ===
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4050),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'M',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Mavi AI',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            '⚡',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Online',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF22C55E),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            SizedBox(height: 2),
-            Row(
-              children: [
-                CircleAvatar(radius: 4, backgroundColor: Color(0xFF22C55E)),
-                SizedBox(width: 6),
-                Text(
-                  'Đang hoạt động',
-                  style: TextStyle(
-                    color: Color(0xFF22C55E),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+              const SizedBox(height: 24),
+
+              // === Mavi AI Intro Message ===
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hey! I\'m Mavi, your vibe guide. Tell me what you\'re feeling—cravings, budget, location, type—and I\'ll find the perfect spots just for you.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // === Quick Suggestion Button ===
+              GestureDetector(
+                onTap: () => _sendMessage('Hey! Find 3 restaurants near me 🍔'),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4050),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Hey! Find 3 restaurants near me 🍔',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+              ),
+              const SizedBox(height: 24),
 
-  Widget _buildQuickPrompt() {
-    return GestureDetector(
-      onTap: () => _sendMessage('Gợi ý 3 quán gần tôi'),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 260),
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 18),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEF4050),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: const Text(
-          'Gợi ý 3 quán gần tôi',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
+              // === Mavi AI Response ===
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Smart search, analyzing your vibe with 💖',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const _RecommendedPlaceItem(
+                      index: 1,
+                      name: 'The Garden',
+                      tags: ['Nhà hàng', 'Cafe', 'Thoải mái'],
+                      distance: '0.5 km',
+                    ),
+                    const SizedBox(height: 14),
+                    const _RecommendedPlaceItem(
+                      index: 2,
+                      name: 'Moonlight Ramen',
+                      tags: ['Nhật Bản', 'Yêu thích', 'Ramen'],
+                      distance: '0.7 km',
+                    ),
+                    const SizedBox(height: 14),
+                    const _RecommendedPlaceItem(
+                      index: 3,
+                      name: 'B2Q Saigon',
+                      tags: ['Bar', 'Lounge', 'Nhạc chill'],
+                      distance: '0.9 km',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // === Quick Options ===
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _QuickOptionChip(
+                    label: 'Chỉ có non-spicy options',
+                    onTap: () => _sendMessage('Chỉ có non-spicy options'),
+                  ),
+                  _QuickOptionChip(
+                    label: 'More romantic & quiet',
+                    onTap: () => _sendMessage('More romantic & quiet'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // === Spacer to push the text field to the bottom ===
+              const Spacer(),
+
+              // === Chat Input ===
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _chatController,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'What\'s your vibe today?',
+                          hintStyle: TextStyle(
+                            color: Colors.black54,
+                            fontSize: 14,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onSubmitted: _sendMessage,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _sendMessage(_chatController.text),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4050),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.send,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
         ),
       ),
     );
   }
-
-  Widget _buildRecommendationSummary() {
-    return _buildAssistantBubble(
-      'Fidee chọn nhanh các quán vừa ngon vừa hợp túi tiền:\n'
-      '1. Sân Vườn Cafe - 0,3 km - yên tĩnh, đẹp mắt\n'
-      '2. Ramen Ánh Trăng - 0,8 km - ấm cúng, lãng mạn\n'
-      '3. Bún Chả Góc Phố - 0,5 km - đậm vị địa phương\n'
-      'Một vài bạn của bạn từng ghé các nơi này và đánh giá khá tốt.',
-    );
-  }
-
-  Widget _buildQuickFilters() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      alignment: WrapAlignment.center,
-      children: [
-        _QuickOptionChip(
-          label: 'Chỉ món không cay',
-          onTap: () => _sendMessage('Chỉ món không cay'),
-        ),
-        _QuickOptionChip(
-          label: 'Lãng mạn và yên tĩnh hơn',
-          onTap: () => _sendMessage('Lãng mạn và yên tĩnh hơn'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInputBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _chatController,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Hôm nay bạn muốn vibe thế nào?',
-                  hintStyle: TextStyle(
-                    color: Color(0xFFB6B6B6),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 4),
-                ),
-                onSubmitted: _sendMessage,
-              ),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.image_outlined, color: Color(0xFFC8C8C8)),
-              visualDensity: VisualDensity.compact,
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.mic_none_rounded, color: Color(0xFFC8C8C8)),
-              visualDensity: VisualDensity.compact,
-            ),
-            IconButton(
-              onPressed: () => _sendMessage(_chatController.text),
-              icon: const Icon(Icons.send_rounded, color: Color(0xFFEF4050)),
-              visualDensity: VisualDensity.compact,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-Widget _buildAssistantBubble(String text) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF0F0F0),
-      borderRadius: BorderRadius.circular(22),
-    ),
-    child: Text(
-      text,
-      style: const TextStyle(
-        color: Color(0xFF4A4A4A),
-        fontSize: 14,
-        height: 1.45,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-  );
-}
-
-Widget _buildUserBubble(String text) {
-  return Container(
-    constraints: const BoxConstraints(maxWidth: 280),
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEF4050),
-      borderRadius: BorderRadius.circular(999),
-    ),
-    child: Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  );
 }
 
 class _QuickOptionChip extends StatelessWidget {
@@ -345,17 +351,18 @@ class _QuickOptionChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFD8DB),
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
           style: const TextStyle(
-            color: Color(0xFFEF4050),
+            color: Colors.black,
             fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -363,151 +370,89 @@ class _QuickOptionChip extends StatelessWidget {
   }
 }
 
-class _RecommendationCard extends StatelessWidget {
-  final _Recommendation recommendation;
+class _RecommendedPlaceItem extends StatelessWidget {
+  final int index;
+  final String name;
+  final List<String> tags;
+  final String distance;
 
-  const _RecommendationCard({required this.recommendation});
+  const _RecommendedPlaceItem({
+    required this.index,
+    required this.name,
+    required this.tags,
+    required this.distance,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE7E7E7)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$index.',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/land_spot.png',
-                  width: 68,
-                  height: 68,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                left: 6,
-                bottom: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(999),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, color: Color(0xFFFFD166), size: 10),
-                      const SizedBox(width: 3),
-                      Text(
-                        recommendation.rating,
-                        style: const TextStyle(
+                  Text(
+                    distance,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: tags
+                    .map(
+                      (tag) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
                           color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    )
+                    .toList(),
               ),
             ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  recommendation.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF2F2F2F),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  recommendation.category,
-                  style: const TextStyle(
-                    color: Color(0xFF8C8C8C),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    _MiniAction(label: 'Đang mở cửa', filled: false),
-                    _MiniAction(label: 'Xem đường đi', filled: true),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                recommendation.distance,
-                style: const TextStyle(
-                  color: Color(0xFF2F2F2F),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                recommendation.duration,
-                style: const TextStyle(
-                  color: Color(0xFF2F2F2F),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniAction extends StatelessWidget {
-  final String label;
-  final bool filled;
-
-  const _MiniAction({required this.label, required this.filled});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: filled ? const Color(0xFFEF4050) : const Color(0xFFFFEFF0),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: filled ? Colors.white : const Color(0xFFEF4050),
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
         ),
-      ),
+      ],
     );
   }
 }
-
-
-

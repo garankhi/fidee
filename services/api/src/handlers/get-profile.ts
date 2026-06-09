@@ -27,7 +27,7 @@ export const handler = async (
 
     // 2. Fetch Gamification
     const gamificationResult = await query(
-      `SELECT level, xp, coins, current_streak, title FROM user_gamification WHERE user_id = $1`,
+      'SELECT level, xp, coins, current_streak, title FROM user_gamification WHERE user_id = $1',
       [userId]
     );
     const gRow = gamificationResult.rows[0] || { level: 1, xp: 0, coins: 0, current_streak: 0, title: null };

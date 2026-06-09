@@ -74,7 +74,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const limit = QUOTA_LIMITS[plan];
 
     const countRes = await query(
-      `SELECT COUNT(*) as count FROM place_candidates WHERE created_by = $1 AND DATE(created_at) = CURRENT_DATE`,
+      'SELECT COUNT(*) as count FROM place_candidates WHERE created_by = $1 AND DATE(created_at) = CURRENT_DATE',
       [userId],
     );
     const usedToday = parseInt(countRes.rows[0].count as string, 10);

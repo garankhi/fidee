@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/place_provider.dart';
+import 'camera_screen.dart';
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
   final String placeId;
@@ -127,13 +128,27 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildBottomButton(
-                    Icons.camera_alt,
-                    'Check-in (${place.checkinCount})',
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const CameraScreen(),
+                        ),
+                      );
+                    },
+                    child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
                   ),
                 ),
                 const SizedBox(width: 15),
-                Expanded(child: _buildBottomButton(Icons.edit, 'Đánh giá')),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      _showRatingBottomSheet();
+                    },
+                    child: _buildBottomButton(Icons.edit, 'Đánh giá'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -155,8 +170,8 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       height: 220,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        image: DecorationImage(
-          image: NetworkImage(coverUrl),
+        image: const DecorationImage(
+          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600'),
           fit: BoxFit.cover,
         ),
       ),
@@ -453,53 +468,52 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   item['mediaId']?.toString() ??
                   'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
 
-              return Container(
-                width: 130,
-                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                return Container(
+                  width: 130,
+                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['userName']?.toString() ?? 'Ẩn danh',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          checkinPhoto,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        item['createdAt']?.toString() ?? '',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['name']?.toString() ?? '',
                         style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            checkinPhoto,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Text(
+                          item['createdAt']?.toString() ?? '',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
             },
           ),
         ),
@@ -566,9 +580,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage(
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-                ),
+                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'),
               ),
 
               const SizedBox(width: 10),
@@ -765,6 +777,104 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showRatingBottomSheet() {
+    int rating = 0;
+    final TextEditingController commentController = TextEditingController();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Đánh giá quán',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        5,
+                        (index) => GestureDetector(
+                          onTap: () => setState(() => rating = index + 1),
+                          child: Icon(
+                            index < rating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 40,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: commentController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: 'Chia sẻ trải nghiệm của bạn...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (rating > 0) {
+                            // TODO: Submit rating
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Cảm ơn đánh giá của bạn!')),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF484F),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Gửi đánh giá',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

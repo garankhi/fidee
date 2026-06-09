@@ -25,8 +25,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isUploading = false;
 
   String _getInitials(String firstName, String lastName) {
-    final first = firstName.trim().isNotEmpty ? firstName.trim().substring(0, 1) : '';
-    final last = lastName.trim().isNotEmpty ? lastName.trim().substring(0, 1) : '';
+    final first = firstName.trim().isNotEmpty
+        ? firstName.trim().substring(0, 1)
+        : '';
+    final last = lastName.trim().isNotEmpty
+        ? lastName.trim().substring(0, 1)
+        : '';
     if (first.isEmpty && last.isEmpty) return 'U';
     return '$first$last'.toUpperCase();
   }
@@ -57,14 +61,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // 1. Get S3 Presigned Post URL from Backend
       final presignedResponse = await http.post(
         Uri.parse('${Config.apiBaseUrl}/media/avatar'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'contentType': contentType,
-          'contentLength': length,
-        }),
+        headers: {'Authorization': token, 'Content-Type': 'application/json'},
+        body: jsonEncode({'contentType': contentType, 'contentLength': length}),
       );
 
       if (presignedResponse.statusCode != 200) {
@@ -94,10 +92,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final cdnUrl = presignedData['cdnUrl'] as String?;
       final String fileUrl;
       if (cdnUrl != null && cdnUrl.isNotEmpty) {
-        fileUrl = '$cdnUrl/avatars/$mediaId.${extension == 'png' ? 'png' : 'jpg'}';
+        fileUrl =
+            '$cdnUrl/avatars/$mediaId.${extension == 'png' ? 'png' : 'jpg'}';
       } else {
         final s3Domain = uploadUrl.split('//')[1].split('/')[0];
-        fileUrl = 'https://$s3Domain/avatars/$mediaId.${extension == 'png' ? 'png' : 'jpg'}';
+        fileUrl =
+            'https://$s3Domain/avatars/$mediaId.${extension == 'png' ? 'png' : 'jpg'}';
       }
 
       // 4. Update picture standard attribute in Cognito and local state
@@ -112,13 +112,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           );
         }
       } else {
-        throw Exception(updateResult.errorMessage ?? 'Cập nhật profile thất bại');
+        throw Exception(
+          updateResult.errorMessage ?? 'Cập nhật profile thất bại',
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi upload: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi upload: ${e.toString()}')));
       }
     } finally {
       if (mounted) {
@@ -132,7 +134,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String lastName,
     required String preferredUsername,
   }) async {
-    return ref.read(authControllerProvider.notifier).updateProfile(
+    return ref
+        .read(authControllerProvider.notifier)
+        .updateProfile(
           firstName: firstName,
           lastName: lastName,
           preferredUsername: preferredUsername,
@@ -172,16 +176,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     // Watch AuthState & FriendsState to rebuild reactively
-    final authService = ref.watch(authServiceProvider);
+    final authState = ref.watch(authControllerProvider).valueOrNull;
     final friendsState = ref.watch(friendsControllerProvider);
 
-    final firstName = authService.firstName ?? '';
-    final lastName = authService.lastName ?? '';
-    final fullNameList = [firstName, lastName].where((s) => s.trim().isNotEmpty).toList();
-    final fullName = fullNameList.isEmpty ? 'Fidee User' : fullNameList.join(' ');
-    final preferredUsername = authService.preferredUsername ?? 'user';
-    final tier = authService.tier == UserTier.pro ? 'Premium' : 'Free';
-    final since = authService.since ?? '2026';
+    final firstName = authState?.firstName ?? '';
+    final lastName = authState?.lastName ?? '';
+    final fullNameList = [
+      firstName,
+      lastName,
+    ].where((name) => name.trim().isNotEmpty).toList();
+    final fullName = fullNameList.isEmpty
+        ? 'Fidee User'
+        : fullNameList.join(' ');
+    final preferredUsername = authState?.preferredUsername ?? 'user';
+    final tier = authState?.tier == UserTier.pro ? 'Premium' : 'Free';
+    final since = authState?.since ?? '2026';
+    final avatarUrl = authState?.avatarUrl;
     final initials = _getInitials(firstName, lastName);
 
     // Apply Light Mode Theme manually to keep screen look clean & consistent with Figma light theme
@@ -191,7 +201,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         scaffoldBackgroundColor: Colors.white,
         primaryColor: const Color(0xFFEF4050),
         textTheme: const TextTheme(
-          titleLarge: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          titleLarge: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
           bodyLarge: TextStyle(color: Colors.black87),
           bodyMedium: TextStyle(color: Colors.black54),
         ),
@@ -274,16 +287,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                               ],
                               color: const Color(0xFFEF4050),
-                              image: authService.avatarUrl != null && authService.avatarUrl!.isNotEmpty
+                              image: avatarUrl != null && avatarUrl.isNotEmpty
                                   ? DecorationImage(
-                                      image: authService.avatarUrl!.startsWith('http')
-                                          ? NetworkImage(authService.avatarUrl!) as ImageProvider
-                                          : FileImage(File(authService.avatarUrl!)),
+                                      image: avatarUrl.startsWith('http')
+                                          ? NetworkImage(avatarUrl)
+                                                as ImageProvider
+                                          : FileImage(File(avatarUrl)),
                                       fit: BoxFit.cover,
                                     )
                                   : null,
                             ),
-                            child: authService.avatarUrl == null || authService.avatarUrl!.isEmpty
+                            child: avatarUrl == null || avatarUrl.isEmpty
                                 ? Center(
                                     child: Text(
                                       initials,
@@ -434,13 +448,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4050),
                         borderRadius: BorderRadius.circular(99),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFEF4050).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFFEF4050,
+                            ).withValues(alpha: 0.15),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -471,73 +490,79 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       )
                     : friendsState.friends.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Chưa có bạn bè. Hãy kết nối thêm!',
-                              style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 13,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: friendsState.friends.length,
-                            itemBuilder: (context, index) {
-                              final friend = friendsState.friends[index];
-                              final friendInitials = friend.initials;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 18.0),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: const Color(0xFFFFD4DA),
-                                        image: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
-                                            ? DecorationImage(
-                                                image: NetworkImage(friend.avatarUrl!),
-                                                fit: BoxFit.cover,
-                                              )
-                                            : null,
-                                      ),
-                                      child: friend.avatarUrl == null || friend.avatarUrl!.isEmpty
-                                          ? Center(
-                                              child: Text(
-                                                friendInitials,
-                                                style: const TextStyle(
-                                                  color: Color(0xFFEF4050),
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 18,
-                                                ),
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    SizedBox(
-                                      width: 68,
-                                      child: Text(
-                                        friend.name,
-                                        style: const TextStyle(
-                                          color: Color(0xFF151515),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                    ? Center(
+                        child: Text(
+                          'Chưa có bạn bè. Hãy kết nối thêm!',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
                           ),
+                        ),
+                      )
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: friendsState.friends.length,
+                        itemBuilder: (context, index) {
+                          final friend = friendsState.friends[index];
+                          final friendInitials = friend.initials;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 18.0),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFFFFD4DA),
+                                    image:
+                                        friend.avatarUrl != null &&
+                                            friend.avatarUrl!.isNotEmpty
+                                        ? DecorationImage(
+                                            image: NetworkImage(
+                                              friend.avatarUrl!,
+                                            ),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                  ),
+                                  child:
+                                      friend.avatarUrl == null ||
+                                          friend.avatarUrl!.isEmpty
+                                      ? Center(
+                                          child: Text(
+                                            friendInitials,
+                                            style: const TextStyle(
+                                              color: Color(0xFFEF4050),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: 68,
+                                  child: Text(
+                                    friend.name,
+                                    style: const TextStyle(
+                                      color: Color(0xFF151515),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
               const SizedBox(height: 40),
               SizedBox(
@@ -588,7 +613,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     if (confirm == true) {
                       await ref.read(authControllerProvider.notifier).signOut();
                       if (context.mounted) {
-                        Navigator.of(context).popUntil((route) => route.isFirst);
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
                       }
                     }
                   },
@@ -619,5 +646,3 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
-
-

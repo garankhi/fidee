@@ -79,7 +79,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     let cursorFilter = '';
     const params: any[] = [placeId, limit + 1];
     if (cursor) {
-      cursorFilter = `AND r.created_at < $3`;
+      cursorFilter = 'AND r.created_at < $3';
       params.push(cursor);
     }
 

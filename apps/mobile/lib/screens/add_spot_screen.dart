@@ -1448,17 +1448,26 @@ class _ChipWrap extends StatelessWidget {
       runSpacing: 8,
       children: options
           .map((String option) {
-            final bool active = selected.contains(option);
-            final bool add = option.startsWith('+');
+            final bool isAddButton = option.startsWith('+');
+            final bool active = !isAddButton && selected.contains(option);
             return GestureDetector(
-              onTap: () => onToggle(option),
+              onTap: () {
+                if (isAddButton) {
+                  // TODO: Show add custom option dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Chức năng thêm tùy chỉnh đang phát triển')),
+                  );
+                } else {
+                  onToggle(option);
+                }
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 padding: EdgeInsets.fromLTRB(active ? 10 : 15, 8, 15, 8),
                 decoration: BoxDecoration(
                   color: active
                       ? _AddSpotScreenState._accent
-                      : add
+                      : isAddButton
                       ? _AddSpotScreenState._field
                       : Colors.white,
                   borderRadius: BorderRadius.circular(999),
@@ -1483,7 +1492,7 @@ class _ChipWrap extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (active) ...[
+                    if (active && !isAddButton) ...[
                       const Icon(
                         Icons.check_rounded,
                         color: Colors.white,
@@ -1496,7 +1505,7 @@ class _ChipWrap extends StatelessWidget {
                       style: TextStyle(
                         color: active
                             ? Colors.white
-                            : add
+                            : isAddButton
                             ? _AddSpotScreenState._text
                             : _AddSpotScreenState._muted,
                         fontSize: 12,

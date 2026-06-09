@@ -2,6 +2,18 @@ import React, { useState } from 'react';
 import { loginAdmin } from './cognitoService';
 import { navigateToPath } from '../../navigation';
 
+function getLoginErrorDetails(error: unknown) {
+  if (typeof error !== 'object' || error === null) {
+    return { code: null, message: 'Đã xảy ra lỗi không xác định.' };
+  }
+
+  const details = error as { code?: unknown; message?: unknown };
+  return {
+    code: typeof details.code === 'string' ? details.code : null,
+    message: typeof details.message === 'string' ? details.message : 'Đã xảy ra lỗi không xác định.',
+  };
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,15 +34,16 @@ export default function LoginPage() {
       await loginAdmin(email, password);
       // Đăng nhập thành công, điều hướng về trang chủ
       navigateToPath('/admin');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Đăng nhập thất bại:', err);
+      const { code, message: errorMessage } = getLoginErrorDetails(err);
       // Chuyển đổi mã lỗi Cognito sang tiếng Việt thân thiện hơn
-      let message = err.message || 'Đã xảy ra lỗi không xác định.';
-      if (err.code === 'NotAuthorizedException') {
+      let message = errorMessage;
+      if (code === 'NotAuthorizedException') {
         message = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
-      } else if (err.code === 'UserNotFoundException') {
+      } else if (code === 'UserNotFoundException') {
         message = 'Tài khoản này không tồn tại trên hệ thống.';
-      } else if (err.code === 'UserNotConfirmedException') {
+      } else if (code === 'UserNotConfirmedException') {
         message = 'Tài khoản chưa được xác nhận. Vui lòng kiểm tra email của bạn.';
       }
       setErrorMsg(message);

@@ -133,11 +133,11 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                         controller: _searchCtrl,
                         decoration: const InputDecoration(
                           hintText: 'Tìm kiếm bạn bè...',
-                          hintStyle: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
+                          hintStyle: TextStyle(color: Color(0xFFEF484F), fontSize: 14),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 10),
                         ),
-                        style: const TextStyle(color: Colors.black87, fontSize: 14),
+                        style: const TextStyle(color: Color(0xFFEF484F), fontSize: 14),
                       ),
                     ),
                     if (_searchCtrl.text.isNotEmpty)

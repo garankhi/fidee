@@ -47,6 +47,8 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   _UploadStatus _uploadStatus = _UploadStatus.idle;
   List<NearbyPlace> _nearbySpots = [];
   SelectedPlaceTag? _selectedPlace;
+  bool _isLoadingNearbySpots = false;
+  String? _nearbySpotsError;
 
   // Data cho các caption
   String _timeString = '00:00';
@@ -65,6 +67,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   void initState() {
     super.initState();
     _startClock();
+    _loadNearbySpots();
   }
 
 
@@ -90,9 +93,43 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     });
   }
   List<double> _placeLookupCoordinates() {
+    final gps = widget.gpsCoordinates;
+    if (gps != null && gps.length >= 2) {
+      return [gps[0], gps[1]];
+    }
+
     final locationService = ref.read(locationControllerProvider).valueOrNull;
-    final position = locationService?.currentPosition ?? LocationService.defaultLocation;
+    final position =
+        locationService?.currentPosition ?? LocationService.defaultLocation;
     return [position.latitude, position.longitude];
+  }
+
+  Future<void> _loadNearbySpots() async {
+    setState(() {
+      _isLoadingNearbySpots = true;
+      _nearbySpotsError = null;
+    });
+
+    try {
+      final spots = await _fetchNearbySpots();
+      if (!mounted) return;
+
+      setState(() {
+        _nearbySpots = spots;
+        if (_selectedPlace == null && spots.isNotEmpty) {
+          _selectedPlace = SelectedPlaceTag.fromNearby(spots.first);
+        }
+        _isLoadingNearbySpots = false;
+      });
+    } catch (error) {
+      debugPrint('Error loading nearby spots: $error');
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingNearbySpots = false;
+        _nearbySpotsError = 'Không tải được địa điểm gần đây';
+      });
+    }
   }
 
   Future<List<NearbyPlace>> _fetchNearbySpots() async {
@@ -103,6 +140,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     final res = await nearbyService.fetchNearby(
       lat: coordinates[0],
       lng: coordinates[1],
+      mediaId: 'send_image_${DateTime.now().millisecondsSinceEpoch}',
       radius: 1000,
     );
 
@@ -235,51 +273,19 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   }
 
   void _showPlacePickerSheet({String? errorMessage}) {
-    var isLoading = _nearbySpots.isEmpty;
-    var places = List<NearbyPlace>.from(_nearbySpots);
-    var sheetError = errorMessage;
-    var didStartLoad = false;
-
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            if (!didStartLoad) {
-                didStartLoad = true;
-                Future<void>(() async {
-                  try {
-                    final loadedPlaces = _mergeNearbyPlaces(
-                      await _fetchNearbySpots(),
-                    );
-                  if (!mounted) return;
-                  setState(() => _nearbySpots = loadedPlaces);
-                  setSheetState(() {
-                    places = loadedPlaces;
-                    isLoading = false;
-                  });
-                } catch (e) {
-                  debugPrint('Error loading nearby spots: $e');
-                  setSheetState(() {
-                    isLoading = false;
-                    sheetError ??= 'Không tải được địa điểm gần đây';
-                  });
-                }
-              });
-            }
-
-              return PlacePickerSheetContent(
-                places: places,
-                isLoading: isLoading,
-                errorMessage: sheetError,
-                onSelected: (place) {
-                  _selectPlaceTag(place);
-                  Navigator.pop(context);
-                },
-              onCreateCustomPlace: _createCustomPlaceTag,
-            );
+        return PlacePickerSheetContent(
+          places: _mergeNearbyPlaces(_nearbySpots),
+          isLoading: _isLoadingNearbySpots,
+          errorMessage: errorMessage ?? _nearbySpotsError,
+          onCreateCustomPlace: _createCustomPlaceTag,
+          onSelected: (place) {
+            _selectPlaceTag(place);
+            Navigator.pop(context);
           },
         );
       },
@@ -695,6 +701,55 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                           ),
                                         ],
                                       ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Venue label (clickable)
+                          Positioned(
+                            top: 60,
+                            left: 16,
+                            child: GestureDetector(
+                              onTap: _showPlacePickerSheet,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.25),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _selectedPlace?.displayName ?? 'Chọn địa điểm',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'SF Pro',
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),

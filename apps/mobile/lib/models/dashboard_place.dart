@@ -37,16 +37,10 @@ class DashboardPlace {
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? 'Chưa cập nhật tên',
       category: json['category'] as String? ?? 'Restaurant',
-
-      // Parse rating an toàn, ưu tiên lấy số thực từ hệ thống
-      rating: double.tryParse(json['avg_rating']?.toString() ?? '') ??
-          double.tryParse(metadata['rating']?.toString() ?? '') ?? 4.0,
-
-      distanceKm: calculatedKm, // Đã quy đổi chuẩn (Ví dụ: 300m -> 0.3km)
-      imageUrl: validImageUrl,
-
-      // Khớp chính xác với trường checkin_count mà hàm Lambda backend trả về
-      friendsCount: int.tryParse(json['checkin_count']?.toString() ?? '') ?? 1,
+      rating: double.tryParse(metadata['rating']?.toString() ?? '4.9') ?? 4.9,
+      distanceKm: double.tryParse(json['distance_meters']?.toString() ?? '300') ?? 0.3,
+      imageUrl: metadata['image_url'] as String? ?? 'https://placehold.co/265x220',
+      friendsCount: int.tryParse(json['checkin_count']?.toString() ?? '10') ?? 10,
     );
   }
 }

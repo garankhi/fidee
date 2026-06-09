@@ -41,7 +41,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // 1. Verify candidate exists
-    const fetchCandidateSql = `SELECT id, name, created_by FROM place_candidates WHERE id = $1;`;
+    const fetchCandidateSql = 'SELECT id, name, created_by FROM place_candidates WHERE id = $1;';
     const candidateResult = await query(fetchCandidateSql, [candidateId]);
     if (candidateResult.rows.length === 0) {
       return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };
@@ -68,7 +68,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // 3. Re-point check-ins: find check-ins by the candidate creator
     //    near the candidate location and update their place_id
     //    (This is a best-effort merge; in practice there may be 0 check-ins)
-    const candidateLocSql = `SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM place_candidates WHERE id = $1;`;
+    const candidateLocSql = 'SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM place_candidates WHERE id = $1;';
     const locResult = await query(candidateLocSql, [candidateId]);
     if (locResult.rows.length > 0) {
       const { lat, lng } = locResult.rows[0];
