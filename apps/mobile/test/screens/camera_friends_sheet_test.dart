@@ -14,8 +14,11 @@ void main() {
   );
 
   Widget buildContent({
+    List<FriendProfile> requests = const <FriendProfile>[],
     Future<List<FriendSearchResult>> Function(String username)? onSearchUsers,
     Future<bool> Function(String userId)? onAddFriend,
+    Future<bool> Function(String userId)? onAcceptFriend,
+    Future<bool> Function(String userId)? onDeclineFriend,
     Future<bool> Function(String userId)? onHideFriend,
     Future<bool> Function(String userId)? onUnfriend,
     Future<bool> Function(String userId)? onBlockFriend,
@@ -24,9 +27,12 @@ void main() {
       home: Scaffold(
         body: CameraFriendsSheetContent(
           friends: friends,
+          requests: requests,
           isLoading: false,
           onSearchUsers: onSearchUsers ?? (_) async => const <FriendSearchResult>[],
           onAddFriend: onAddFriend ?? (_) async => true,
+          onAcceptFriend: onAcceptFriend ?? (_) async => true,
+          onDeclineFriend: onDeclineFriend ?? (_) async => true,
           onHideFriend: onHideFriend ?? (_) async => true,
           onUnfriend: onUnfriend ?? (_) async => true,
           onBlockFriend: onBlockFriend ?? (_) async => true,
@@ -104,5 +110,54 @@ void main() {
     await tester.pump();
 
     expect(addedUserId, 'user-2');
+  });
+
+  testWidgets('shows pending friend requests and accepts one', (tester) async {
+    String? acceptedUserId;
+
+    await tester.pumpWidget(
+      buildContent(
+        requests: const <FriendProfile>[
+          FriendProfile(id: 'request-1', name: 'Lan Tran', handle: 'lan'),
+        ],
+        onAcceptFriend: (userId) async {
+          acceptedUserId = userId;
+          return true;
+        },
+      ),
+    );
+
+    expect(find.text('Lời mời kết bạn'), findsOneWidget);
+    expect(find.text('Lan Tran'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('friend-request-accept-request-1')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(acceptedUserId, 'request-1');
+    expect(find.text('Đã chấp nhận lời mời'), findsOneWidget);
+  });
+
+  testWidgets('declines a pending friend request', (tester) async {
+    String? declinedUserId;
+
+    await tester.pumpWidget(
+      buildContent(
+        requests: const <FriendProfile>[
+          FriendProfile(id: 'request-2', name: 'Bao Le', handle: 'bao'),
+        ],
+        onDeclineFriend: (userId) async {
+          declinedUserId = userId;
+          return true;
+        },
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('friend-request-decline-request-2')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(declinedUserId, 'request-2');
+    expect(find.text('Đã từ chối lời mời'), findsOneWidget);
   });
 }

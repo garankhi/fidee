@@ -10,6 +10,7 @@ import 'package:native_exif/native_exif.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../features/auth/camera_checkin_feed_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../services/auth_service.dart';
 import '../services/camera_startup_permission_flow.dart';
@@ -17,6 +18,8 @@ import '../services/gallery_asset_picker_service.dart';
 import '../services/gallery_permission_service.dart';
 import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
+import 'camera_audience_selector.dart';
+import 'camera_checkin_feed.dart';
 import 'camera_friends_sheet.dart';
 import 'gallery_asset_picker_sheet.dart';
 import 'gallery_permission_sheet.dart';
@@ -47,6 +50,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   List<Uint8List> _galleryThumbnails = const <Uint8List>[];
   GalleryPermissionStatus _galleryPermissionStatus =
       GalleryPermissionStatus.notDetermined;
+  late final ScrollController _scrollController;
+  bool _isFeedHeaderMode = false;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -54,6 +59,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_handleCameraScroll);
     unawaited(_initCameraAndGalleryPreview());
 
     _animationController = AnimationController(
@@ -72,6 +78,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         _isLoading = value;
       });
     }
+  }
+
+  void _handleCameraScroll() {
+    if (!mounted || !_scrollController.hasClients) return;
+
+    final threshold = MediaQuery.sizeOf(context).height * 0.45;
+    final nextValue = _scrollController.offset > threshold;
+    if (nextValue == _isFeedHeaderMode) return;
+
+    setState(() {
+      _isFeedHeaderMode = nextValue;
+    });
   }
 
   Future<void> _loadGalleryPreview() async {
@@ -278,6 +296,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   @override
   void dispose() {
+    _scrollController.removeListener(_handleCameraScroll);
+    _scrollController.dispose();
     _animationController.dispose();
     _controller?.dispose();
     super.dispose();
@@ -295,14 +315,25 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
 
     final friendsState = ref.watch(friendsControllerProvider);
+    final feedState = ref.watch(cameraCheckinFeedControllerProvider);
+    final feedController = ref.read(cameraCheckinFeedControllerProvider.notifier);
+    final cameraViewportHeight =
+        MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          SafeArea(
-            child: Column(
-              children: [
+            SafeArea(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: cameraViewportHeight,
+                      child: Column(
+                        children: [
                 // Top Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -327,23 +358,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           ),
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () => showCameraFriendsSheet(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.people,
-                                color: Colors.white,
-                                size: 16,
+                        _isFeedHeaderMode
+                            ? CameraAudienceSelector(
+                                selectedAudience: feedState.audience,
+                                friends: friendsState.friends,
+                                onSelected: feedController.selectAudience,
+                              )
+                            : _FriendsCountPill(
+                                count: friendsState.friends.length,
+                                onTap: () => showCameraFriendsSheet(context),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -678,10 +701,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-              ],
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    ),
+                    const CameraCheckinFeed(),
+                  ],
+                ),
+              ),
             ),
-          ),
 
           if (_isLoading)
             Container(
@@ -716,6 +744,40 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _FriendsCountPill extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _FriendsCountPill({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.people, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              '$count người bạn',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
