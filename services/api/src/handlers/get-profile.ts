@@ -30,7 +30,20 @@ export const handler = async (
       'SELECT level, xp, coins, current_streak, title FROM user_gamification WHERE user_id = $1',
       [userId]
     );
-    const gRow = gamificationResult.rows[0] || { level: 1, xp: 0, coins: 0, current_streak: 0, title: null };
+    type GamificationRow = {
+      level: number;
+      xp: number;
+      coins: number;
+      current_streak: number;
+      title: string | null;
+    };
+    const gRow = (gamificationResult.rows[0] || {
+      level: 1,
+      xp: 0,
+      coins: 0,
+      current_streak: 0,
+      title: null,
+    }) as GamificationRow;
 
     // 3. Fetch Badges
     const badgesResult = await query(

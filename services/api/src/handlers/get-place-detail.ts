@@ -68,8 +68,24 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     let isCandidate = false;
     let targetCol = 'place_id';
 
+    function parsePlaceMetadata(metadata: unknown) {
+      if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+        const parsed = metadata as Record<string, unknown>;
+        return {
+          vibes: Array.isArray(parsed.vibes)
+            ? parsed.vibes.filter((item): item is string => typeof item === 'string')
+            : [],
+          services: Array.isArray(parsed.services)
+            ? parsed.services.filter((item): item is string => typeof item === 'string')
+            : [],
+        };
+      }
+      return { vibes: [], services: [] };
+    }
+
     if (placeResult.rows.length > 0) {
       const p = placeResult.rows[0];
+      const pMetadata = parsePlaceMetadata(p.metadata);
       placeData = {
         id: p.id,
         name: p.name,
@@ -91,8 +107,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         isFeatured: p.is_featured,
         isVerified: p.is_verified,
         checkinCount: p.checkin_count,
-        vibes: p.metadata?.vibes || [],
-        services: p.metadata?.services || [],
+        vibes: pMetadata.vibes,
+        services: pMetadata.services,
       };
     } else {
       // ── 2. Fallback to candidate ──────────────────────────────
@@ -127,6 +143,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       isCandidate = true;
       targetCol = 'candidate_id';
       const c = candidateResult.rows[0];
+      const cMetadata = parsePlaceMetadata(c.metadata);
       placeData = {
         id: c.id,
         name: c.name,
@@ -148,8 +165,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         isFeatured: false,
         isVerified: false,
         checkinCount: c.checkin_count,
-        vibes: c.metadata?.vibes || [],
-        services: c.metadata?.services || [],
+        vibes: cMetadata.vibes,
+        services: cMetadata.services,
       };
     }
 

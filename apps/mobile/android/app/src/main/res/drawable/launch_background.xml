@@ -3,10 +3,10 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_color" />
 
-    <!-- Centered logo -->
+    <!-- Centered logo_fire -->
     <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/ic_launcher" />
+            android:src="@mipmap/logo_fire" />
     </item>
 </layer-list>

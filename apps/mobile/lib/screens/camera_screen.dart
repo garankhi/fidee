@@ -41,7 +41,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   bool _isFlashOn = false;
   bool _isLoading = false;
   late final GalleryPermissionService _galleryPermissionService =
-      const GalleryPermissionService();
+      GalleryPermissionService();
   late final GalleryPreviewService _galleryPreviewService =
       GalleryPreviewService(permissionService: _galleryPermissionService);
   List<Uint8List> _galleryThumbnails = const <Uint8List>[];

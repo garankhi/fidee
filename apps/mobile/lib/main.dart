@@ -57,13 +57,13 @@ class FideeApp extends ConsumerWidget {
     AsyncValue<AuthUiState> authState,
     AsyncValue<LocationService> locationState,
   ) {
-    // Còn loading ở bất kỳ provider nào và chưa có giá trị cũ → giữ SplashScreen
+    // Still loading on any provider without a previous value → hold on native splash
     if ((authState.isLoading && !authState.hasValue) ||
         (locationState.isLoading && !locationState.hasValue)) {
-      return const _SplashScreen();
+      return const SizedBox.expand();
     }
 
-    // Auth lỗi → về LoginPage
+    // Auth error → go to LoginPage
     if (authState.hasError) {
       return const LoginPage();
     }
@@ -71,10 +71,10 @@ class FideeApp extends ConsumerWidget {
     final state = authState.value!;
 
     if (state.authState == AuthState.authenticated) {
-      // Location đã resolve (hoặc lỗi được bỏ qua với fallback mặc định)
+      // Location resolved (or error dismissed with default fallback)
       final locationService = locationState.valueOrNull ?? LocationService();
 
-      // Nếu location chưa được cấp phép → hiển thị gate screen trước khi vào map
+      // If location permission not granted → show gate screen before entering map
       if (locationService.status != LocationStatus.granted) {
         return LocationGateScreen(locationService: locationService);
       }
@@ -94,21 +94,3 @@ class FideeApp extends ConsumerWidget {
   }
 }
 
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFEF4050),
-      body: Center(
-        child: Image(
-          image: AssetImage('assets/images/logo_fire.png'),
-          width: 260,
-          height: 260,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-}
