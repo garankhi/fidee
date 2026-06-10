@@ -2,6 +2,14 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { extractAuth, maskPhone, maskEmail } from '../middleware/auth';
 import { query } from '../db/client';
 
+type GamificationRow = {
+  level: number;
+  xp: number;
+  coins: number;
+  current_streak: number;
+  title: string | null;
+};
+
 /**
  * GET /profile — returns the authenticated user's profile from JWT claims & DB.
  * Protected by Cognito JWT Authorizer.
@@ -26,7 +34,7 @@ export const handler = async (
     const userRow = userResult.rows[0];
 
     // 2. Fetch Gamification
-    const gamificationResult = await query(
+    const gamificationResult = await query<GamificationRow>(
       'SELECT level, xp, coins, current_streak, title FROM user_gamification WHERE user_id = $1',
       [userId]
     );

@@ -7,6 +7,15 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
 };
 
+type PlaceMetadata = {
+  vibes?: unknown[];
+  services?: unknown[];
+};
+
+type PlaceDetailRow = Record<string, unknown> & {
+  metadata: PlaceMetadata | null;
+};
+
 /**
  * GET /places/{id} — BFF for Place Detail screen.
  *
@@ -62,7 +71,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       LEFT JOIN place_settings ps ON p.id = ps.place_id
       WHERE p.id = $1 AND (ps.status = 'APPROVED' OR ps.status IS NULL)
     `;
-    const placeResult = await query(placeSql, [placeId]);
+    const placeResult = await query<PlaceDetailRow>(placeSql, [placeId]);
 
     let placeData: any = null;
     let isCandidate = false;
@@ -119,7 +128,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         FROM place_candidates pc
         WHERE pc.id = $1
       `;
-      const candidateResult = await query(candidateSql, [placeId]);
+      const candidateResult = await query<PlaceDetailRow>(candidateSql, [placeId]);
       if (candidateResult.rows.length === 0) {
         return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Place not found' }) };
       }
