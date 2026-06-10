@@ -632,7 +632,7 @@ class _PlaceCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const Spacer(),
+                    const SizedBox(height: 8),
                         Text(
                           '${place.checkinCount} check-in',
                           overflow: TextOverflow.ellipsis,

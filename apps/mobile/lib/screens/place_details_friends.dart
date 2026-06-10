@@ -162,6 +162,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   // --- COMPONENT WIDGETS ---
 
   Widget _buildBannerCard(Place place) {
+    final coverUrl =
+        (place.photos.isNotEmpty && place.photos.first['mediaId'] != null)
+        ? place.photos.first['mediaId'].toString()
+        : 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600';
+
     return Container(
       width: double.infinity,
       height: 220,

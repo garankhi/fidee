@@ -470,13 +470,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                             ),
                           ),
                         ),
-                        feedItems: feedState.items,
-                        isFeedLoading: feedState.isLoading,
-                        isFeedLoadingMore: feedState.isLoadingMore,
-                        hasMore: feedState.hasMore,
-                        onLoadMore: feedController.loadMore,
-                        onFeedItemChanged: _handleFeedItemChanged,
-                        onFeedModeChanged: _handleFeedModeChanged,
                       ),
                     ],
                   ),
@@ -484,55 +477,27 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
                 const SizedBox(height: 4),
 
-                // Camera Preview (Square, Centered)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 36.0),
-                  child: AspectRatio(
-                    aspectRatio: 1 / 1,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CameraPreview(_controller!),
-                          // Flash Button
-                          Positioned(
-                            top: 16,
-                            left: 16,
-                            child: GestureDetector(
-                              onTap: _toggleFlash,
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 36),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: CameraViewfinderPager(
+                          cameraPreview: CameraPreview(_controller!),
+                          cameraOverlay: _CameraPreviewControls(
+                            isFlashOn: _isFlashOn,
+                            onToggleFlash: _toggleFlash,
                           ),
-                          // Zoom Button
-                          Positioned(
-                            top: 16,
-                            right: 16,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Text(
-                                '1x',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                          feedItems: feedState.items,
+                          isFeedLoading: feedState.isLoading,
+                          isFeedLoadingMore: feedState.isLoadingMore,
+                          hasMore: feedState.hasMore,
+                          onLoadMore: feedController.loadMore,
+                          onFeedItemChanged: _handleFeedItemChanged,
+                          onFeedModeChanged: _handleFeedModeChanged,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -663,7 +628,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
                 // Bottom Section Height Match
                 SizedBox(
-                  height: 105,
+                  height: 140,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -1146,7 +1111,7 @@ class _CameraSkeleton extends StatelessWidget {
 
           // Camera Viewfinder Placeholder
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 36.0),
+            padding: const EdgeInsets.symmetric(horizontal: 56.0),
             child: AspectRatio(
               aspectRatio: 1 / 1,
               child: Container(
@@ -1244,7 +1209,7 @@ class _CameraSkeleton extends StatelessWidget {
 
           // Bottom Bar Placeholders
           SizedBox(
-            height: 105,
+            height: 120,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.end,
