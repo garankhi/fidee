@@ -294,20 +294,23 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 const SizedBox(height: 24),
 
                 // === Category Chips ===
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: const [
-                    _CategoryChip(label: 'Hẹn hò'),
-                    _CategoryChip(label: 'Nhậu'),
-                    _CategoryChip(label: 'Họp làm'),
-                    _CategoryChip(label: 'Chill'),
-                    _CategoryChip(label: 'Lãng mạng'),
-                    _CategoryChip(label: 'Không gian'),
-                    _CategoryChip(label: 'Acoustic'),
-                    _CategoryChip(label: 'Cafe'),
-                    _CategoryChip(label: 'Ngọt ngào'),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: const [
+                      _CategoryChip(label: 'Hẹn hò'),
+                      _CategoryChip(label: 'Nhậu'),
+                      _CategoryChip(label: 'Họp làm'),
+                      _CategoryChip(label: 'Chill'),
+                      _CategoryChip(label: 'Lãng mạng'),
+                      _CategoryChip(label: 'Không gian'),
+                      _CategoryChip(label: 'Acoustic'),
+                      _CategoryChip(label: 'Cafe'),
+                      _CategoryChip(label: 'Ngọt ngào'),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 32),
 
@@ -594,31 +597,36 @@ class _PlaceCard extends StatelessWidget {
           // Tags
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: tags
-                  .map(
-                    (tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        tag,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: tags
+                    .map(
+                      (tag) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  )
-                  .toList(),
+                    )
+                    .toList(),
+              ),
             ),
           ),
           // Friend Avatars
