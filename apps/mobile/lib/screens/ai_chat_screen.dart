@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AiChatScreen extends StatefulWidget {
-  const AiChatScreen({super.key});
+  final String? initialMessage;
+
+  const AiChatScreen({super.key, this.initialMessage});
 
   @override
   State<AiChatScreen> createState() => _AiChatScreenState();
@@ -10,6 +12,15 @@ class AiChatScreen extends StatefulWidget {
 class _AiChatScreenState extends State<AiChatScreen> {
   final _chatController = TextEditingController();
   final List<String> _messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    final initialMessage = widget.initialMessage?.trim();
+    if (initialMessage != null && initialMessage.isNotEmpty) {
+      _messages.add(initialMessage);
+    }
+  }
 
   void _sendMessage(String value) {
     final message = value.trim();

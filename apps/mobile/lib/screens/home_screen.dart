@@ -6,11 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../features/auth/auth_providers.dart';
-import '../models/nearby_place.dart';
 import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
-import '../services/nearby_service.dart';
-import 'add_spot_screen.dart';
 import '../services/map_feed_service.dart';
 import 'ai_chat_screen.dart';
 import 'camera_screen.dart';
@@ -463,39 +460,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TopAddSpotButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _TopAddSpotButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add_location_alt_rounded,
-          color: Color(0xFFEF4050),
-          size: 22,
-        ),
       ),
     );
   }
