@@ -10,9 +10,33 @@ import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: FideeApp()));
+
+  final container = ProviderContainer();
+  await _initializeStartupServices(container);
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const FideeApp(),
+    ),
+  );
+}
+
+Future<void> _initializeStartupServices(ProviderContainer container) async {
+  Future<void> settle(Future<Object?> future) async {
+    try {
+      await future;
+    } catch (_) {
+      // Providers retain their AsyncError so the app can render a fallback.
+    }
+  }
+
+  await Future.wait([
+    settle(container.read(authControllerProvider.future)),
+    settle(container.read(locationControllerProvider.future)),
+  ]);
 }
 
 class FideeApp extends ConsumerWidget {
