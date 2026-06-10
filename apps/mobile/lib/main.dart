@@ -1,30 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/auth/auth_providers.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/screens/complete_profile_page.dart';
-
 import 'screens/home_screen.dart';
 import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runApp(const ProviderScope(child: FideeApp()));
 }
 
-class FideeApp extends ConsumerWidget {
+bool shouldKeepNativeSplash(
+  AsyncValue<AuthUiState> authState,
+  AsyncValue<LocationService> locationState,
+) {
+  return (authState.isLoading && !authState.hasValue) ||
+      (locationState.isLoading && !locationState.hasValue);
+}
+
+class FideeApp extends ConsumerStatefulWidget {
   const FideeApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FideeApp> createState() => _FideeAppState();
+}
+
+class _FideeAppState extends ConsumerState<FideeApp> {
+  bool _nativeSplashRemoved = false;
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
 
     // Kick off location init ngay từ đầu, chạy song song với auth.
     // Riverpod sẽ cache kết quả (keepAlive), HomeScreen dùng lại mà không phải chờ.
     final locationState = ref.watch(locationControllerProvider);
+    final keepNativeSplash = shouldKeepNativeSplash(authState, locationState);
+
+    if (!keepNativeSplash) {
+      _removeNativeSplashAfterReadyFrame();
+    }
 
     return MaterialApp(
       title: 'Fidee',
@@ -45,22 +66,31 @@ class FideeApp extends ConsumerWidget {
           selectionHandleColor: Color(0xFFEF4050),
         ),
         fontFamily: 'SF Pro',
-
       ),
-      // Giữ SplashScreen cho đến khi CẢ auth VÀ location đã resolve.
-      // Luồng: SplashScreen (đỏ) → HomeScreen với map sẵn sàng, không có spinner trắng.
-      home: _buildHome(authState, locationState),
+      // Native splash stays on top until auth and location both resolve.
+      // Flutter renders a blank placeholder behind it to avoid a second splash screen.
+      home: _buildHome(authState, locationState, keepNativeSplash),
     );
+  }
+
+  void _removeNativeSplashAfterReadyFrame() {
+    if (_nativeSplashRemoved) {
+      return;
+    }
+
+    _nativeSplashRemoved = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
   }
 
   Widget _buildHome(
     AsyncValue<AuthUiState> authState,
     AsyncValue<LocationService> locationState,
+    bool keepNativeSplash,
   ) {
-    // Còn loading ở bất kỳ provider nào và chưa có giá trị cũ → giữ SplashScreen
-    if ((authState.isLoading && !authState.hasValue) ||
-        (locationState.isLoading && !locationState.hasValue)) {
-      return const _SplashScreen();
+    if (keepNativeSplash) {
+      return const SizedBox.expand();
     }
 
     // Auth lỗi → về LoginPage
@@ -91,24 +121,5 @@ class FideeApp extends ConsumerWidget {
     } else {
       return const LoginPage();
     }
-  }
-}
-
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFEF4050),
-      body: Center(
-        child: Image(
-          image: AssetImage('assets/images/logo_fire.png'),
-          width: 260,
-          height: 260,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
   }
 }
