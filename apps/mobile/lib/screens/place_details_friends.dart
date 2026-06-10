@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/auth_providers.dart';
 import '../features/auth/place_provider.dart';
+import '../services/place_interaction_service.dart';
 import 'camera_screen.dart';
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
@@ -170,8 +172,8 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       height: 220,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        image: const DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600'),
+        image: DecorationImage(
+          image: NetworkImage(coverUrl),
           fit: BoxFit.cover,
         ),
       ),
@@ -842,13 +844,33 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (rating > 0) {
-                            // TODO: Submit rating
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cảm ơn đánh giá của bạn!')),
-                            );
+                            try {
+                              await PlaceInteractionService(
+                                ref.read(authServiceProvider),
+                              ).createReview(
+                                targetId: widget.placeId,
+                                isCandidate: false,
+                                rating: rating,
+                                content: commentController.text,
+                              );
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Cảm ơn đánh giá của bạn!'),
+                                ),
+                              );
+                              await ref
+                                  .read(placeControllerProvider.notifier)
+                                  .fetchPlaceDetail(widget.placeId);
+                            } catch (error) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Gửi đánh giá thất bại: $error')),
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(

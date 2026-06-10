@@ -15,6 +15,7 @@ import '../models/selected_place_tag.dart';
 import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import '../services/place_candidate_service.dart';
+import '../services/place_interaction_service.dart';
 import '../services/upload_service.dart';
 import '../utils/error.dart';
 import 'camera_screen.dart';
@@ -231,11 +232,19 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       final uploadService = UploadService(authService: authService);
       final source = widget.source;
 
-      await uploadService.upload(
+      final mediaId = await uploadService.upload(
         imagePath: widget.imagePath,
         latitude: selectedPlace.lat,
         longitude: selectedPlace.lng,
         source: source,
+      );
+      await PlaceInteractionService(authService).createCheckin(
+        targetId: selectedPlace.id,
+        isCandidate: selectedPlace.placeId == null,
+        mediaId: mediaId,
+        latitude: selectedPlace.lat,
+        longitude: selectedPlace.lng,
+        caption: _messageController.text,
       );
 
       if (mounted) {

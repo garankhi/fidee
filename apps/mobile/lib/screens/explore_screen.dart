@@ -1,14 +1,14 @@
-import 'dart:developer' as developer;
+import 'dart:async';
 
-import 'package:fidee_mobile/screens/add_spot_screen.dart';
-import 'package:fidee_mobile/screens/ai_chat_screen.dart';
-import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/auth_providers.dart';
-import '../models/nearby_place.dart';
-import '../services/nearby_service.dart';
+import '../services/discovery_feed_service.dart';
+import '../services/place_search_service.dart';
+import 'add_spot_screen.dart';
+import 'ai_chat_screen.dart';
+import 'place_details_friends.dart';
 
 class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({super.key});
@@ -18,60 +18,17 @@ class ExploreScreen extends ConsumerStatefulWidget {
 }
 
 class _ExploreScreenState extends ConsumerState<ExploreScreen> {
-  List<NearbyPlace> _nearbySpots = [];
-  final TextEditingController _searchController = TextEditingController();
+  final _searchController = TextEditingController();
+  DiscoveryFeedData _feed = DiscoveryFeedData.empty();
+  List<DiscoveryPlace>? _searchResults;
+  bool _isLoading = true;
+  bool _isSearching = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadNearbySpots();
-  }
-
-  Future<void> _loadNearbySpots() async {
-    try {
-      final authService = ref.read(authServiceProvider);
-      final nearbyService = NearbyService(authService);
-      // Note: We don't have real location here, using default for demo
-      final res = await nearbyService.fetchNearby(
-        lat: 10.762892,
-        lng: 106.682586,
-        mediaId: 'explore_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      setState(() {
-        _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
-      });
-    } catch (error, stackTrace) {
-      developer.log(
-        'Failed to load nearby spots for explore add-spot suggestions.',
-        name: 'ExploreScreen',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
-  }
-
-  void _onAddSpot() {
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => AddSpotScreen(
-          spotSuggestions: _nearbySpots,
-          authService: ref.read(authServiceProvider),
-        ),
-      ),
-    );
-  }
-
-  void _onFilterTap() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => const _ExploreFilterSheet(),
-    );
+    unawaited(_loadFeed());
   }
 
   @override
@@ -80,422 +37,156 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     super.dispose();
   }
 
+  Future<void> _loadFeed() async {
+    final location = ref.read(locationControllerProvider).valueOrNull;
+    final service = DiscoveryFeedService(ref.read(authServiceProvider));
+    final feed = await service.fetchFeed(
+      lat: location?.currentPosition.latitude ?? 10.7769,
+      lng: location?.currentPosition.longitude ?? 106.7009,
+    );
+    if (!mounted) return;
+    setState(() {
+      _feed = feed;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _search() async {
+    final prompt = _searchController.text.trim();
+    if (prompt.isEmpty) {
+      setState(() {
+        _searchResults = null;
+        _error = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _error = null;
+    });
+    try {
+      final results = await const PlaceSearchService().search(prompt);
+      if (!mounted) return;
+      setState(() => _searchResults = results);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Chưa thể tìm kiếm lúc này. Hãy thử lại sau.');
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
+    }
+  }
+
+  void _openPlace(DiscoveryPlace place) {
+    if (place.isCandidate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Địa điểm này đang chờ được xác minh.')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => PlaceDetailsFriends(placeId: place.placeId),
+      ),
+    );
+  }
+
+  void _openAddSpot() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AddSpotScreen(
+          spotSuggestions: const [],
+          authService: ref.read(authServiceProvider),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // === Header: Back Button & Title ===
-                const SizedBox(height: 12),
-                Row(
+        child: RefreshIndicator(
+          color: const Color(0xFFEF4050),
+          onRefresh: _loadFeed,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
+                sliver: SliverList.list(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.arrow_back, color: Colors.black),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
+                    _Header(onBack: () => Navigator.pop(context)),
+                    const SizedBox(height: 18),
                     const Text(
-                      'Hôm nay ăn gì cho vibe?',
+                      'Hôm nay ăn gì cho hợp “vibe”?',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: Color(0xFF171717),
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // === Search Bar ===
-              Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, color: Color(0xFFEF4050)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Tìm kiếm, quán ăn...',
-                          hintStyle: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: _onFilterTap,
-                      child: Icon(Icons.filter_list, color: Colors.grey.shade600),
-                    ),
-                  ],
-                ),
-              ),
-                const SizedBox(height: 24),
-
-                // === "Chưa tìm được quán?" Banner ===
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFFEF4050).withValues(alpha: 0.1),
-                        const Color(0xFFEF4050).withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'CHƯA TÌM ĐƯỢC\nQUÁN YÊU THÍCH?',
-                        style: TextStyle(
-                          color: Color(0xFFEF4050),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
-                        style: TextStyle(
-                          color: Color(0xFF8D8D8D),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      GestureDetector(
-                        onTap: _onAddSpot,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF4050),
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFEF4050).withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'Thêm ngay vào bản đồ!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // === "Vibe hôm nay là gì?" Text ===
-                const Text(
-                  '"Vibe" hôm nay là gì?',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // === Weather Card ===
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Thứ 2',
-                            style: TextStyle(
-                              color: Color(0xFF8D8D8D),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            'TP. Hồ Chí Minh',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '24°C',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 44,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        width: 75,
-                        height: 75,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4050).withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.cloud,
-                          color: Color(0xFFEF4050),
-                          size: 36,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // === Category Chips ===
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: const [
-                      _CategoryChip(label: 'Hẹn hò'),
-                      _CategoryChip(label: 'Nhậu'),
-                      _CategoryChip(label: 'Họp làm'),
-                      _CategoryChip(label: 'Chill'),
-                      _CategoryChip(label: 'Lãng mạng'),
-                      _CategoryChip(label: 'Không gian'),
-                      _CategoryChip(label: 'Acoustic'),
-                      _CategoryChip(label: 'Cafe'),
-                      _CategoryChip(label: 'Ngọt ngào'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // === Đang "hot" Section ===
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Đang "hot"',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      'Xem tất cả',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFFEF4050),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 230,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: const [
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
-                        name: 'B2Q Saigon',
-                        tags: ['Đang mở', 'Cafe', 'Nhạc chill', 'Quán quen'],
-                      ),
-                      SizedBox(width: 14),
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1521017431713-00b87e4c16b3?w=400',
-                        name: 'Kyoto Zen',
-                        tags: ['Đang mở', 'Nhật Bản', 'Yêu thích', 'Ngọt ngào'],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // === Dựa trên quán bạn đã chọn Section ===
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Dựa trên quán bạn đã chọn',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      'Xem tất cả',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFFEF4050),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 230,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: const [
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1554679665-f5537f187268?w=400',
-                        name: 'Moonlight Ramen',
-                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                      ),
-                      SizedBox(width: 14),
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38e71?w=400',
-                        name: 'The Garden',
-                        tags: ['Đang mở', 'Thoải mái', 'Ăn vặt', 'Nhóm bạn'],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // === Dựa trên hoạt động của bạn bè Section ===
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Dựa trên hoạt động của bạn bè',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      'Xem tất cả',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFFEF4050),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 230,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: const [
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=400',
-                        name: 'Moonlight Ramen',
-                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                        friendAvatars: ['AA', 'BB', 'CC'],
-                      ),
-                      SizedBox(width: 14),
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=400',
-                        name: 'Moonlight Ramen',
-                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                        friendAvatars: ['DD', 'EE'],
-                      ),
-                      SizedBox(width: 14),
-                      _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=400',
-                        name: 'Moonlight Ramen',
-                        tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
-                        friendAvatars: ['FF'],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // === Hỏi AI Button ===
-                Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
+                    const SizedBox(height: 12),
+                    _SearchBar(
+                      controller: _searchController,
+                      isLoading: _isSearching,
+                      onSubmitted: (_) => _search(),
+                      onAiTap: () => Navigator.push(
                         context,
                         MaterialPageRoute<void>(
                           builder: (_) => const AiChatScreen(),
                         ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4050),
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEF4050).withValues(alpha: 0.4),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Text(
-                        'Hỏi AI',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 22),
+                    _AddPlaceBanner(onTap: _openAddSpot),
+                    const SizedBox(height: 24),
+                    const _WeatherCard(),
+                    const SizedBox(height: 24),
+                    const _SectionTitle(title: '“Vibe” hôm nay là gì?'),
+                    const SizedBox(height: 14),
+                    const _VibeGrid(),
+                    const SizedBox(height: 28),
+                    if (_error != null) _MessageCard(message: _error!),
+                    if (_searchResults != null) ...[
+                      _SectionTitle(
+                        title: 'Kết quả tìm kiếm',
+                        trailing: '${_searchResults!.length} địa điểm',
+                      ),
+                      const SizedBox(height: 14),
+                      _PlaceList(
+                        places: _searchResults!,
+                        onTap: _openPlace,
+                        emptyMessage: 'Không tìm thấy địa điểm phù hợp.',
+                      ),
+                    ] else if (_isLoading) ...[
+                      const _SectionTitle(title: 'Đang “hot” 🔥'),
+                      const SizedBox(height: 14),
+                      const _PlaceSkeleton(),
+                    ] else ...[
+                      _FeedSection(
+                        title: 'Đang “hot” 🔥',
+                        places: _feed.hotPlaces,
+                        onTap: _openPlace,
+                      ),
+                      _FeedSection(
+                        title: 'Dành riêng cho bạn',
+                        places: _feed.recommendedPlaces,
+                        onTap: _openPlace,
+                      ),
+                      _FeedSection(
+                        title: 'Bạn bè vừa ghé',
+                        places: _feed.friendsActivity,
+                        onTap: _openPlace,
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 32),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -503,25 +194,366 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   }
 }
 
-class _CategoryChip extends StatelessWidget {
-  final String label;
+class _Header extends StatelessWidget {
+  final VoidCallback onBack;
 
-  const _CategoryChip({required this.label});
+  const _Header({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton.filledTonal(
+          onPressed: onBack,
+          style: IconButton.styleFrom(
+            backgroundColor: const Color(0xFFF1F1F1),
+            foregroundColor: const Color(0xFF171717),
+          ),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        const SizedBox(width: 8),
+        const Expanded(
+          child: Text(
+            'Hôm nay ăn gì cho vibe?',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Color(0xFF171717),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isLoading;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onAiTap;
+
+  const _SearchBar({
+    required this.controller,
+    required this.isLoading,
+    required this.onSubmitted,
+    required this.onAiTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.only(left: 8, right: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F1F1),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: onAiTap,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 32),
+                    backgroundColor: const Color(0xFFEF4050),
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text(
+                    'Hỏi AI',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    onSubmitted: onSubmitted,
+                    textInputAction: TextInputAction.search,
+                    style: const TextStyle(color: Color(0xFF171717)),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      hintText: 'Tìm nhà hàng, quán ăn...',
+                      hintStyle: TextStyle(color: Color(0xFF9A9A9A)),
+                    ),
+                  ),
+                ),
+                if (isLoading)
+                  const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  IconButton(
+                    onPressed: () => onSubmitted(controller.text),
+                    icon: const Icon(Icons.search_rounded, size: 21),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        IconButton.filledTonal(
+          onPressed: () {},
+          style: IconButton.styleFrom(
+            fixedSize: const Size(48, 48),
+            backgroundColor: const Color(0xFFF1F1F1),
+            foregroundColor: const Color(0xFFEF4050),
+          ),
+          icon: const Icon(Icons.tune_rounded),
+        ),
+      ],
+    );
+  }
+}
+
+class _AddPlaceBanner extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddPlaceBanner({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(999),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFE0E3), Color(0xFFF2F0EC)],
+        ),
+        borderRadius: BorderRadius.circular(22),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'CHƯA TÌM ĐƯỢC QUÁN YÊU THÍCH?',
+            style: TextStyle(
+              color: Color(0xFFD92F40),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
+            style: TextStyle(color: Color(0xFFB25F67), fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: onTap,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4050),
+              shape: const StadiumBorder(),
+            ),
+            child: const Text(
+              'Thêm ngay vào bản đồ!',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeatherCard extends StatelessWidget {
+  const _WeatherCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFE90016), Color(0xFFFF4553)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Phường Bến Thành, TP.HCM',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text('Thay đổi', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 8),
+                Text(
+                  '24°C',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              Icon(Icons.umbrella_rounded, color: Colors.white, size: 38),
+              SizedBox(height: 8),
+              Text('Mưa phùn', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VibeGrid extends StatelessWidget {
+  const _VibeGrid();
+
+  static const vibes = [
+    (Icons.favorite_rounded, 'Hẹn hò'),
+    (Icons.groups_rounded, 'Nhóm bạn'),
+    (Icons.menu_book_rounded, 'Học/Làm việc'),
+    (Icons.dark_mode_rounded, 'Chill'),
+    (Icons.auto_awesome_rounded, 'Lãng mạn'),
+    (Icons.eco_rounded, 'Không gian xanh'),
+    (Icons.music_note_rounded, 'Acoustic'),
+    (Icons.local_cafe_rounded, 'Cafe'),
+    (Icons.cake_rounded, 'Ngọt ngào'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: vibes.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.35,
+      ),
+      itemBuilder: (_, index) {
+        final vibe = vibes[index];
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFF3F4), Color(0xFFFFDADD)],
+            ),
+            borderRadius: BorderRadius.circular(17),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(vibe.$1, color: const Color(0xFFEF4050), size: 24),
+              const SizedBox(height: 7),
+              Text(
+                vibe.$2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF272727),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FeedSection extends StatelessWidget {
+  final String title;
+  final List<DiscoveryPlace> places;
+  final ValueChanged<DiscoveryPlace> onTap;
+
+  const _FeedSection({
+    required this.title,
+    required this.places,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (places.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(title: title),
+          const SizedBox(height: 14),
+          _PlaceList(places: places, onTap: onTap),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String? trailing;
+
+  const _SectionTitle({required this.title, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF171717),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        if (trailing != null)
+          Text(trailing!, style: const TextStyle(color: Color(0xFF777777))),
+      ],
+    );
+  }
+}
+
+class _PlaceList extends StatelessWidget {
+  final List<DiscoveryPlace> places;
+  final ValueChanged<DiscoveryPlace> onTap;
+  final String emptyMessage;
+
+  const _PlaceList({
+    required this.places,
+    required this.onTap,
+    this.emptyMessage = 'Chưa có địa điểm nổi bật hôm nay.',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (places.isEmpty) return _MessageCard(message: emptyMessage);
+    return SizedBox(
+      height: 224,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: places.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => _PlaceCard(
+          place: places[index],
+          onTap: () => onTap(places[index]),
         ),
       ),
     );
@@ -529,201 +561,144 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _PlaceCard extends StatelessWidget {
-  final String imageUrl;
-  final String name;
-  final List<String> tags;
-  final List<String>? friendAvatars;
+  final DiscoveryPlace place;
+  final VoidCallback onTap;
 
-  const _PlaceCard({
-    required this.imageUrl,
-    required this.name,
-    required this.tags,
-    this.friendAvatars,
-  });
+  const _PlaceCard({required this.place, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => const PlaceDetailsFriends(placeId: 'mock-place-id'),
-          ),
-        );
-      },
+    final imageUrl = place.coverMediaId;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-      width: 200,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Place Image
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: Image.network(
-              imageUrl,
-              width: double.infinity,
-              height: 130,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Place Name
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              name,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Tags
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: tags
-                    .map(
-                      (tag) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          tag,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-          // Friend Avatars
-          if (friendAvatars != null && friendAvatars!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  ...friendAvatars!.asMap().entries.map(
-                        (entry) => Transform.translate(
-                          offset: Offset(-entry.key * 12.0, 0),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF5A8DEE),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: Center(
-                              child: Text(
-                                entry.value,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    ),
-    );
-  }
-}
-class _ExploreFilterSheet extends StatelessWidget {
-  const _ExploreFilterSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    const filters = [
-      'Gần nhất',
-      'Đang hot',
-      'Cafe',
-      'Ăn tối',
-      'Yên tĩnh',
-      'Có bạn bè check-in',
-    ];
-
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        width: 190,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFEAEAEA)),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(999),
+            SizedBox(
+              height: 122,
+              width: double.infinity,
+              child: imageUrl != null && imageUrl.startsWith('http')
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const _PlaceImageFallback(),
+                    )
+                  : const _PlaceImageFallback(),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      place.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF171717),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      '${place.categoryLabel} • ${place.distanceMeters}m',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, color: Colors.amber, size: 17),
+                        const SizedBox(width: 3),
+                        Text(
+                          place.avgRating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: Color(0xFF171717),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${place.checkinCount} check-in',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFEF4050),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Lọc địa điểm',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: filters
-                  .map(
-                    (filter) => FilterChip(
-                      label: Text(filter),
-                      selected: false,
-                      onSelected: (_) => Navigator.pop(context),
-                    ),
-                  )
-                  .toList(),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PlaceImageFallback extends StatelessWidget {
+  const _PlaceImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFFFE4E6),
+      child: const Icon(Icons.restaurant_rounded, color: Color(0xFFEF4050), size: 40),
+    );
+  }
+}
+
+class _PlaceSkeleton extends StatelessWidget {
+  const _PlaceSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 224,
+      width: 190,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F0F0),
+        borderRadius: BorderRadius.circular(18),
+      ),
+    );
+  }
+}
+
+class _MessageCard extends StatelessWidget {
+  final String message;
+
+  const _MessageCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F2F2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(message, style: const TextStyle(color: Color(0xFF777777))),
     );
   }
 }
