@@ -21,6 +21,7 @@ import '../services/upload_service.dart';
 import '../utils/error.dart';
 import 'camera_screen.dart';
 import 'place_picker_sheet.dart';
+import 'send_image_preview_widgets.dart';
 
 class SendImageScreen extends ConsumerStatefulWidget {
   final String imagePath;
@@ -652,109 +653,17 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                 ),
                           ),
 
-                          // Place tag pill
                           Positioned(
                             top: 16,
                             left: 16,
                             right: 16,
                             child: Center(
-                              child: GestureDetector(
-                                onTap: _showPlacePickerSheet,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(24),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                    child: Container(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 260,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFEEF0),
-                                        borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.55),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.location_on_rounded,
-                                            color: Color(0xFF6A2027),
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Flexible(
-                                            child: Text(
-                                              _selectedPlace?.displayName ?? 'Chọn địa điểm',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                color: Color(0xFF6A2027),
-                                                fontFamily: 'SF Pro',
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Venue label (clickable)
-                          Positioned(
-                            top: 60,
-                            left: 16,
-                            child: GestureDetector(
-                              onTap: _showPlacePickerSheet,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.25),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.location_on,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _selectedPlace?.displayName ?? 'Chọn địa điểm',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: 'SF Pro',
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 260),
+                                child: SendImagePlaceTagPill(
+                                  label: _selectedPlace?.displayName ??
+                                      'Chọn địa điểm',
+                                  onTap: _showPlacePickerSheet,
                                 ),
                               ),
                             ),

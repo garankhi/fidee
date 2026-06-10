@@ -141,7 +141,7 @@ class DiscoveryFeedService {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final data = decoded['data'] as Map<String, dynamic>? ?? {};
 
-      List<DiscoveryPlace> _parse(String key) {
+      List<DiscoveryPlace> parse(String key) {
         return ((data[key] as List<dynamic>?) ?? [])
             .whereType<Map<String, dynamic>>()
             .map(DiscoveryPlace.fromJson)
@@ -149,9 +149,9 @@ class DiscoveryFeedService {
       }
 
       return DiscoveryFeedData(
-        hotPlaces: _parse('hotPlaces'),
-        recommendedPlaces: _parse('recommendedPlaces'),
-        friendsActivity: _parse('friendsActivity'),
+        hotPlaces: parse('hotPlaces'),
+        recommendedPlaces: parse('recommendedPlaces'),
+        friendsActivity: parse('friendsActivity'),
       );
     } catch (e) {
       debugPrint('[DiscoveryFeedService] Error: $e');
@@ -159,3 +159,4 @@ class DiscoveryFeedService {
     }
   }
 }
+

@@ -28,9 +28,12 @@ class CameraFriendsSheet extends ConsumerWidget {
       heightFactor: 0.94,
       child: CameraFriendsSheetContent(
         friends: friendsState.friends,
+        requests: friendsState.requests,
         isLoading: friendsState.isLoading,
         onSearchUsers: controller.searchUsers,
         onAddFriend: controller.addFriend,
+        onAcceptFriend: controller.accept,
+        onDeclineFriend: controller.decline,
         onHideFriend: controller.hide,
         onUnfriend: controller.unfriend,
         onBlockFriend: controller.block,
@@ -41,9 +44,12 @@ class CameraFriendsSheet extends ConsumerWidget {
 
 class CameraFriendsSheetContent extends StatefulWidget {
   final List<FriendProfile> friends;
+  final List<FriendProfile> requests;
   final bool isLoading;
   final Future<List<FriendSearchResult>> Function(String username) onSearchUsers;
   final Future<bool> Function(String userId) onAddFriend;
+  final Future<bool> Function(String userId) onAcceptFriend;
+  final Future<bool> Function(String userId) onDeclineFriend;
   final Future<bool> Function(String userId) onHideFriend;
   final Future<bool> Function(String userId) onUnfriend;
   final Future<bool> Function(String userId) onBlockFriend;
@@ -51,9 +57,12 @@ class CameraFriendsSheetContent extends StatefulWidget {
   const CameraFriendsSheetContent({
     super.key,
     required this.friends,
+    required this.requests,
     required this.isLoading,
     required this.onSearchUsers,
     required this.onAddFriend,
+    required this.onAcceptFriend,
+    required this.onDeclineFriend,
     required this.onHideFriend,
     required this.onUnfriend,
     required this.onBlockFriend,
@@ -186,6 +195,31 @@ class _CameraFriendsSheetContentState extends State<CameraFriendsSheetContent> {
                   padding: const EdgeInsets.fromLTRB(18, 28, 18, 26),
                   children: [
                     if (_message != null) _InlineMessage(message: _message!),
+                    if (widget.requests.isNotEmpty) ...[
+                      const _SectionTitle(
+                        icon: LucideIcons.userRoundCheck,
+                        label: 'Lời mời kết bạn',
+                      ),
+                      const SizedBox(height: 12),
+                      for (final request in widget.requests) ...[
+                        _FriendRequestRow(
+                          request: request,
+                          isBusy: _busyFriendId == request.id,
+                          onAccept: () => _runFriendAction(
+                            request.id,
+                            widget.onAcceptFriend,
+                            'Đã chấp nhận lời mời',
+                          ),
+                          onDecline: () => _runFriendAction(
+                            request.id,
+                            widget.onDeclineFriend,
+                            'Đã từ chối lời mời',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      const SizedBox(height: 16),
+                    ],
                     if (_searchResults.isNotEmpty) ...[
                       const _SectionTitle(icon: LucideIcons.search, label: 'Kết quả tìm kiếm'),
                       const SizedBox(height: 12),
@@ -314,6 +348,76 @@ class _SectionTitle extends StatelessWidget {
             fontSize: 22,
             fontWeight: FontWeight.w900,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FriendRequestRow extends StatelessWidget {
+  final FriendProfile request;
+  final bool isBusy;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _FriendRequestRow({
+    required this.request,
+    required this.isBusy,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _FriendAvatar(profile: request, size: 58),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                request.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (request.handle.isNotEmpty)
+                Text(
+                  '@${request.handle}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.56),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        IconButton.filled(
+          key: ValueKey('friend-request-accept-${request.id}'),
+          onPressed: isBusy ? null : onAccept,
+          style: IconButton.styleFrom(
+            backgroundColor: const Color(0xFFFFC400),
+            foregroundColor: Colors.black,
+          ),
+          icon: const Icon(LucideIcons.check, size: 22),
+          tooltip: 'Chấp nhận',
+        ),
+        const SizedBox(width: 8),
+        IconButton.filled(
+          key: ValueKey('friend-request-decline-${request.id}'),
+          onPressed: isBusy ? null : onDecline,
+          style: IconButton.styleFrom(
+            backgroundColor: const Color(0xFF3A3A3A),
+            foregroundColor: Colors.white,
+          ),
+          icon: const Icon(LucideIcons.x, size: 22),
+          tooltip: 'Từ chối',
         ),
       ],
     );
