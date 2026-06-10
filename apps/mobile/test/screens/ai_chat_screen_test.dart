@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget buildScreen() {
-    return const MaterialApp(home: AiChatScreen());
+  Widget buildScreen({String? initialMessage}) {
+    return MaterialApp(home: AiChatScreen(initialMessage: initialMessage));
   }
 
   testWidgets('uses Vietnamese Fidee AI copy', (tester) async {
@@ -49,7 +49,24 @@ void main() {
     expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, isEmpty);
   });
+
+  testWidgets('initial message starts the chat automatically', (tester) async {
+    await tester.pumpWidget(buildScreen(initialMessage: 'Tìm cafe yên tĩnh gần tôi'));
+
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.text('Tìm cafe yên tĩnh gần tôi'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Tìm cafe yên tĩnh gần tôi'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('Fidee đã nhận vibe của bạn'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, isEmpty);
+  });
 }
-
-
-

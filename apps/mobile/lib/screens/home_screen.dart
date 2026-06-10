@@ -12,8 +12,10 @@ import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import 'add_spot_screen.dart';
 import '../services/map_feed_service.dart';
+import 'ai_chat_screen.dart';
 import 'camera_screen.dart';
 import 'explore_screen.dart';
+import 'home_ai_search_bar.dart';
 import 'profile_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
@@ -193,6 +195,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+  void _openAiChat(String query) {
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AiChatScreen(initialMessage: trimmedQuery),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -356,41 +372,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search, color: Color(0xFFFF3B30)),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Want something today?',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.mic, color: Colors.grey.shade600),
-                        ],
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: HomeAiSearchBar(onSubmitted: _openAiChat),
                     ),
-                  ),
                 ],
               ),
             ),
