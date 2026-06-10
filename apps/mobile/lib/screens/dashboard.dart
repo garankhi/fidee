@@ -1,10 +1,8 @@
-import 'dart:developer' as developer;
-
-import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/dashboard_provider.dart';
 import '../models/dashboard_place.dart';
@@ -41,13 +39,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
-    } catch (error, stackTrace) {
-      developer.log(
-        'Failed to load nearby spots for dashboard add-spot suggestions.',
-        name: 'DashboardScreen',
-        error: error,
-        stackTrace: stackTrace,
-      );
+    } catch (e) {
     }
   }
 
@@ -69,6 +61,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _searchController.dispose();
     super.dispose();
   }
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +145,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       children: [
         Text(
           'Hôm nay ăn gì cho hợp “vibe”?',
-          style: TextStyle(color: Colors.black.withValues(alpha: 0.85), fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black.withOpacity(0.85), fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Row(
@@ -164,56 +159,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.grey[300]!),
                 ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => const AiChatScreen(),
+                child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AiChatScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF484F),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: const Text(
+                            'Hỏi AI',
+                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF484F),
-                        borderRadius: BorderRadius.circular(15),
                       ),
-                      child: const Text(
-                        'Hỏi AI',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Tìm nhà hàng, quán ăn..',
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Tìm nhà hàng, quán ăn..',
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                ]
+                    ]
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            height: 36,
-            width: 46,
-            decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle, border: Border.all(color: Colors.grey[300]!)),
-            child: const Icon(Icons.tune, color: Color(0xFFEF484F), size: 20),
-          )
-        ],
-      ),
-    ],
-  );
-}
+            const SizedBox(width: 10),
+            Container(
+              height: 36,
+              width: 46,
+              decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle, border: Border.all(color: Colors.grey[300]!)),
+              child: const Icon(Icons.tune, color: Color(0xFFEF484F), size: 20),
+            )
+          ],
+        ),
+      ],
+    );
+  }
 
   Widget _buildAddPlaceBanner() {
     return Container(
@@ -332,7 +327,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ? const LinearGradient(colors: [Color(0xFFEF484F), Color(0xCCFF1D27)])
                   : const LinearGradient(colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)]),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isSelected ? const Color(0xFFEF484F) : const Color(0xFFF7C6C7).withValues(alpha: 0.5)),
+              border: Border.all(color: isSelected ? const Color(0xFFEF484F) : const Color(0xFFF7C6C7).withOpacity(0.5)),
             ),
             child: Column(
               children: [
@@ -390,7 +385,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.85)],
+                    colors: [Colors.black.withOpacity(0.1), Colors.black.withOpacity(0.85)],
                   ),
                 ),
                 child: Column(
@@ -402,7 +397,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(10)),
                           child: Row(
                             children: [
                               const Icon(Icons.star, color: Colors.amber, size: 12),
@@ -412,7 +407,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         CircleAvatar(
-                          backgroundColor: Colors.black.withValues(alpha: 0.5),
+                          backgroundColor: Colors.black.withOpacity(0.5),
                           radius: 15,
                           child: const Icon(Icons.favorite_border, color: Colors.white, size: 14),
                         )
@@ -521,5 +516,3 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 }
-
-
