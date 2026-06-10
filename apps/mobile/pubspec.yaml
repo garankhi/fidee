@@ -55,6 +55,7 @@ dependencies:
   uuid: ^4.5.3
   lucide_icons_flutter: ^3.1.14+2
   photo_manager: ^3.9.0
+  flutter_native_splash: ^2.4.8
 
 dev_dependencies:
   flutter_test:
@@ -126,3 +127,16 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: 'assets/app_icon/app_icon.png'
+
+flutter_native_splash:
+  color: '#EF4050'
+  image: assets/native_splash/splash_logo.png
+  android: true
+  ios: true
+  web: false
+  android_gravity: center
+  ios_content_mode: center
+  android_12:
+    color: '#EF4050'
+    image: assets/native_splash/android12_splash.png
+    icon_background_color: '#EF4050'
