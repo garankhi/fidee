@@ -91,12 +91,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 255, 136, 136),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Column(
+              children: [
               // === Header: Back Button & Title ===
               const SizedBox(height: 12),
               Row(
@@ -110,7 +112,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         color: Colors.grey.shade100,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.arrow_back, color: Colors.black),
+                      child: const Icon(Icons.arrow_back, color: Color.fromARGB(255, 255, 0, 0)),
                     ),
                   ),
                 ],
@@ -124,14 +126,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4050),
+                      color: const Color.fromARGB(255, 228, 75, 88),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
                       child: Text(
                         'M',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color.fromARGB(255, 0, 0, 0),
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -216,7 +218,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       'Hey! Find 3 restaurants near me 🍔',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white,
+                        color: Color.fromARGB(255, 255, 255, 255),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -287,14 +289,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ),
               const SizedBox(height: 20),
 
-              // === Spacer to push the text field to the bottom ===
-              const Spacer(),
+              const SizedBox(height: 20),
 
               // === Chat Input ===
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: const Color.fromARGB(255, 255, 90, 90),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
@@ -306,7 +307,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                           border: InputBorder.none,
                           hintText: 'What\'s your vibe today?',
                           hintStyle: TextStyle(
-                            color: Colors.black54,
+                            color: Color.fromARGB(255, 255, 255, 255),
                             fontSize: 14,
                           ),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -326,7 +327,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         ),
                         child: const Icon(
                           Icons.send,
-                          color: Colors.white,
+                          color: Color.fromARGB(255, 255, 255, 255),
                           size: 20,
                         ),
                       ),
@@ -335,7 +336,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -446,7 +448,7 @@ class _RecommendedPlaceItem extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: const Color.fromARGB(255, 214, 118, 118),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(

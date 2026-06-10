@@ -379,11 +379,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   ),
                 ),
 
-                const Spacer(flex: 1),
+                const SizedBox(height: 4),
 
                 // Camera Preview (Square, Centered)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 36.0),
                   child: AspectRatio(
                     aspectRatio: 1 / 1,
                     child: ClipRRect(
@@ -437,8 +437,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   ),
                 ),
 
-                const Spacer(flex: 1),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
 
                 // Bottom Controls (Gallery, Capture, Flip)
                 Padding(
@@ -564,7 +563,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
                 // Bottom Section Height Match
                 SizedBox(
-                  height: 70,
+                  height: 105,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -612,7 +611,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Container(
                         margin: const EdgeInsets.only(left: 110, right: 110),
                         padding: const EdgeInsets.symmetric(
@@ -868,11 +867,11 @@ class _CameraSkeleton extends StatelessWidget {
             ),
           ),
 
-          const Spacer(flex: 1),
+          const SizedBox(height: 4),
 
           // Camera Viewfinder Placeholder
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 36.0),
             child: AspectRatio(
               aspectRatio: 1 / 1,
               child: Container(
@@ -892,8 +891,7 @@ class _CameraSkeleton extends StatelessWidget {
             ),
           ),
 
-          const Spacer(flex: 1),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
 
           // Bottom Controls Placeholder
           Padding(
@@ -971,7 +969,7 @@ class _CameraSkeleton extends StatelessWidget {
 
           // Bottom Bar Placeholders
           SizedBox(
-            height: 70,
+            height: 105,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.end,
@@ -1010,7 +1008,7 @@ class _CameraSkeleton extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 2),
                 Container(
                   margin: const EdgeInsets.only(left: 110, right: 110),
                   padding: const EdgeInsets.symmetric(

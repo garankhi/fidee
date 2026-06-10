@@ -546,7 +546,7 @@ class _PlaceList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (places.isEmpty) return _MessageCard(message: emptyMessage);
     return SizedBox(
-      height: 224,
+      height: 236,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: places.length,
@@ -584,7 +584,7 @@ class _PlaceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 122,
+              height: 104,
               width: double.infinity,
               child: imageUrl != null && imageUrl.startsWith('http')
                   ? Image.network(
@@ -596,7 +596,7 @@ class _PlaceCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -620,7 +620,7 @@ class _PlaceCard extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         const Icon(Icons.star_rounded, color: Colors.amber, size: 17),
