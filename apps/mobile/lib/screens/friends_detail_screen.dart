@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
+import '../features/friends/widgets/friend_request_widgets.dart';
 
 class FriendsDetailScreen extends ConsumerStatefulWidget {
   const FriendsDetailScreen({super.key});
@@ -14,6 +15,7 @@ class FriendsDetailScreen extends ConsumerStatefulWidget {
 class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
+  String? _busyRequestId;
 
   @override
   void initState() {
@@ -45,6 +47,23 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Tính năng Chia sẻ hệ thống đang được kích hoạt!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _runRequestAction(
+    String userId,
+    Future<bool> Function(String userId) action,
+    String successMessage,
+  ) async {
+    setState(() => _busyRequestId = userId);
+    final success = await action(userId);
+    if (!mounted) return;
+    setState(() => _busyRequestId = null);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -270,81 +289,24 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                         itemBuilder: (context, index) {
                           final req = friendsState.requests[index];
 
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: const Color(0xFFFFD4DA),
-                                    image: req.avatarUrl != null && req.avatarUrl!.isNotEmpty
-                                        ? DecorationImage(
-                                            image: NetworkImage(req.avatarUrl!),
-                                            fit: BoxFit.cover,
-                                          )
-                                        : null,
-                                  ),
-                                  child: req.avatarUrl == null || req.avatarUrl!.isEmpty
-                                      ? Center(
-                                          child: Text(
-                                            req.initials,
-                                            style: const TextStyle(
-                                              color: Color(0xFFEF4050),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        )
-                                      : null,
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: FriendRequestActionRow(
+                                request: req,
+                                tone: FriendRequestTone.light,
+                                isBusy: _busyRequestId == req.id,
+                                onAccept: () => _runRequestAction(
+                                  req.id,
+                                  friendsNotifier.accept,
+                                  'Đã chấp nhận lời mời',
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    req.name,
-                                    style: const TextStyle(
-                                      color: Color(0xFF151515),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
+                                onDecline: () => _runRequestAction(
+                                  req.id,
+                                  friendsNotifier.decline,
+                                  'Đã từ chối lời mời',
                                 ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                  onPressed: () => friendsNotifier.accept(req.id),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEF4050),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text('Chấp nhận', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                ),
-                                const SizedBox(width: 6),
-                                OutlinedButton(
-                                  onPressed: () => friendsNotifier.decline(req.id),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF6E7E91),
-                                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text('Từ chối', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          );
+                              ),
+                            );
                         },
                       ),
                       const SizedBox(height: 28),
@@ -374,16 +336,8 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    friendsState.isLoading
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24.0),
-                              child: CircularProgressIndicator(
-                                color: Color(0xFFEF4050),
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          )
+                      friendsState.isInitialLoading
+                          ? const _FriendsDetailListSkeleton()
                         : filteredFriends.isEmpty
                             ? Center(
                                 child: Padding(
@@ -510,6 +464,59 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FriendsDetailListSkeleton extends StatelessWidget {
+  const _FriendsDetailListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        3,
+        (index) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFD4DA),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 14,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 10,
+                      width: 120,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

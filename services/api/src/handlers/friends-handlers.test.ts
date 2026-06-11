@@ -1,9 +1,10 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockQuery, mockExtractAuth } = vi.hoisted(() => ({
+const { mockQuery, mockExtractAuth, mockEnqueueFriendRequestRealtimeEvent } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockExtractAuth: vi.fn(),
+  mockEnqueueFriendRequestRealtimeEvent: vi.fn(),
 }));
 
 vi.mock('../db/client', () => ({
@@ -14,7 +15,18 @@ vi.mock('../middleware/auth', () => ({
   extractAuth: mockExtractAuth,
 }));
 
-import { blockFriend, hideFriend, searchUsersByUsername } from './friends-handlers';
+vi.mock('../realtime/enqueue-friend-request-event', () => ({
+  enqueueFriendRequestRealtimeEvent: mockEnqueueFriendRequestRealtimeEvent,
+}));
+
+import {
+  acceptFriend,
+  blockFriend,
+  declineFriend,
+  hideFriend,
+  searchUsersByUsername,
+  sendFriendRequest,
+} from './friends-handlers';
 
 const mockEvent = ({
   body,
@@ -42,6 +54,7 @@ describe('friends handlers', () => {
   beforeEach(() => {
     mockQuery.mockReset();
     mockExtractAuth.mockReset();
+    mockEnqueueFriendRequestRealtimeEvent.mockReset();
     mockExtractAuth.mockResolvedValue({
       sub: 'user-1',
       username: 'user@example.com',
@@ -98,6 +111,69 @@ describe('friends handlers', () => {
       'user-2',
     ]);
     expect(JSON.parse(result.body).success).toBe(true);
+  });
+
+  it('sendFriendRequest enqueues a realtime event after the friendship commit', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    mockQuery.mockResolvedValueOnce({});
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    mockQuery.mockResolvedValueOnce({});
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          name: 'Minh Nguyen',
+          username: 'minh',
+          avatarUrl: 'https://cdn.example/minh.png',
+        },
+      ],
+    });
+
+    const result = await sendFriendRequest(mockEvent({ body: { targetUserId: 'user-2' } }));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenNthCalledWith(5, 'COMMIT');
+    expect(mockEnqueueFriendRequestRealtimeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requesterId: 'user-1',
+        requesterName: 'Minh Nguyen',
+        requesterUsername: 'minh',
+        requesterAvatarUrl: 'https://cdn.example/minh.png',
+        targetUserId: 'user-2',
+      }),
+    );
+  });
+
+  it('acceptFriend only accepts received pending requests', async () => {
+    mockQuery.mockResolvedValueOnce({});
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    mockQuery.mockResolvedValueOnce({});
+
+    const result = await acceptFriend(mockEvent({ body: { targetUserId: 'user-2' } }));
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body).error).toBe('No pending request found');
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('initiated_by != $1'), [
+      'user-1',
+      'user-2',
+      expect.any(String),
+    ]);
+  });
+
+  it('declineFriend only declines received pending requests', async () => {
+    mockQuery.mockResolvedValueOnce({});
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    mockQuery.mockResolvedValueOnce({});
+
+    const result = await declineFriend(mockEvent({ body: { targetUserId: 'user-2' } }));
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body).error).toBe('No pending request found');
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('initiated_by != $1'), [
+      'user-1',
+      'user-2',
+    ]);
   });
 
   it('blockFriend marks caller row blocked and decrements accepted counters', async () => {

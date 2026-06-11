@@ -26,6 +26,11 @@ class FriendsState {
       isLoading: isLoading ?? this.isLoading,
     );
   }
+
+  int get friendCount => friends.length;
+  int get requestCount => requests.length;
+  bool get hasFriendRequests => requests.isNotEmpty;
+  bool get isInitialLoading => isLoading && friends.isEmpty && requests.isEmpty;
 }
 
 @Riverpod(keepAlive: true)
@@ -37,6 +42,7 @@ FriendService friendService(FriendServiceRef ref) {
 @Riverpod(keepAlive: true)
 class FriendsController extends _$FriendsController {
   late FriendService _service;
+  bool _isLoadingNow = false;
 
   @override
   FriendsState build() {
@@ -46,17 +52,29 @@ class FriendsController extends _$FriendsController {
     return const FriendsState(isLoading: true);
   }
 
-  Future<void> load() async {
-    state = state.copyWith(isLoading: true);
-    final friendsList = await _service.fetchFriends();
-    final requestsList = await _service.fetchFriendRequests();
+  Future<void> load({bool silent = false}) async {
+    if (_isLoadingNow) return;
+    _isLoadingNow = true;
+    try {
+      if (!silent) {
+        state = state.copyWith(isLoading: true);
+      }
+      final results = await Future.wait<List<FriendProfile>>([
+        _service.fetchFriends(),
+        _service.fetchFriendRequests(),
+      ]);
 
-    state = FriendsState(
-      friends: friendsList,
-      requests: requestsList,
-      isLoading: false,
-    );
+      state = FriendsState(
+        friends: results[0],
+        requests: results[1],
+        isLoading: false,
+      );
+    } finally {
+      _isLoadingNow = false;
+    }
   }
+
+  Future<void> refreshFromRealtimeEvent() => load(silent: true);
 
   Future<List<FriendSearchResult>> searchUsers(String username) {
     return _service.searchUsersByUsername(username);

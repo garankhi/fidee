@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
@@ -246,11 +247,60 @@ export class FideeStack extends cdk.Stack {
       description: 'Platform administrators',
     });
 
-    const userPoolClient = userPool.addClient('WebClient', {
-      authFlows: { userSrp: true, userPassword: true, custom: true },
-    });
+      const userPoolClient = userPool.addClient('WebClient', {
+        authFlows: { userSrp: true, userPassword: true, custom: true },
+      });
 
-    const placesTable = new dynamodb.Table(this, 'PlacesTable', {
+      const friendRealtimeApi = new appsync.GraphqlApi(this, 'FriendRealtimeApi', {
+        name: resourceName(stage, 'friend-realtime'),
+        schema: appsync.SchemaFile.fromAsset('graphql/friend-realtime.graphql'),
+        authorizationConfig: {
+          defaultAuthorization: {
+            authorizationType: appsync.AuthorizationType.USER_POOL,
+            userPoolConfig: { userPool },
+          },
+          additionalAuthorizationModes: [{ authorizationType: appsync.AuthorizationType.IAM }],
+        },
+        logConfig: {
+          fieldLogLevel: appsync.FieldLogLevel.ERROR,
+          retention: logs.RetentionDays.ONE_WEEK,
+        },
+        xrayEnabled: !isProd(stage),
+      });
+
+      const friendRealtimeNoneDataSource = friendRealtimeApi.addNoneDataSource(
+        'FriendRealtimeNoneDataSource',
+      );
+
+      friendRealtimeNoneDataSource.createResolver('PublishFriendRequestReceivedResolver', {
+        typeName: 'Mutation',
+        fieldName: 'publishFriendRequestReceived',
+        requestMappingTemplate: appsync.MappingTemplate.fromString(
+          '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
+        ),
+        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+      });
+
+      friendRealtimeNoneDataSource.createResolver('OnFriendRequestReceivedResolver', {
+        typeName: 'Subscription',
+        fieldName: 'onFriendRequestReceived',
+        requestMappingTemplate: appsync.MappingTemplate.fromString(`
+#if($ctx.identity.sub != $ctx.args.targetUserId)
+  $util.unauthorized()
+#end
+{"version":"2018-05-29","payload":{}}
+`),
+        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+      });
+
+      new cdk.CfnOutput(this, 'FriendRealtimeGraphqlUrl', {
+        value: friendRealtimeApi.graphqlUrl,
+      });
+      new cdk.CfnOutput(this, 'FriendRealtimeApiId', {
+        value: friendRealtimeApi.apiId,
+      });
+
+      const placesTable = new dynamodb.Table(this, 'PlacesTable', {
       tableName: resourceName(stage, 'places'),
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
@@ -259,13 +309,26 @@ export class FideeStack extends cdk.Stack {
       removalPolicy,
     });
 
-    const userProfilesTable = new dynamodb.Table(this, 'UserProfilesTable', {
-      tableName: resourceName(stage, 'user-profiles'),
+      const userProfilesTable = new dynamodb.Table(this, 'UserProfilesTable', {
+        tableName: resourceName(stage, 'user-profiles'),
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiresAt',
-      removalPolicy,
-    });
+        removalPolicy,
+      });
+
+      const friendRequestRealtimeEventsTable = new dynamodb.Table(
+        this,
+        'FriendRequestRealtimeEventsTable',
+        {
+          tableName: resourceName(stage, 'friend-request-realtime-events'),
+          partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
+          billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+          stream: dynamodb.StreamViewType.NEW_IMAGE,
+          timeToLiveAttribute: 'expiresAt',
+          removalPolicy,
+        },
+      );
 
     placesTable.addGlobalSecondaryIndex({
       indexName: 'GSI1',
@@ -524,13 +587,18 @@ export class FideeStack extends cdk.Stack {
     });
     dbCluster.secret!.grantRead(getFriendRequestsFn);
 
-    const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
-      ...friendsLambdaProps,
-      functionName: resourceName(stage, 'send-friend-request'),
-      entry: '../../services/api/src/handlers/friends-handlers.ts',
-      handler: 'sendFriendRequest',
-    });
-    dbCluster.secret!.grantRead(sendFriendRequestFn);
+      const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
+        ...friendsLambdaProps,
+        functionName: resourceName(stage, 'send-friend-request'),
+        entry: '../../services/api/src/handlers/friends-handlers.ts',
+        handler: 'sendFriendRequest',
+        environment: {
+          ...friendsLambdaProps.environment,
+          FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+        },
+      });
+      dbCluster.secret!.grantRead(sendFriendRequestFn);
+      friendRequestRealtimeEventsTable.grantWriteData(sendFriendRequestFn);
 
     const acceptFriendFn = new nodejs.NodejsFunction(this, 'AcceptFriendFunction', {
       ...friendsLambdaProps,
@@ -571,15 +639,39 @@ export class FideeStack extends cdk.Stack {
     });
     dbCluster.secret!.grantRead(hideFriendFn);
 
-    const blockFriendFn = new nodejs.NodejsFunction(this, 'BlockFriendFunction', {
-      ...friendsLambdaProps,
-      functionName: resourceName(stage, 'block-friend'),
-      entry: '../../services/api/src/handlers/friends-handlers.ts',
-      handler: 'blockFriend',
-    });
-    dbCluster.secret!.grantRead(blockFriendFn);
+      const blockFriendFn = new nodejs.NodejsFunction(this, 'BlockFriendFunction', {
+        ...friendsLambdaProps,
+        functionName: resourceName(stage, 'block-friend'),
+        entry: '../../services/api/src/handlers/friends-handlers.ts',
+        handler: 'blockFriend',
+      });
+      dbCluster.secret!.grantRead(blockFriendFn);
 
-    const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
+      const publishFriendRealtimeEventFn = new nodejs.NodejsFunction(
+        this,
+        'PublishFriendRealtimeEventFunction',
+        {
+          functionName: resourceName(stage, 'publish-friend-realtime-event'),
+          runtime: lambda.Runtime.NODEJS_20_X,
+          entry: '../../services/api/src/handlers/publish-friend-realtime-event.ts',
+          handler: 'handler',
+          memorySize: 256,
+          timeout: cdk.Duration.seconds(10),
+          environment: {
+            FRIEND_REALTIME_GRAPHQL_URL: friendRealtimeApi.graphqlUrl,
+          },
+        },
+      );
+      publishFriendRealtimeEventFn.addEventSource(
+        new lambdaEventSources.DynamoEventSource(friendRequestRealtimeEventsTable, {
+          startingPosition: lambda.StartingPosition.LATEST,
+          batchSize: 10,
+          retryAttempts: 2,
+        }),
+      );
+      friendRealtimeApi.grantMutation(publishFriendRealtimeEventFn);
+
+      const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
       queueName: resourceName(stage, 'media-upload-events-dlq'),
       retentionPeriod: cdk.Duration.days(14),
     });

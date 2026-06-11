@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/auth/auth_providers.dart';
+import 'features/auth/friend_realtime_provider.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/screens/complete_profile_page.dart';
 import 'screens/home_screen.dart';
@@ -101,6 +104,8 @@ class _FideeAppState extends ConsumerState<FideeApp> {
     final state = authState.value!;
 
     if (state.authState == AuthState.authenticated) {
+      unawaited(ref.read(friendRealtimeControllerProvider).connect());
+
       // Location đã resolve (hoặc lỗi được bỏ qua với fallback mặc định)
       final locationService = locationState.valueOrNull ?? LocationService();
 
@@ -111,6 +116,8 @@ class _FideeAppState extends ConsumerState<FideeApp> {
 
       return HomeScreen(locationService: locationService);
     } else if (state.authState == AuthState.incompleteProfile) {
+      unawaited(ref.read(friendRealtimeControllerProvider).disconnect());
+
       // Authenticated user is missing required profile fields.
       // Keep this outside the register wizard so users do not feel sent back to signup.
       return CompleteProfilePage(
@@ -119,6 +126,7 @@ class _FideeAppState extends ConsumerState<FideeApp> {
         initialUsername: state.preferredUsername,
       );
     } else {
+      unawaited(ref.read(friendRealtimeControllerProvider).disconnect());
       return const LoginPage();
     }
   }

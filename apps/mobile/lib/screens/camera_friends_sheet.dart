@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/friends_provider.dart';
+import '../features/friends/widgets/friend_request_widgets.dart';
 import '../services/friend_service.dart';
 
 Future<void> showCameraFriendsSheet(BuildContext context) {
@@ -202,10 +203,11 @@ class _CameraFriendsSheetContentState extends State<CameraFriendsSheetContent> {
                       ),
                       const SizedBox(height: 12),
                       for (final request in widget.requests) ...[
-                        _FriendRequestRow(
-                          request: request,
-                          isBusy: _busyFriendId == request.id,
-                          onAccept: () => _runFriendAction(
+                          FriendRequestActionRow(
+                            request: request,
+                            tone: FriendRequestTone.dark,
+                            isBusy: _busyFriendId == request.id,
+                            onAccept: () => _runFriendAction(
                             request.id,
                             widget.onAcceptFriend,
                             'Đã chấp nhận lời mời',
@@ -348,76 +350,6 @@ class _SectionTitle extends StatelessWidget {
             fontSize: 22,
             fontWeight: FontWeight.w900,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FriendRequestRow extends StatelessWidget {
-  final FriendProfile request;
-  final bool isBusy;
-  final VoidCallback onAccept;
-  final VoidCallback onDecline;
-
-  const _FriendRequestRow({
-    required this.request,
-    required this.isBusy,
-    required this.onAccept,
-    required this.onDecline,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _FriendAvatar(profile: request, size: 58),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                request.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              if (request.handle.isNotEmpty)
-                Text(
-                  '@${request.handle}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.56),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        IconButton.filled(
-          key: ValueKey('friend-request-accept-${request.id}'),
-          onPressed: isBusy ? null : onAccept,
-          style: IconButton.styleFrom(
-            backgroundColor: const Color(0xFFFFC400),
-            foregroundColor: Colors.black,
-          ),
-          icon: const Icon(LucideIcons.check, size: 22),
-          tooltip: 'Chấp nhận',
-        ),
-        const SizedBox(width: 8),
-        IconButton.filled(
-          key: ValueKey('friend-request-decline-${request.id}'),
-          onPressed: isBusy ? null : onDecline,
-          style: IconButton.styleFrom(
-            backgroundColor: const Color(0xFF3A3A3A),
-            foregroundColor: Colors.white,
-          ),
-          icon: const Icon(LucideIcons.x, size: 22),
-          tooltip: 'Từ chối',
         ),
       ],
     );

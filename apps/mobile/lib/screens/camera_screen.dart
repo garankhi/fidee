@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/camera_checkin_feed_provider.dart';
 import '../features/auth/friends_provider.dart';
+import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
 import '../services/auth_service.dart';
 import '../services/camera_startup_permission_flow.dart';
@@ -410,7 +411,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 return Column(
                   children: [
                     _CameraTopBar(
-                      friendsCount: friendsState.friends.length,
+                      friendsCount: friendsState.friendCount,
+                      friendRequestCount: friendsState.requestCount,
                       onMapTap: () => Navigator.pop(context),
                       onFriendsTap: () => showCameraFriendsSheet(context),
                     ),
@@ -519,11 +521,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
 class _CameraTopBar extends StatelessWidget {
   final int friendsCount;
+  final int friendRequestCount;
   final VoidCallback onMapTap;
   final VoidCallback onFriendsTap;
 
   const _CameraTopBar({
     required this.friendsCount,
+    required this.friendRequestCount,
     required this.onMapTap,
     required this.onFriendsTap,
   });
@@ -550,7 +554,11 @@ class _CameraTopBar extends StatelessWidget {
               ),
             ),
           ),
-          _FriendsCountPill(count: friendsCount, onTap: onFriendsTap),
+          _FriendsCountPill(
+            count: friendsCount,
+            requestCount: friendRequestCount,
+            onTap: onFriendsTap,
+          ),
           Container(
             width: 36,
             height: 36,
@@ -711,37 +719,52 @@ class _CameraCaptureControls extends StatelessWidget {
 
 class _FriendsCountPill extends StatelessWidget {
   final int count;
+  final int requestCount;
   final VoidCallback onTap;
 
-  const _FriendsCountPill({required this.count, required this.onTap});
+  const _FriendsCountPill({
+    required this.count,
+    required this.requestCount,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.people, color: Colors.white, size: 16),
-            const SizedBox(width: 8),
-            Text(
-              '$count người bạn',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
-        ),
+            child: Row(
+              children: [
+                const Icon(Icons.people, color: Colors.white, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  '$count người bạn',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: -8,
+            right: -8,
+            child: FriendRequestBadge(count: requestCount),
+          ),
+        ],
       ),
     );
   }
-}
+  }
 
 class GalleryGpsNoticeDialog extends StatefulWidget {
   const GalleryGpsNoticeDialog({super.key});

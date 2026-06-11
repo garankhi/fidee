@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { extractAuth } from '../middleware/auth';
 import { query } from '../db/client';
+import { enqueueFriendRequestRealtimeEvent } from '../realtime/enqueue-friend-request-event';
 
 function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGatewayProxyResult {
   return {
@@ -186,6 +187,31 @@ export const sendFriendRequest = async (
       throw e;
     }
 
+    try {
+      const requester = await query(
+        'SELECT display_name as name, username, avatar_url as "avatarUrl" FROM users WHERE id = $1',
+        [auth.sub],
+      );
+      const requesterRow = (requester.rows[0] ?? {}) as {
+        name?: string;
+        username?: string | null;
+        avatarUrl?: string | null;
+      };
+
+      await enqueueFriendRequestRealtimeEvent({
+        requesterId: auth.sub,
+        requesterName: requesterRow.name ?? auth.username ?? 'Một người bạn',
+        requesterUsername: requesterRow.username ?? null,
+        requesterAvatarUrl: requesterRow.avatarUrl ?? null,
+        targetUserId,
+        createdAt: now,
+      });
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
+        console.error('enqueueFriendRequestRealtimeEvent error', error);
+      }
+    }
+
     return jsonResponse(200, { success: true, message: 'Friend request sent' });
   } catch (error) {
     console.error('sendFriendRequest error', error);
@@ -213,7 +239,7 @@ export const acceptFriend = async (event: APIGatewayProxyEvent): Promise<APIGate
       const update1 = await query(
         `UPDATE friendships
          SET status = 'ACCEPTED', accepted_at = $3, is_hidden = FALSE
-         WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING'
+         WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING' AND initiated_by != $1
          RETURNING status`,
         [auth.sub, targetUserId, now],
       );
@@ -265,7 +291,7 @@ export const declineFriend = async (
     try {
       const del1 = await query(
         `DELETE FROM friendships
-         WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING'`,
+         WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING' AND initiated_by != $1`,
         [auth.sub, targetUserId],
       );
 

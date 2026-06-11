@@ -85,7 +85,7 @@ describe('FideeStack', () => {
 
   it('creates core resources', () => {
     template.resourceCountIs('AWS::Cognito::UserPool', 1);
-    template.resourceCountIs('AWS::DynamoDB::Table', 2);
+    template.resourceCountIs('AWS::DynamoDB::Table', 3);
     template.resourceCountIs('AWS::S3::Bucket', 1);
     template.resourceCountIs('AWS::CloudFront::Distribution', 1);
     template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
@@ -200,6 +200,61 @@ describe('FideeStack', () => {
       TimeToLiveSpecification: {
         AttributeName: 'expiresAt',
         Enabled: true,
+      },
+    });
+  });
+
+  it('creates AppSync friend request realtime infrastructure', () => {
+    template.resourceCountIs('AWS::AppSync::GraphQLApi', 1);
+    template.resourceCountIs('AWS::AppSync::GraphQLSchema', 1);
+    template.hasResourceProperties('AWS::AppSync::GraphQLApi', {
+      Name: 'fidee-dev-friend-realtime',
+      AuthenticationType: 'AMAZON_COGNITO_USER_POOLS',
+    });
+    template.hasResourceProperties('AWS::AppSync::GraphQLApi', {
+      AdditionalAuthenticationProviders: Match.arrayWith([
+        Match.objectLike({ AuthenticationType: 'AWS_IAM' }),
+      ]),
+    });
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 'fidee-dev-friend-request-realtime-events',
+      StreamSpecification: { StreamViewType: 'NEW_IMAGE' },
+      TimeToLiveSpecification: {
+        AttributeName: 'expiresAt',
+        Enabled: true,
+      },
+    });
+    template.hasResourceProperties('AWS::AppSync::Resolver', {
+      TypeName: 'Mutation',
+      FieldName: 'publishFriendRequestReceived',
+    });
+    template.hasResourceProperties('AWS::AppSync::Resolver', {
+      TypeName: 'Subscription',
+      FieldName: 'onFriendRequestReceived',
+    });
+  });
+
+  it('wires the friend realtime publisher Lambda to the event stream', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'fidee-dev-publish-friend-realtime-event',
+      Environment: {
+        Variables: Match.objectLike({
+          FRIEND_REALTIME_GRAPHQL_URL: Match.anyValue(),
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      BatchSize: 10,
+      StartingPosition: 'LATEST',
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'appsync:GraphQL',
+            Effect: 'Allow',
+          }),
+        ]),
       },
     });
   });

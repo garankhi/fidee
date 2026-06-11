@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../config.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
+import '../features/friends/widgets/friend_request_widgets.dart';
 import '../services/auth_service.dart';
 import 'edit_profile_sheet.dart';
 import 'friends_detail_screen.dart';
@@ -174,8 +175,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     // Watch AuthState & FriendsState to rebuild reactively
-    final authState = ref.watch(authControllerProvider).valueOrNull;
-    final friendsState = ref.watch(friendsControllerProvider);
+      final authState = ref.watch(authControllerProvider).valueOrNull;
+      final friendsState = ref.watch(friendsControllerProvider);
+      final requestCount = friendsState.requestCount;
 
     final firstName = authState?.firstName ?? '';
     final lastName = authState?.lastName ?? '';
@@ -421,10 +423,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 28),
+                ),
+                const SizedBox(height: 28),
 
-              // 2. Friends Section Header
+                FriendRequestSummaryBanner(
+                  count: requestCount,
+                  onOpen: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const FriendsDetailScreen(),
+                      ),
+                    );
+                  },
+                ),
+                if (requestCount > 0) const SizedBox(height: 16),
+
+                // 2. Friends Section Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -445,48 +460,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4050),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFFEF4050,
-                            ).withValues(alpha: 0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4050),
+                              borderRadius: BorderRadius.circular(99),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFEF4050,
+                                  ).withValues(alpha: 0.15),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              'Chi tiết',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: -8,
+                            right: -8,
+                            child: FriendRequestBadge(count: requestCount),
                           ),
                         ],
                       ),
-                      child: const Text(
-                        'Chi tiết',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
               // Horizontal Scrolling List of Friends
               SizedBox(
-                height: 110,
-                child: friendsState.isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFEF4050),
-                          strokeWidth: 2,
-                        ),
-                      )
+                  height: 110,
+                  child: friendsState.isInitialLoading
+                      ? const _ProfileFriendsSkeleton()
                     : friendsState.friends.isEmpty
                     ? Center(
                         child: Text(
@@ -641,6 +661,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ProfileFriendsSkeleton extends StatelessWidget {
+  const _ProfileFriendsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: 4,
+      separatorBuilder: (context, index) => const SizedBox(width: 18),
+      itemBuilder: (context, index) {
+        return Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFD4DA),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: 58,
+              height: 10,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F2F7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

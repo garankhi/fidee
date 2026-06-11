@@ -1,0 +1,41 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type Query {
+  noop: String @aws_iam @aws_cognito_user_pools
+}
+
+type FriendRequestRealtimeEvent @aws_iam @aws_cognito_user_pools {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  requesterId: ID!
+  requesterName: String!
+  requesterUsername: String
+  requesterAvatarUrl: String
+  createdAt: AWSDateTime!
+}
+
+input PublishFriendRequestReceivedInput {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  requesterId: ID!
+  requesterName: String!
+  requesterUsername: String
+  requesterAvatarUrl: String
+  createdAt: AWSDateTime!
+}
+
+type Mutation {
+  publishFriendRequestReceived(input: PublishFriendRequestReceivedInput!): FriendRequestRealtimeEvent @aws_iam
+}
+
+type Subscription {
+  onFriendRequestReceived(targetUserId: ID!): FriendRequestRealtimeEvent
+    @aws_subscribe(mutations: ["publishFriendRequestReceived"])
+    @aws_cognito_user_pools
+}
