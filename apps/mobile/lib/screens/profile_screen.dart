@@ -175,9 +175,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     // Watch AuthState & FriendsState to rebuild reactively
-      final authState = ref.watch(authControllerProvider).valueOrNull;
-      final friendsState = ref.watch(friendsControllerProvider);
-      final requestCount = friendsState.requestCount;
+    final authState = ref.watch(authControllerProvider).valueOrNull;
+    final friendsState = ref.watch(friendsControllerProvider);
+    final requestCount = friendsState.requestCount;
 
     final firstName = authState?.firstName ?? '';
     final lastName = authState?.lastName ?? '';
@@ -423,23 +423,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ],
                 ),
-                ),
-                const SizedBox(height: 28),
+              ),
+              const SizedBox(height: 28),
 
-                FriendRequestSummaryBanner(
-                  count: requestCount,
-                  onOpen: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => const FriendsDetailScreen(),
-                      ),
-                    );
-                  },
-                ),
-                if (requestCount > 0) const SizedBox(height: 16),
+              FriendRequestSummaryBanner(
+                count: requestCount,
+                onOpen: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const FriendsDetailScreen(),
+                    ),
+                  );
+                },
+              ),
+              if (requestCount > 0) const SizedBox(height: 16),
 
-                // 2. Friends Section Header
+              // 2. Friends Section Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -460,53 +460,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       );
                     },
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEF4050),
-                              borderRadius: BorderRadius.circular(99),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFFEF4050,
-                                  ).withValues(alpha: 0.15),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Text(
-                              'Chi tiết',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4050),
+                            borderRadius: BorderRadius.circular(99),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFEF4050,
+                                ).withValues(alpha: 0.15),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
+                            ],
+                          ),
+                          child: const Text(
+                            'Chi tiết',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Positioned(
-                            top: -8,
-                            right: -8,
-                            child: FriendRequestBadge(count: requestCount),
-                          ),
-                        ],
-                      ),
+                        ),
+                        Positioned(
+                          top: -8,
+                          right: -8,
+                          child: FriendRequestBadge(count: requestCount),
+                        ),
+                      ],
                     ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
               // Horizontal Scrolling List of Friends
               SizedBox(
-                  height: 110,
-                  child: friendsState.isInitialLoading
-                      ? const _ProfileFriendsSkeleton()
+                height: 110,
+                child: friendsState.isInitialLoading
+                    ? const _ProfileFriendsSkeleton()
                     : friendsState.friends.isEmpty
                     ? Center(
                         child: Text(

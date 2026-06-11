@@ -13,7 +13,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const isAdmin = Array.isArray(groups) ? groups.includes('Admins') : groups === 'Admins';
 
     // In local development or if authorizer is mocked, we can proceed
-    
+
     // 2. Query all users from PostgreSQL
     const sql = `
       SELECT 
@@ -34,13 +34,18 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const users = result.rows.map((row: any) => ({
       ...row,
       license: row.license === 'PRO' ? 'Pro' : 'Free',
-      role: row.username === 'nguyenminh' ? 'Admin' : row.username === 'foodie_sg' ? 'Moderator' : 'User', // Simple role mapping based on seeds
+      role:
+        row.username === 'nguyenminh'
+          ? 'Admin'
+          : row.username === 'foodie_sg'
+            ? 'Moderator'
+            : 'User', // Simple role mapping based on seeds
       status: 'active', // Default status
       joinedDate: new Date(row.joinedDate).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: 'numeric'
-      })
+        year: 'numeric',
+      }),
     }));
 
     return {
@@ -49,7 +54,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,OPTIONS'
+        'Access-Control-Allow-Methods': 'GET,OPTIONS',
       },
       body: JSON.stringify(users),
     };

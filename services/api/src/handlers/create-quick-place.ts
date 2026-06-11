@@ -64,7 +64,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return json(400, { error: 'lng is required and must be between -180 and 180' });
     }
 
-    const resolvedCategory: PlaceCategory = (category && isPlaceCategory(category)) ? category : 'other';
+    const resolvedCategory: PlaceCategory =
+      category && isPlaceCategory(category) ? category : 'other';
     const trimmedName = name.trim();
     const normalized = normalizeName(trimmedName);
 

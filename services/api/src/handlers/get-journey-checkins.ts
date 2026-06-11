@@ -68,7 +68,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     // Map UI mock fields (like saved spots and tags) to null/empty for now,
     // as they are not natively supported by the schema.
-    const mappedData = data.map(row => ({
+    const mappedData = data.map((row) => ({
       ...row,
       tags: [], // Could be extracted from text or vibes
       friendsSavedCount: 0,

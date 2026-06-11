@@ -4,14 +4,25 @@ import { HttpRequest } from '@aws-sdk/protocol-http';
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { DynamoDBStreamEvent } from 'aws-lambda';
 
+const friendRealtimeEventTypes = new Set([
+  'FRIEND_REQUEST_RECEIVED',
+  'FRIEND_REQUEST_CANCELED',
+  'FRIEND_REQUEST_DECLINED',
+  'FRIEND_REQUEST_ACCEPTED',
+  'FRIENDSHIP_REMOVED',
+  'FRIENDSHIP_HIDDEN',
+  'FRIEND_BLOCKED',
+]);
+
 interface FriendRealtimePayload {
   eventId: string;
   type: string;
   targetUserId: string;
-  requesterId: string;
-  requesterName: string;
-  requesterUsername: string;
-  requesterAvatarUrl: string;
+  actorUserId: string;
+  relatedUserId: string;
+  actorName: string;
+  actorUsername: string;
+  actorAvatarUrl: string;
   createdAt: string;
 }
 
@@ -21,49 +32,39 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
 
     const image = record.dynamodb?.NewImage;
     const eventType = image?.type?.S;
-    if (
-      !image ||
-      (eventType !== 'FRIEND_REQUEST_RECEIVED' && eventType !== 'FRIEND_REQUEST_CANCELED')
-    ) {
+    if (!image || !eventType || !friendRealtimeEventTypes.has(eventType)) {
       continue;
     }
 
-    await publishFriendRequestEvent({
+    await publishFriendRealtimeEvent({
       eventId: image.eventId?.S ?? '',
       type: eventType,
       targetUserId: image.targetUserId?.S ?? '',
-      requesterId: image.requesterId?.S ?? '',
-      requesterName: image.requesterName?.S ?? 'Một người bạn',
-      requesterUsername: image.requesterUsername?.S ?? '',
-      requesterAvatarUrl: image.requesterAvatarUrl?.S ?? '',
+      actorUserId: image.actorUserId?.S ?? image.requesterId?.S ?? '',
+      relatedUserId: image.relatedUserId?.S ?? image.requesterId?.S ?? image.actorUserId?.S ?? '',
+      actorName: image.actorName?.S ?? image.requesterName?.S ?? 'Một người bạn',
+      actorUsername: image.actorUsername?.S ?? image.requesterUsername?.S ?? '',
+      actorAvatarUrl: image.actorAvatarUrl?.S ?? image.requesterAvatarUrl?.S ?? '',
       createdAt: image.createdAt?.S ?? new Date().toISOString(),
     });
   }
 }
 
-async function publishFriendRequestEvent(input: FriendRealtimePayload): Promise<void> {
+async function publishFriendRealtimeEvent(input: FriendRealtimePayload): Promise<void> {
   const graphqlUrl = process.env.FRIEND_REALTIME_GRAPHQL_URL!;
   const region = process.env.AWS_REGION ?? 'ap-southeast-1';
   const url = new URL(graphqlUrl);
-  const mutationName = input.type === 'FRIEND_REQUEST_CANCELED'
-    ? 'PublishFriendRequestCanceled'
-    : 'PublishFriendRequestReceived';
-  const fieldName = input.type === 'FRIEND_REQUEST_CANCELED'
-    ? 'publishFriendRequestCanceled'
-    : 'publishFriendRequestReceived';
-  const inputType = input.type === 'FRIEND_REQUEST_CANCELED'
-    ? 'PublishFriendRequestCanceledInput'
-    : 'PublishFriendRequestReceivedInput';
   const body = JSON.stringify({
-    query: `mutation ${mutationName}($input: ${inputType}!) {
-      ${fieldName}(input: $input) {
+    query: `mutation PublishFriendRealtimeEvent($input: PublishFriendRealtimeEventInput!) {
+      publishFriendRealtimeEvent(input: $input) {
         eventId
         type
         targetUserId
-        requesterId
-        requesterName
-        requesterUsername
-        requesterAvatarUrl
+        actorUserId
+        relatedUserId
+        actorName
+        actorUsername
+        actorAvatarUrl
         createdAt
       }
     }`,

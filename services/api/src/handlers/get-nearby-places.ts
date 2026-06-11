@@ -43,7 +43,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const auth = await extractAuth(event);
       userId = auth.sub;
     } catch (authError) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     // 2. Parse & validate params

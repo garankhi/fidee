@@ -43,7 +43,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // Map license ('Pro' | 'Enterprise' | 'Free' | 'Basic') to PostgreSQL ENUM plan ('FREE' | 'PRO')
-    const dbPlan = (license === 'Pro' || license === 'Enterprise') ? 'PRO' : 'FREE';
+    const dbPlan = license === 'Pro' || license === 'Enterprise' ? 'PRO' : 'FREE';
 
     // 3. Update database
     const sql = `
@@ -88,7 +88,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           new UpdateCommand({
             TableName: userProfilesTable,
             Key: { userId },
-            UpdateExpression: 'SET #plan = :plan, displayName = :displayName, updatedAt = :updatedAt',
+            UpdateExpression:
+              'SET #plan = :plan, displayName = :displayName, updatedAt = :updatedAt',
             ExpressionAttributeNames: {
               '#plan': 'plan',
             },
@@ -97,7 +98,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
               ':displayName': fullName,
               ':updatedAt': new Date().toISOString(),
             },
-          })
+          }),
         );
       } catch (dynamoError) {
         console.error('Lỗi đồng bộ gói cước sang DynamoDB:', dynamoError);
@@ -113,8 +114,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       joinedDate: new Date(updatedUser.joinedDate as string).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: 'numeric'
-      })
+        year: 'numeric',
+      }),
     };
 
     return {
@@ -123,7 +124,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'PUT,OPTIONS'
+        'Access-Control-Allow-Methods': 'PUT,OPTIONS',
       },
       body: JSON.stringify(mappedUser),
     };

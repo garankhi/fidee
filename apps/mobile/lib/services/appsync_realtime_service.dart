@@ -7,38 +7,39 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 typedef WebSocketConnector =
     WebSocketChannel Function(Uri uri, {Iterable<String>? protocols});
 
-class FriendRequestRealtimeEvent {
+class FriendRealtimeEvent {
   final String type;
   final String eventId;
   final String targetUserId;
-  final String requesterId;
-  final String requesterName;
-  final String requesterUsername;
-  final String requesterAvatarUrl;
+  final String actorUserId;
+  final String relatedUserId;
+  final String actorName;
+  final String actorUsername;
+  final String actorAvatarUrl;
   final DateTime createdAt;
 
-  const FriendRequestRealtimeEvent({
-    this.type = 'FRIEND_REQUEST_RECEIVED',
+  const FriendRealtimeEvent({
+    required this.type,
     required this.eventId,
     required this.targetUserId,
-    required this.requesterId,
-    required this.requesterName,
-    required this.requesterUsername,
-    required this.requesterAvatarUrl,
+    required this.actorUserId,
+    required this.relatedUserId,
+    required this.actorName,
+    required this.actorUsername,
+    required this.actorAvatarUrl,
     required this.createdAt,
   });
 
-  factory FriendRequestRealtimeEvent.fromGraphqlData(
-    Map<String, dynamic> data,
-  ) {
-    return FriendRequestRealtimeEvent(
+  factory FriendRealtimeEvent.fromGraphqlData(Map<String, dynamic> data) {
+    return FriendRealtimeEvent(
       type: data['type'] as String? ?? 'FRIEND_REQUEST_RECEIVED',
       eventId: data['eventId'] as String? ?? '',
       targetUserId: data['targetUserId'] as String? ?? '',
-      requesterId: data['requesterId'] as String? ?? '',
-      requesterName: data['requesterName'] as String? ?? 'Một người bạn',
-      requesterUsername: data['requesterUsername'] as String? ?? '',
-      requesterAvatarUrl: data['requesterAvatarUrl'] as String? ?? '',
+      actorUserId: data['actorUserId'] as String? ?? '',
+      relatedUserId: data['relatedUserId'] as String? ?? '',
+      actorName: data['actorName'] as String? ?? 'Một người bạn',
+      actorUsername: data['actorUsername'] as String? ?? '',
+      actorAvatarUrl: data['actorAvatarUrl'] as String? ?? '',
       createdAt:
           DateTime.tryParse(data['createdAt'] as String? ?? '') ??
           DateTime.now(),
@@ -64,10 +65,10 @@ class AppSyncRealtimeService {
     WebSocketConnector connect = WebSocketChannel.connect,
   }) : _connect = connect;
 
-  Stream<FriendRequestRealtimeEvent> subscribeToFriendRequests({
+  Stream<FriendRealtimeEvent> subscribeToFriendRealtimeEvents({
     required String targetUserId,
   }) {
-    final controller = StreamController<FriendRequestRealtimeEvent>();
+    final controller = StreamController<FriendRealtimeEvent>();
     unawaited(_connectSubscription(targetUserId, controller));
     return controller.stream;
   }
@@ -87,16 +88,15 @@ class AppSyncRealtimeService {
     required String token,
     required String targetUserId,
   }) {
-      return _buildSubscriptionStartMessage(
-        token: token,
-        targetUserId: targetUserId,
-        kind: _FriendRequestSubscriptionKind.received,
-      );
-    }
+    return _buildSubscriptionStartMessage(
+      token: token,
+      targetUserId: targetUserId,
+    );
+  }
 
   Future<void> _connectSubscription(
     String targetUserId,
-    StreamController<FriendRequestRealtimeEvent> controller,
+    StreamController<FriendRealtimeEvent> controller,
   ) async {
     final token = await getToken();
     if (token == null ||
@@ -115,16 +115,18 @@ class AppSyncRealtimeService {
       _channel = channel;
       await channel.ready;
 
-      var subscriptionsStarted = false;
+      var subscriptionStarted = false;
       void startSubscription() {
-        if (subscriptionsStarted) return;
-        subscriptionsStarted = true;
-        for (final message in _buildSubscriptionStartMessages(
-          token: token,
-          targetUserId: targetUserId,
-        )) {
-          channel.sink.add(jsonEncode(message));
-        }
+        if (subscriptionStarted) return;
+        subscriptionStarted = true;
+        channel.sink.add(
+          jsonEncode(
+            _buildSubscriptionStartMessage(
+              token: token,
+              targetUserId: targetUserId,
+            ),
+          ),
+        );
       }
 
       _socketSubscription = channel.stream.listen(
@@ -155,48 +157,27 @@ class AppSyncRealtimeService {
     return uri.replace(queryParameters: {'header': header, 'payload': payload});
   }
 
-  List<Map<String, dynamic>> _buildSubscriptionStartMessages({
-    required String token,
-    required String targetUserId,
-  }) {
-    return [
-      _buildSubscriptionStartMessage(
-        token: token,
-        targetUserId: targetUserId,
-        kind: _FriendRequestSubscriptionKind.received,
-      ),
-      _buildSubscriptionStartMessage(
-        token: token,
-        targetUserId: targetUserId,
-        kind: _FriendRequestSubscriptionKind.canceled,
-      ),
-    ];
-  }
-
   Map<String, dynamic> _buildSubscriptionStartMessage({
     required String token,
     required String targetUserId,
-    required _FriendRequestSubscriptionKind kind,
   }) {
     final graphqlHost = Uri.parse(graphqlUrl).host;
-    final isCanceled = kind == _FriendRequestSubscriptionKind.canceled;
-    final operationName = isCanceled ? 'OnFriendRequestCanceled' : 'OnFriendRequestReceived';
-    final fieldName = isCanceled ? 'onFriendRequestCanceled' : 'onFriendRequestReceived';
     return {
-      'id': 'friend-request-${isCanceled ? 'canceled' : 'received'}-$targetUserId',
+      'id': 'friend-realtime-$targetUserId',
       'type': 'start',
       'payload': {
         'data': jsonEncode({
-          'query': '''
-subscription $operationName(\$targetUserId: ID!) {
-  $fieldName(targetUserId: \$targetUserId) {
+          'query': r'''
+subscription OnFriendRealtimeEvent($targetUserId: ID!) {
+  onFriendRealtimeEvent(targetUserId: $targetUserId) {
     eventId
     type
     targetUserId
-    requesterId
-    requesterName
-    requesterUsername
-    requesterAvatarUrl
+    actorUserId
+    relatedUserId
+    actorName
+    actorUsername
+    actorAvatarUrl
     createdAt
   }
 }
@@ -212,7 +193,7 @@ subscription $operationName(\$targetUserId: ID!) {
 
   void _handleSocketMessage(
     dynamic message,
-    StreamController<FriendRequestRealtimeEvent> controller, {
+    StreamController<FriendRealtimeEvent> controller, {
     required VoidCallback onConnectionAck,
   }) {
     final decoded = jsonDecode(message as String) as Map<String, dynamic>;
@@ -222,11 +203,9 @@ subscription $operationName(\$targetUserId: ID!) {
     } else if (type == 'data') {
       final payload = decoded['payload'] as Map<String, dynamic>?;
       final data = payload?['data'] as Map<String, dynamic>?;
-      final event =
-          data?['onFriendRequestReceived'] as Map<String, dynamic>? ??
-          data?['onFriendRequestCanceled'] as Map<String, dynamic>?;
+      final event = data?['onFriendRealtimeEvent'] as Map<String, dynamic>?;
       if (event != null) {
-        controller.add(FriendRequestRealtimeEvent.fromGraphqlData(event));
+        controller.add(FriendRealtimeEvent.fromGraphqlData(event));
       }
     } else if (type == 'error' || type == 'connection_error') {
       controller.addError((decoded['payload'] ?? decoded) as Object);
@@ -237,5 +216,3 @@ subscription $operationName(\$targetUserId: ID!) {
     return base64.encode(utf8.encode(jsonEncode(value)));
   }
 }
-
-enum _FriendRequestSubscriptionKind { received, canceled }

@@ -247,81 +247,102 @@ export class FideeStack extends cdk.Stack {
       description: 'Platform administrators',
     });
 
-      const userPoolClient = userPool.addClient('WebClient', {
-        authFlows: { userSrp: true, userPassword: true, custom: true },
-      });
+    const userPoolClient = userPool.addClient('WebClient', {
+      authFlows: { userSrp: true, userPassword: true, custom: true },
+    });
 
-      const friendRealtimeApi = new appsync.GraphqlApi(this, 'FriendRealtimeApi', {
-        name: resourceName(stage, 'friend-realtime'),
-        definition: appsync.Definition.fromFile('graphql/friend-realtime.graphql'),
-        authorizationConfig: {
-          defaultAuthorization: {
-            authorizationType: appsync.AuthorizationType.USER_POOL,
-            userPoolConfig: { userPool },
-          },
-          additionalAuthorizationModes: [{ authorizationType: appsync.AuthorizationType.IAM }],
+    const friendRealtimeApi = new appsync.GraphqlApi(this, 'FriendRealtimeApi', {
+      name: resourceName(stage, 'friend-realtime'),
+      definition: appsync.Definition.fromFile('graphql/friend-realtime.graphql'),
+      authorizationConfig: {
+        defaultAuthorization: {
+          authorizationType: appsync.AuthorizationType.USER_POOL,
+          userPoolConfig: { userPool },
         },
-        logConfig: {
-          fieldLogLevel: appsync.FieldLogLevel.ERROR,
-          retention: logs.RetentionDays.ONE_WEEK,
-        },
-        xrayEnabled: !isProd(stage),
-      });
+        additionalAuthorizationModes: [{ authorizationType: appsync.AuthorizationType.IAM }],
+      },
+      logConfig: {
+        fieldLogLevel: appsync.FieldLogLevel.ERROR,
+        retention: logs.RetentionDays.ONE_WEEK,
+      },
+      xrayEnabled: !isProd(stage),
+    });
 
-      const friendRealtimeNoneDataSource = friendRealtimeApi.addNoneDataSource(
-        'FriendRealtimeNoneDataSource',
-      );
+    const friendRealtimeNoneDataSource = friendRealtimeApi.addNoneDataSource(
+      'FriendRealtimeNoneDataSource',
+    );
 
-      friendRealtimeNoneDataSource.createResolver('PublishFriendRequestReceivedResolver', {
-        typeName: 'Mutation',
-        fieldName: 'publishFriendRequestReceived',
-        requestMappingTemplate: appsync.MappingTemplate.fromString(
-          '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
-        ),
-        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
-      });
+    friendRealtimeNoneDataSource.createResolver('PublishFriendRequestReceivedResolver', {
+      typeName: 'Mutation',
+      fieldName: 'publishFriendRequestReceived',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(
+        '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
+      ),
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+    });
 
-      friendRealtimeNoneDataSource.createResolver('PublishFriendRequestCanceledResolver', {
-        typeName: 'Mutation',
-        fieldName: 'publishFriendRequestCanceled',
-        requestMappingTemplate: appsync.MappingTemplate.fromString(
-          '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
-        ),
-        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
-      });
+    friendRealtimeNoneDataSource.createResolver('PublishFriendRequestCanceledResolver', {
+      typeName: 'Mutation',
+      fieldName: 'publishFriendRequestCanceled',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(
+        '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
+      ),
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+    });
 
-      friendRealtimeNoneDataSource.createResolver('OnFriendRequestReceivedResolver', {
-        typeName: 'Subscription',
-        fieldName: 'onFriendRequestReceived',
-        requestMappingTemplate: appsync.MappingTemplate.fromString(`
+    friendRealtimeNoneDataSource.createResolver('PublishFriendRealtimeEventResolver', {
+      typeName: 'Mutation',
+      fieldName: 'publishFriendRealtimeEvent',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(
+        '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
+      ),
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+    });
+
+    friendRealtimeNoneDataSource.createResolver('OnFriendRealtimeEventResolver', {
+      typeName: 'Subscription',
+      fieldName: 'onFriendRealtimeEvent',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
 #if($ctx.identity.sub != $ctx.args.targetUserId)
   $util.unauthorized()
 #end
 {"version":"2018-05-29","payload":null}
 `),
-        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
-      });
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
+    });
 
-      friendRealtimeNoneDataSource.createResolver('OnFriendRequestCanceledResolver', {
-        typeName: 'Subscription',
-        fieldName: 'onFriendRequestCanceled',
-        requestMappingTemplate: appsync.MappingTemplate.fromString(`
+    friendRealtimeNoneDataSource.createResolver('OnFriendRequestReceivedResolver', {
+      typeName: 'Subscription',
+      fieldName: 'onFriendRequestReceived',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
 #if($ctx.identity.sub != $ctx.args.targetUserId)
   $util.unauthorized()
 #end
 {"version":"2018-05-29","payload":null}
 `),
-        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
-      });
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
+    });
 
-      new cdk.CfnOutput(this, 'FriendRealtimeGraphqlUrl', {
-        value: friendRealtimeApi.graphqlUrl,
-      });
-      new cdk.CfnOutput(this, 'FriendRealtimeApiId', {
-        value: friendRealtimeApi.apiId,
-      });
+    friendRealtimeNoneDataSource.createResolver('OnFriendRequestCanceledResolver', {
+      typeName: 'Subscription',
+      fieldName: 'onFriendRequestCanceled',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+#if($ctx.identity.sub != $ctx.args.targetUserId)
+  $util.unauthorized()
+#end
+{"version":"2018-05-29","payload":null}
+`),
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
+    });
 
-      const placesTable = new dynamodb.Table(this, 'PlacesTable', {
+    new cdk.CfnOutput(this, 'FriendRealtimeGraphqlUrl', {
+      value: friendRealtimeApi.graphqlUrl,
+    });
+    new cdk.CfnOutput(this, 'FriendRealtimeApiId', {
+      value: friendRealtimeApi.apiId,
+    });
+
+    const placesTable = new dynamodb.Table(this, 'PlacesTable', {
       tableName: resourceName(stage, 'places'),
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
@@ -330,26 +351,26 @@ export class FideeStack extends cdk.Stack {
       removalPolicy,
     });
 
-      const userProfilesTable = new dynamodb.Table(this, 'UserProfilesTable', {
-        tableName: resourceName(stage, 'user-profiles'),
+    const userProfilesTable = new dynamodb.Table(this, 'UserProfilesTable', {
+      tableName: resourceName(stage, 'user-profiles'),
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiresAt',
-        removalPolicy,
-      });
+      removalPolicy,
+    });
 
-      const friendRequestRealtimeEventsTable = new dynamodb.Table(
-        this,
-        'FriendRequestRealtimeEventsTable',
-        {
-          tableName: resourceName(stage, 'friend-request-realtime-events'),
-          partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
-          billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-          stream: dynamodb.StreamViewType.NEW_IMAGE,
-          timeToLiveAttribute: 'expiresAt',
-          removalPolicy,
-        },
-      );
+    const friendRequestRealtimeEventsTable = new dynamodb.Table(
+      this,
+      'FriendRequestRealtimeEventsTable',
+      {
+        tableName: resourceName(stage, 'friend-request-realtime-events'),
+        partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        stream: dynamodb.StreamViewType.NEW_IMAGE,
+        timeToLiveAttribute: 'expiresAt',
+        removalPolicy,
+      },
+    );
 
     placesTable.addGlobalSecondaryIndex({
       indexName: 'GSI1',
@@ -600,71 +621,90 @@ export class FideeStack extends cdk.Stack {
     });
     dbCluster.secret!.grantRead(getFriendsFn);
 
-      const getFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetFriendRequestsFunction', {
-        ...friendsLambdaProps,
+    const getFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetFriendRequestsFunction', {
+      ...friendsLambdaProps,
       functionName: resourceName(stage, 'get-friend-requests'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'getFriendRequests',
-      });
-      dbCluster.secret!.grantRead(getFriendRequestsFn);
+    });
+    dbCluster.secret!.grantRead(getFriendRequestsFn);
 
-      const getSentFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetSentFriendRequestsFunction', {
+    const getSentFriendRequestsFn = new nodejs.NodejsFunction(
+      this,
+      'GetSentFriendRequestsFunction',
+      {
         ...friendsLambdaProps,
         functionName: resourceName(stage, 'get-sent-friend-requests'),
         entry: '../../services/api/src/handlers/friends-handlers.ts',
         handler: 'getSentFriendRequests',
-      });
-      dbCluster.secret!.grantRead(getSentFriendRequestsFn);
+      },
+    );
+    dbCluster.secret!.grantRead(getSentFriendRequestsFn);
 
-      const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
-        ...friendsLambdaProps,
-        functionName: resourceName(stage, 'send-friend-request'),
-        entry: '../../services/api/src/handlers/friends-handlers.ts',
-        handler: 'sendFriendRequest',
-        environment: {
-          ...friendsLambdaProps.environment,
-          FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
-        },
-      });
-        dbCluster.secret!.grantRead(sendFriendRequestFn);
-        friendRequestRealtimeEventsTable.grantWriteData(sendFriendRequestFn);
+    const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'send-friend-request'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'sendFriendRequest',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
+    });
+    dbCluster.secret!.grantRead(sendFriendRequestFn);
+    friendRequestRealtimeEventsTable.grantWriteData(sendFriendRequestFn);
 
-        const cancelFriendRequestFn = new nodejs.NodejsFunction(this, 'CancelFriendRequestFunction', {
-          ...friendsLambdaProps,
-          functionName: resourceName(stage, 'cancel-friend-request'),
-          entry: '../../services/api/src/handlers/friends-handlers.ts',
-          handler: 'cancelFriendRequest',
-          environment: {
-            ...friendsLambdaProps.environment,
-            FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
-          },
-        });
-        dbCluster.secret!.grantRead(cancelFriendRequestFn);
-        friendRequestRealtimeEventsTable.grantWriteData(cancelFriendRequestFn);
+    const cancelFriendRequestFn = new nodejs.NodejsFunction(this, 'CancelFriendRequestFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'cancel-friend-request'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'cancelFriendRequest',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
+    });
+    dbCluster.secret!.grantRead(cancelFriendRequestFn);
+    friendRequestRealtimeEventsTable.grantWriteData(cancelFriendRequestFn);
 
     const acceptFriendFn = new nodejs.NodejsFunction(this, 'AcceptFriendFunction', {
       ...friendsLambdaProps,
       functionName: resourceName(stage, 'accept-friend'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'acceptFriend',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
     });
     dbCluster.secret!.grantRead(acceptFriendFn);
+    friendRequestRealtimeEventsTable.grantWriteData(acceptFriendFn);
 
     const declineFriendFn = new nodejs.NodejsFunction(this, 'DeclineFriendFunction', {
       ...friendsLambdaProps,
       functionName: resourceName(stage, 'decline-friend'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'declineFriend',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
     });
     dbCluster.secret!.grantRead(declineFriendFn);
+    friendRequestRealtimeEventsTable.grantWriteData(declineFriendFn);
 
     const unfriendFn = new nodejs.NodejsFunction(this, 'UnfriendFunction', {
       ...friendsLambdaProps,
       functionName: resourceName(stage, 'unfriend'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'unfriend',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
     });
     dbCluster.secret!.grantRead(unfriendFn);
+    friendRequestRealtimeEventsTable.grantWriteData(unfriendFn);
     const searchFriendsFn = new nodejs.NodejsFunction(this, 'SearchFriendsFunction', {
       ...friendsLambdaProps,
       functionName: resourceName(stage, 'search-friends'),
@@ -678,42 +718,52 @@ export class FideeStack extends cdk.Stack {
       functionName: resourceName(stage, 'hide-friend'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'hideFriend',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
     });
     dbCluster.secret!.grantRead(hideFriendFn);
+    friendRequestRealtimeEventsTable.grantWriteData(hideFriendFn);
 
-      const blockFriendFn = new nodejs.NodejsFunction(this, 'BlockFriendFunction', {
-        ...friendsLambdaProps,
-        functionName: resourceName(stage, 'block-friend'),
-        entry: '../../services/api/src/handlers/friends-handlers.ts',
-        handler: 'blockFriend',
-      });
-      dbCluster.secret!.grantRead(blockFriendFn);
+    const blockFriendFn = new nodejs.NodejsFunction(this, 'BlockFriendFunction', {
+      ...friendsLambdaProps,
+      functionName: resourceName(stage, 'block-friend'),
+      entry: '../../services/api/src/handlers/friends-handlers.ts',
+      handler: 'blockFriend',
+      environment: {
+        ...friendsLambdaProps.environment,
+        FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+      },
+    });
+    dbCluster.secret!.grantRead(blockFriendFn);
+    friendRequestRealtimeEventsTable.grantWriteData(blockFriendFn);
 
-      const publishFriendRealtimeEventFn = new nodejs.NodejsFunction(
-        this,
-        'PublishFriendRealtimeEventFunction',
-        {
-          functionName: resourceName(stage, 'publish-friend-realtime-event'),
-          runtime: lambda.Runtime.NODEJS_20_X,
-          entry: '../../services/api/src/handlers/publish-friend-realtime-event.ts',
-          handler: 'handler',
-          memorySize: 256,
-          timeout: cdk.Duration.seconds(10),
-          environment: {
-            FRIEND_REALTIME_GRAPHQL_URL: friendRealtimeApi.graphqlUrl,
-          },
+    const publishFriendRealtimeEventFn = new nodejs.NodejsFunction(
+      this,
+      'PublishFriendRealtimeEventFunction',
+      {
+        functionName: resourceName(stage, 'publish-friend-realtime-event'),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: '../../services/api/src/handlers/publish-friend-realtime-event.ts',
+        handler: 'handler',
+        memorySize: 256,
+        timeout: cdk.Duration.seconds(10),
+        environment: {
+          FRIEND_REALTIME_GRAPHQL_URL: friendRealtimeApi.graphqlUrl,
         },
-      );
-      publishFriendRealtimeEventFn.addEventSource(
-        new lambdaEventSources.DynamoEventSource(friendRequestRealtimeEventsTable, {
-          startingPosition: lambda.StartingPosition.LATEST,
-          batchSize: 10,
-          retryAttempts: 2,
-        }),
-      );
-      friendRealtimeApi.grantMutation(publishFriendRealtimeEventFn);
+      },
+    );
+    publishFriendRealtimeEventFn.addEventSource(
+      new lambdaEventSources.DynamoEventSource(friendRequestRealtimeEventsTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+      }),
+    );
+    friendRealtimeApi.grantMutation(publishFriendRealtimeEventFn);
 
-      const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
+    const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
       queueName: resourceName(stage, 'media-upload-events-dlq'),
       retentionPeriod: cdk.Duration.days(14),
     });
@@ -935,26 +985,34 @@ export class FideeStack extends cdk.Stack {
     });
 
     const requestsResource = friendsResource.addResource('requests');
-      requestsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendRequestsFn), {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      });
+    requestsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendRequestsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
-      const sentRequestsResource = requestsResource.addResource('sent');
-      sentRequestsResource.addMethod('GET', new apigateway.LambdaIntegration(getSentFriendRequestsFn), {
+    const sentRequestsResource = requestsResource.addResource('sent');
+    sentRequestsResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getSentFriendRequestsFn),
+      {
         authorizer: cognitoAuthorizer,
         authorizationType: apigateway.AuthorizationType.COGNITO,
-      });
+      },
+    );
 
     const requestActionResource = friendsResource.addResource('request');
-      requestActionResource.addMethod('POST', new apigateway.LambdaIntegration(sendFriendRequestFn), {
+    requestActionResource.addMethod('POST', new apigateway.LambdaIntegration(sendFriendRequestFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+    requestActionResource.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(cancelFriendRequestFn),
+      {
         authorizer: cognitoAuthorizer,
         authorizationType: apigateway.AuthorizationType.COGNITO,
-      });
-      requestActionResource.addMethod('DELETE', new apigateway.LambdaIntegration(cancelFriendRequestFn), {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      });
+      },
+    );
 
     const acceptActionResource = friendsResource.addResource('accept');
     acceptActionResource.addMethod('POST', new apigateway.LambdaIntegration(acceptFriendFn), {
@@ -1408,17 +1466,21 @@ export class FideeStack extends cdk.Stack {
     dbCluster.secret!.grantRead(getJourneyReviewsFn);
 
     const journeyResource = api.root.addResource('journey');
-    
+
     const journeyCheckinsResource = journeyResource.addResource('checkins');
     journeyCheckinsResource.addCorsPreflight({
       allowOrigins: apigateway.Cors.ALL_ORIGINS,
       allowMethods: ['GET', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
     });
-    journeyCheckinsResource.addMethod('GET', new apigateway.LambdaIntegration(getJourneyCheckinsFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
+    journeyCheckinsResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getJourneyCheckinsFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
 
     const journeyReviewsResource = journeyResource.addResource('reviews');
     journeyReviewsResource.addCorsPreflight({

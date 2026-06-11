@@ -51,8 +51,8 @@ describe('enqueueFriendRequestRealtimeEvent', () => {
     const firstEventId = firstCommand.input.Item.eventId.S;
     const secondEventId = secondCommand.input.Item.eventId.S;
 
-    expect(firstEventId).toContain('friend_request#user-1#user-2#');
-    expect(secondEventId).toContain('friend_request#user-1#user-2#');
+    expect(firstEventId).toContain('friend_request_received#user-2#user-1#');
+    expect(secondEventId).toContain('friend_request_received#user-2#user-1#');
     expect(firstEventId).not.toBe(secondEventId);
   });
 
@@ -69,7 +69,7 @@ describe('enqueueFriendRequestRealtimeEvent', () => {
 
     const command = mockSend.mock.calls[0][0] as { input: any };
 
-    expect(command.input.Item.eventId.S).toContain('friend_request_canceled#user-1#user-2#');
+    expect(command.input.Item.eventId.S).toContain('friend_request_canceled#user-2#user-1#');
     expect(command.input.Item.type.S).toBe('FRIEND_REQUEST_CANCELED');
   });
 });

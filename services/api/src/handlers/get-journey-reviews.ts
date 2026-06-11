@@ -67,7 +67,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const nextCursor = hasMore ? data[data.length - 1].createdAt : null;
 
     // Map UI mock fields
-    const mappedData = data.map(row => ({
+    const mappedData = data.map((row) => ({
       ...row,
       tags: [], // Could be extracted from content or metadata
       friendsSavedCount: 0,

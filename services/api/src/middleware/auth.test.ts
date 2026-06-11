@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { extractAuth, maskPhone, maskEmail, requireGroup, requireAdmin } from './auth';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-const mockEventWithClaims = (
-  claims: Record<string, string | undefined>,
-): APIGatewayProxyEvent =>
+const mockEventWithClaims = (claims: Record<string, string | undefined>): APIGatewayProxyEvent =>
   ({
     requestContext: {
       authorizer: { claims },

@@ -236,6 +236,12 @@ class AuthController extends _$AuthController {
     return result;
   }
 
+  Future<void> refreshProfileDetails() async {
+    final service = ref.read(authServiceProvider);
+    await service.fetchProfileDetails();
+    state = AsyncData(AuthUiState.fromService(service));
+  }
+
   void setError(String message) {
     state = AsyncData(_currentState().copyWith(errorMessage: message));
   }

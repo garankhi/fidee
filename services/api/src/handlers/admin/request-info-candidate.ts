@@ -16,15 +16,24 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const adminId = event.requestContext.authorizer?.jwt?.claims?.sub
-      || event.requestContext.authorizer?.claims?.sub;
+    const adminId =
+      event.requestContext.authorizer?.jwt?.claims?.sub ||
+      event.requestContext.authorizer?.claims?.sub;
     if (!adminId) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const candidateId = event.pathParameters?.id;
     if (!candidateId) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing candidate id' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing candidate id' }),
+      };
     }
 
     const body = JSON.parse(event.body || '{}');
@@ -41,7 +50,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const fetchSql = 'SELECT id, name FROM place_candidates WHERE id = $1;';
     const fetchResult = await query(fetchSql, [candidateId]);
     if (fetchResult.rows.length === 0) {
-      return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };
+      return {
+        statusCode: 404,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Candidate not found' }),
+      };
     }
     const candidateName = fetchResult.rows[0].name;
 

@@ -5,12 +5,7 @@
 const EARTH_RADIUS_METERS = 6_371_000;
 
 /** Haversine distance between two coordinates in meters. */
-export function haversineDistance(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
+export function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
@@ -72,9 +67,14 @@ export function geohashNeighbors(hash: string): string[] {
 
   const neighbors: string[] = [hash];
   const offsets = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],           [0, 1],
-    [1, -1],  [1, 0],  [1, 1],
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1],
   ];
 
   for (const [dLat, dLng] of offsets) {
@@ -128,18 +128,72 @@ function decodeGeohash(hash: string): { lat: number; lng: number; latErr: number
 // ─── Name normalization ─────────────────────────────────────────
 
 const DIACRITICS_MAP: Record<string, string> = {
-  à: 'a', á: 'a', ả: 'a', ã: 'a', ạ: 'a',
-  ă: 'a', ằ: 'a', ắ: 'a', ẳ: 'a', ẵ: 'a', ặ: 'a',
-  â: 'a', ầ: 'a', ấ: 'a', ẩ: 'a', ẫ: 'a', ậ: 'a',
-  è: 'e', é: 'e', ẻ: 'e', ẽ: 'e', ẹ: 'e',
-  ê: 'e', ề: 'e', ế: 'e', ể: 'e', ễ: 'e', ệ: 'e',
-  ì: 'i', í: 'i', ỉ: 'i', ĩ: 'i', ị: 'i',
-  ò: 'o', ó: 'o', ỏ: 'o', õ: 'o', ọ: 'o',
-  ô: 'o', ồ: 'o', ố: 'o', ổ: 'o', ỗ: 'o', ộ: 'o',
-  ơ: 'o', ờ: 'o', ớ: 'o', ở: 'o', ỡ: 'o', ợ: 'o',
-  ù: 'u', ú: 'u', ủ: 'u', ũ: 'u', ụ: 'u',
-  ư: 'u', ừ: 'u', ứ: 'u', ử: 'u', ữ: 'u', ự: 'u',
-  ỳ: 'y', ý: 'y', ỷ: 'y', ỹ: 'y', ỵ: 'y',
+  à: 'a',
+  á: 'a',
+  ả: 'a',
+  ã: 'a',
+  ạ: 'a',
+  ă: 'a',
+  ằ: 'a',
+  ắ: 'a',
+  ẳ: 'a',
+  ẵ: 'a',
+  ặ: 'a',
+  â: 'a',
+  ầ: 'a',
+  ấ: 'a',
+  ẩ: 'a',
+  ẫ: 'a',
+  ậ: 'a',
+  è: 'e',
+  é: 'e',
+  ẻ: 'e',
+  ẽ: 'e',
+  ẹ: 'e',
+  ê: 'e',
+  ề: 'e',
+  ế: 'e',
+  ể: 'e',
+  ễ: 'e',
+  ệ: 'e',
+  ì: 'i',
+  í: 'i',
+  ỉ: 'i',
+  ĩ: 'i',
+  ị: 'i',
+  ò: 'o',
+  ó: 'o',
+  ỏ: 'o',
+  õ: 'o',
+  ọ: 'o',
+  ô: 'o',
+  ồ: 'o',
+  ố: 'o',
+  ổ: 'o',
+  ỗ: 'o',
+  ộ: 'o',
+  ơ: 'o',
+  ờ: 'o',
+  ớ: 'o',
+  ở: 'o',
+  ỡ: 'o',
+  ợ: 'o',
+  ù: 'u',
+  ú: 'u',
+  ủ: 'u',
+  ũ: 'u',
+  ụ: 'u',
+  ư: 'u',
+  ừ: 'u',
+  ứ: 'u',
+  ử: 'u',
+  ữ: 'u',
+  ự: 'u',
+  ỳ: 'y',
+  ý: 'y',
+  ỷ: 'y',
+  ỹ: 'y',
+  ỵ: 'y',
   đ: 'd',
 };
 

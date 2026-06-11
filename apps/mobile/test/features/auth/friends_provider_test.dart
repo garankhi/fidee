@@ -31,7 +31,8 @@ class _QueuedFriendService extends FriendService {
   }
 
   @override
-  Future<List<FriendProfile>> fetchSentFriendRequests() async => const <FriendProfile>[];
+  Future<List<FriendProfile>> fetchSentFriendRequests() async =>
+      const <FriendProfile>[];
 }
 
 void main() {

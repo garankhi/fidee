@@ -2,13 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { handler } from './get-profile';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-const mockEvent = (
-  claims: Record<string, string | undefined> | null,
-): APIGatewayProxyEvent =>
+const mockEvent = (claims: Record<string, string | undefined> | null): APIGatewayProxyEvent =>
   ({
-    requestContext: claims
-      ? { authorizer: { claims } }
-      : { authorizer: null },
+    requestContext: claims ? { authorizer: { claims } } : { authorizer: null },
     headers: {},
     body: null,
     httpMethod: 'GET',

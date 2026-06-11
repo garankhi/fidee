@@ -16,15 +16,24 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const adminId = event.requestContext.authorizer?.jwt?.claims?.sub
-      || event.requestContext.authorizer?.claims?.sub;
+    const adminId =
+      event.requestContext.authorizer?.jwt?.claims?.sub ||
+      event.requestContext.authorizer?.claims?.sub;
     if (!adminId) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const candidateId = event.pathParameters?.id;
     if (!candidateId) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing candidate id' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing candidate id' }),
+      };
     }
 
     // 1. Fetch candidate
@@ -33,7 +42,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     `;
     const fetchResult = await query(fetchSql, [candidateId]);
     if (fetchResult.rows.length === 0) {
-      return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };
+      return {
+        statusCode: 404,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Candidate not found' }),
+      };
     }
     const c = fetchResult.rows[0];
 
@@ -47,9 +60,18 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       RETURNING id;
     `;
     const placeResult = await query(insertPlaceSql, [
-      c.name, c.normalized_name, c.category, c.address || null, c.location,
-      c.created_by, c.open_time, c.close_time,
-      c.price_min, c.price_max, c.phone_number, c.description,
+      c.name,
+      c.normalized_name,
+      c.category,
+      c.address || null,
+      c.location,
+      c.created_by,
+      c.open_time,
+      c.close_time,
+      c.price_min,
+      c.price_max,
+      c.phone_number,
+      c.description,
       c.metadata || '{}',
     ]);
     const newPlaceId = placeResult.rows[0].id;

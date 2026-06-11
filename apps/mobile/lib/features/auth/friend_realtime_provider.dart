@@ -30,7 +30,7 @@ class FriendRealtimeController {
   FriendRealtimeController(this._ref);
 
   final Ref _ref;
-  StreamSubscription<FriendRequestRealtimeEvent>? _subscription;
+  StreamSubscription<FriendRealtimeEvent>? _subscription;
   String? _connectedUserId;
 
   Future<void> connect() async {
@@ -43,13 +43,18 @@ class FriendRealtimeController {
     _connectedUserId = targetUserId;
     final service = _ref.read(appSyncRealtimeServiceProvider);
     _subscription = service
-        .subscribeToFriendRequests(targetUserId: targetUserId)
+        .subscribeToFriendRealtimeEvents(targetUserId: targetUserId)
         .listen(
           (_) {
             unawaited(
               _ref
                   .read(friendsControllerProvider.notifier)
                   .refreshFromRealtimeEvent(),
+            );
+            unawaited(
+              _ref
+                  .read(authControllerProvider.notifier)
+                  .refreshProfileDetails(),
             );
           },
           onError: (Object error, StackTrace stackTrace) {

@@ -11,12 +11,14 @@ class FriendsState {
   final List<FriendProfile> requests;
   final List<FriendProfile> sentRequests;
   final bool isLoading;
+  final int revision;
 
   const FriendsState({
     this.friends = const [],
     this.requests = const [],
     this.sentRequests = const [],
     this.isLoading = false,
+    this.revision = 0,
   });
 
   FriendsState copyWith({
@@ -24,12 +26,14 @@ class FriendsState {
     List<FriendProfile>? requests,
     List<FriendProfile>? sentRequests,
     bool? isLoading,
+    int? revision,
   }) {
     return FriendsState(
       friends: friends ?? this.friends,
       requests: requests ?? this.requests,
       sentRequests: sentRequests ?? this.sentRequests,
       isLoading: isLoading ?? this.isLoading,
+      revision: revision ?? this.revision,
     );
   }
 
@@ -87,6 +91,7 @@ class FriendsController extends _$FriendsController {
           requests: results[1],
           sentRequests: results[2],
           isLoading: false,
+          revision: state.revision + 1,
         );
       } finally {
         _isLoadingNow = false;

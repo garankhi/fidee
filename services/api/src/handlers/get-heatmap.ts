@@ -31,7 +31,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const auth = await extractAuth(event);
       userId = auth.sub;
     } catch {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const lat = parseFloat(event.queryStringParameters?.lat || '');
@@ -40,7 +44,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const radius = Math.min(Math.max(radiusRaw, 100), 50000);
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing or invalid lat/lng' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing or invalid lat/lng' }),
+      };
     }
 
     // Aggregate check-ins by location (place or candidate).

@@ -17,15 +17,24 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const userId = event.requestContext.authorizer?.jwt?.claims?.sub
-      || event.requestContext.authorizer?.claims?.sub;
+    const userId =
+      event.requestContext.authorizer?.jwt?.claims?.sub ||
+      event.requestContext.authorizer?.claims?.sub;
     if (!userId) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const candidateId = event.pathParameters?.id;
     if (!candidateId) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing candidate id' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing candidate id' }),
+      };
     }
 
     // 1. Get candidate detail with creator info
@@ -56,7 +65,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const candidateResult = await query(candidateSql, [candidateId]);
 
     if (candidateResult.rows.length === 0) {
-      return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };
+      return {
+        statusCode: 404,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Candidate not found' }),
+      };
     }
 
     const candidate = candidateResult.rows[0];
@@ -128,5 +141,3 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   }
 }
-
-

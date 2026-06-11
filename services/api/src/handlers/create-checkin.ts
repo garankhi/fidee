@@ -12,22 +12,52 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const auth = await extractAuth(event);
 
     const body = JSON.parse(event.body || '{}');
-    const { place_id, candidate_id, media_id, gps_lat, gps_lng, gps_accuracy, caption, rating, visibility = 'FRIENDS' } = body;
+    const {
+      place_id,
+      candidate_id,
+      media_id,
+      gps_lat,
+      gps_lng,
+      gps_accuracy,
+      caption,
+      rating,
+      visibility = 'FRIENDS',
+    } = body;
 
     if (!place_id && !candidate_id) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Either place_id or candidate_id is required' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Either place_id or candidate_id is required' }),
+      };
     }
     if (place_id && candidate_id) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Use only one of place_id or candidate_id' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Use only one of place_id or candidate_id' }),
+      };
     }
     if (!media_id) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'media_id is required' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'media_id is required' }),
+      };
     }
     if (gps_lat == null || gps_lng == null) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'gps_lat and gps_lng are required' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'gps_lat and gps_lng are required' }),
+      };
     }
     if (!['FRIENDS', 'PRIVATE'].includes(visibility)) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'visibility must be FRIENDS or PRIVATE' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'visibility must be FRIENDS or PRIVATE' }),
+      };
     }
 
     const insertSql = `
@@ -55,7 +85,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const ratingVal = rating != null ? Number(rating) : null;
 
     if (place_id) {
-      counterUpdates.push(query(`
+      counterUpdates.push(
+        query(
+          `
         UPDATE places SET
           checkin_count = checkin_count + 1,
           rating_count = CASE WHEN $2::int IS NOT NULL THEN rating_count + 1 ELSE rating_count END,
@@ -67,11 +99,16 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
             ELSE avg_rating END,
           cover_media_id = COALESCE(cover_media_id, $3)
         WHERE id = $1
-      `, [place_id, ratingVal, media_id]));
+      `,
+          [place_id, ratingVal, media_id],
+        ),
+      );
     }
 
     if (candidate_id) {
-      counterUpdates.push(query(`
+      counterUpdates.push(
+        query(
+          `
         UPDATE place_candidates SET
           checkin_count = checkin_count + 1,
           rating_count = CASE WHEN $2::int IS NOT NULL THEN rating_count + 1 ELSE rating_count END,
@@ -83,7 +120,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
             ELSE avg_rating END,
           cover_media_id = COALESCE(cover_media_id, $3)
         WHERE id = $1
-      `, [candidate_id, ratingVal, media_id]));
+      `,
+          [candidate_id, ratingVal, media_id],
+        ),
+      );
     }
 
     await Promise.all(counterUpdates);
@@ -101,7 +141,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Missing auth context')) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
     console.error('Failed to create check-in:', error);
     return {

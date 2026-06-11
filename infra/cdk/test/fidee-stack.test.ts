@@ -293,12 +293,22 @@ describe('FideeStack', () => {
       FieldName: 'publishFriendRequestReceived',
     });
     template.hasResourceProperties('AWS::AppSync::Resolver', {
-      TypeName: 'Mutation',
-      FieldName: 'publishFriendRequestCanceled',
+    TypeName: 'Mutation',
+    FieldName: 'publishFriendRequestCanceled',
     });
     template.hasResourceProperties('AWS::AppSync::Resolver', {
-      TypeName: 'Subscription',
-      FieldName: 'onFriendRequestReceived',
+    TypeName: 'Mutation',
+    FieldName: 'publishFriendRealtimeEvent',
+      });
+      template.hasResourceProperties('AWS::AppSync::Resolver', {
+        TypeName: 'Subscription',
+        FieldName: 'onFriendRealtimeEvent',
+        RequestMappingTemplate: Match.stringLikeRegexp('ctx.identity.sub'),
+        ResponseMappingTemplate: '$util.toJson(null)',
+      });
+      template.hasResourceProperties('AWS::AppSync::Resolver', {
+        TypeName: 'Subscription',
+        FieldName: 'onFriendRequestReceived',
       RequestMappingTemplate: Match.stringLikeRegexp('payload":null'),
       ResponseMappingTemplate: '$util.toJson(null)',
     });
@@ -323,9 +333,30 @@ describe('FideeStack', () => {
     });
   });
 
-  it('wires the friend realtime publisher Lambda to the event stream', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'fidee-dev-publish-friend-realtime-event',
+  it('grants friendship mutation Lambdas access to the realtime event table', () => {
+  for (const functionName of [
+  'fidee-dev-send-friend-request',
+        'fidee-dev-cancel-friend-request',
+        'fidee-dev-accept-friend',
+        'fidee-dev-decline-friend',
+        'fidee-dev-unfriend',
+        'fidee-dev-hide-friend',
+        'fidee-dev-block-friend',
+      ]) {
+        template.hasResourceProperties('AWS::Lambda::Function', {
+          FunctionName: functionName,
+          Environment: {
+            Variables: Match.objectLike({
+              FRIEND_REQUEST_REALTIME_EVENTS_TABLE: Match.anyValue(),
+            }),
+          },
+        });
+      }
+    });
+
+    it('wires the friend realtime publisher Lambda to the event stream', () => {
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        FunctionName: 'fidee-dev-publish-friend-realtime-event',
       Environment: {
         Variables: Match.objectLike({
           FRIEND_REALTIME_GRAPHQL_URL: Match.anyValue(),

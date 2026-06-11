@@ -7,6 +7,22 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
 };
 
+type PlaceMetadata = {
+  vibes?: unknown;
+  services?: unknown;
+};
+
+function placeMetadata(value: unknown): PlaceMetadata {
+  if (value && typeof value === 'object') {
+    return value as PlaceMetadata;
+  }
+  return {};
+}
+
+function metadataList(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
 /**
  * GET /places/{id} — BFF for Place Detail screen.
  *
@@ -26,12 +42,20 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const auth = await extractAuth(event);
       userId = auth.sub;
     } catch {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const placeId = event.pathParameters?.id;
     if (!placeId) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing place id' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing place id' }),
+      };
     }
 
     // ── 1. Try approved place first ──────────────────────────────
@@ -70,6 +94,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     if (placeResult.rows.length > 0) {
       const p = placeResult.rows[0];
+      const metadata = placeMetadata(p.metadata);
       placeData = {
         id: p.id,
         name: p.name,
@@ -91,8 +116,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         isFeatured: p.is_featured,
         isVerified: p.is_verified,
         checkinCount: p.checkin_count,
-        vibes: p.metadata?.vibes || [],
-        services: p.metadata?.services || [],
+        vibes: metadataList(metadata.vibes),
+        services: metadataList(metadata.services),
       };
     } else {
       // ── 2. Fallback to candidate ──────────────────────────────
@@ -121,12 +146,17 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       `;
       const candidateResult = await query(candidateSql, [placeId]);
       if (candidateResult.rows.length === 0) {
-        return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Place not found' }) };
+        return {
+          statusCode: 404,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ error: 'Place not found' }),
+        };
       }
 
       isCandidate = true;
       targetCol = 'candidate_id';
       const c = candidateResult.rows[0];
+      const metadata = placeMetadata(c.metadata);
       placeData = {
         id: c.id,
         name: c.name,
@@ -148,8 +178,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         isFeatured: false,
         isVerified: false,
         checkinCount: c.checkin_count,
-        vibes: c.metadata?.vibes || [],
-        services: c.metadata?.services || [],
+        vibes: metadataList(metadata.vibes),
+        services: metadataList(metadata.services),
       };
     }
 
@@ -274,7 +304,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Missing auth context')) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
     console.error('Failed to get place detail:', error);
     return {

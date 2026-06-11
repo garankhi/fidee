@@ -36,16 +36,13 @@ describe('getNearbyPlaces handler', () => {
     const result = await handler(nearbyEvent('1000'));
 
     expect(result.statusCode).toBe(200);
-    expect(mockQuery).toHaveBeenNthCalledWith(
-      1,
-      expect.any(String),
-      [106.7035, 10.7738, 1000],
-    );
-    expect(mockQuery).toHaveBeenNthCalledWith(
-      2,
-      expect.any(String),
-      [106.7035, 10.7738, 1000, 'user-123'],
-    );
+    expect(mockQuery).toHaveBeenNthCalledWith(1, expect.any(String), [106.7035, 10.7738, 1000]);
+    expect(mockQuery).toHaveBeenNthCalledWith(2, expect.any(String), [
+      106.7035,
+      10.7738,
+      1000,
+      'user-123',
+    ]);
     expect(JSON.parse(result.body).metadata.radius_meters).toBe(1000);
   });
 });

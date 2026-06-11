@@ -57,7 +57,13 @@ describe('define-auth-challenge', () => {
     const event = {
       request: {
         clientMetadata: { provider: 'google' },
-        session: [{ challengeName: 'CUSTOM_CHALLENGE', challengeResult: false, challengeMetadata: 'GOOGLE_TOKEN' }],
+        session: [
+          {
+            challengeName: 'CUSTOM_CHALLENGE',
+            challengeResult: false,
+            challengeMetadata: 'GOOGLE_TOKEN',
+          },
+        ],
       },
       response: {},
     } as unknown as DefineAuthChallengeTriggerEvent;
@@ -70,7 +76,13 @@ describe('define-auth-challenge', () => {
   it('allows retry on OTP failure if failed attempts < 5', async () => {
     const event = {
       request: {
-        session: [{ challengeName: 'CUSTOM_CHALLENGE', challengeResult: false, challengeMetadata: 'OTP-123456789' }],
+        session: [
+          {
+            challengeName: 'CUSTOM_CHALLENGE',
+            challengeResult: false,
+            challengeMetadata: 'OTP-123456789',
+          },
+        ],
       },
       response: {},
     } as unknown as DefineAuthChallengeTriggerEvent;
@@ -84,7 +96,11 @@ describe('define-auth-challenge', () => {
   it('fails authentication if OTP failed attempts >= 5', async () => {
     const event = {
       request: {
-        session: Array(5).fill({ challengeName: 'CUSTOM_CHALLENGE', challengeResult: false, challengeMetadata: 'OTP-123' }),
+        session: Array(5).fill({
+          challengeName: 'CUSTOM_CHALLENGE',
+          challengeResult: false,
+          challengeMetadata: 'OTP-123',
+        }),
       },
       response: {},
     } as unknown as DefineAuthChallengeTriggerEvent;
@@ -186,7 +202,7 @@ describe('verify-auth-challenge', () => {
 
     const result = await verifyAuth.handler(event);
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://oauth2.googleapis.com/tokeninfo?id_token=valid-google-token'
+      'https://oauth2.googleapis.com/tokeninfo?id_token=valid-google-token',
     );
     expect(result.response.answerCorrect).toBe(true);
   });

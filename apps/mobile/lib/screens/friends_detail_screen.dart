@@ -13,7 +13,8 @@ class FriendsDetailScreen extends ConsumerStatefulWidget {
   const FriendsDetailScreen({super.key});
 
   @override
-  ConsumerState<FriendsDetailScreen> createState() => _FriendsDetailScreenState();
+  ConsumerState<FriendsDetailScreen> createState() =>
+      _FriendsDetailScreenState();
 }
 
 class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
@@ -55,14 +56,23 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
     }
 
     setState(() => _isSearchingUsers = true);
-    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
-      final controller = ref.read(friendsControllerProvider.notifier);
-      final results = await controller.searchUsers(query);
-      if (!mounted || _searchCtrl.text.trim().toLowerCase() != query) return;
-      setState(() {
-        _searchResults = results;
-        _isSearchingUsers = false;
-      });
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _runUserSearch(query),
+    );
+  }
+
+  Future<void> _runUserSearch(String query, {bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() => _isSearchingUsers = true);
+    }
+
+    final controller = ref.read(friendsControllerProvider.notifier);
+    final results = await controller.searchUsers(query);
+    if (!mounted || _searchCtrl.text.trim().toLowerCase() != query) return;
+    setState(() {
+      _searchResults = results;
+      _isSearchingUsers = false;
     });
   }
 
@@ -96,7 +106,9 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
     setState(() => _busyRequestId = null);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.'),
+        content: Text(
+          success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.',
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -115,13 +127,19 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
       _busySearchResultId = null;
       if (success) {
         _searchResults = _searchResults
-            .map((item) => item.profile.id == result.profile.id ? optimisticResult(item) : item)
+            .map(
+              (item) => item.profile.id == result.profile.id
+                  ? optimisticResult(item)
+                  : item,
+            )
             .toList(growable: false);
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.'),
+        content: Text(
+          success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.',
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -132,9 +150,17 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
     final authService = ref.watch(authServiceProvider);
     final friendsState = ref.watch(friendsControllerProvider);
     final friendsNotifier = ref.read(friendsControllerProvider.notifier);
+    ref.listen<FriendsState>(friendsControllerProvider, (previous, next) {
+      if (previous?.revision == next.revision || _searchQuery.length < 2) {
+        return;
+      }
+      _searchDebounce?.cancel();
+      unawaited(_runUserSearch(_searchQuery, showLoading: false));
+    });
 
     final preferredUsername = authService.preferredUsername ?? 'user';
-    final shareText = 'Xin chào! Kết bạn với mình trên FIDEE nha. https://fidee.site/$preferredUsername';
+    final shareText =
+        'Xin chào! Kết bạn với mình trên FIDEE nha. https://fidee.site/$preferredUsername';
 
     // Filter friends list dynamically based on search query
     final filteredFriends = friendsState.friends.where((friend) {
@@ -149,7 +175,10 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
         scaffoldBackgroundColor: Colors.white,
         primaryColor: const Color(0xFFEF4050),
         textTheme: const TextTheme(
-          titleLarge: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          titleLarge: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
           bodyLarge: TextStyle(color: Colors.black87),
           bodyMedium: TextStyle(color: Colors.black54),
         ),
@@ -193,7 +222,10 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
           children: [
             // 1. Search Bar Top
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 22.0,
+                vertical: 12.0,
+              ),
               child: Container(
                 height: 46,
                 decoration: BoxDecoration(
@@ -203,24 +235,38 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    const Icon(Icons.search, color: Color(0xFF8E8E93), size: 20),
+                    const Icon(
+                      Icons.search,
+                      color: Color(0xFF8E8E93),
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: _searchCtrl,
                         decoration: const InputDecoration(
                           hintText: 'Tìm kiếm bạn bè...',
-                          hintStyle: TextStyle(color: Color(0xFFEF484F), fontSize: 14),
+                          hintStyle: TextStyle(
+                            color: Color(0xFFEF484F),
+                            fontSize: 14,
+                          ),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 10),
                         ),
-                        style: const TextStyle(color: Color(0xFFEF484F), fontSize: 14),
+                        style: const TextStyle(
+                          color: Color(0xFFEF484F),
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     if (_searchCtrl.text.isNotEmpty)
                       GestureDetector(
                         onTap: () => _searchCtrl.clear(),
-                        child: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 18),
+                        child: const Icon(
+                          Icons.close,
+                          color: Color(0xFF8E8E93),
+                          size: 18,
+                        ),
                       ),
                     if (_isSearchingUsers)
                       const Padding(
@@ -228,7 +274,10 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                         child: SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFEF4050)),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFEF4050),
+                          ),
                         ),
                       ),
                   ],
@@ -238,7 +287,10 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22.0,
+                  vertical: 8.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -249,7 +301,9 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                         color: const Color(0xFFFFECEF),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: const Color(0xFFEF4050).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFFEF4050,
+                          ).withValues(alpha: 0.15),
                           width: 1.5,
                         ),
                       ),
@@ -275,12 +329,17 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                           ),
                           const SizedBox(height: 16),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFFEF4050).withValues(alpha: 0.1),
+                                color: const Color(
+                                  0xFFEF4050,
+                                ).withValues(alpha: 0.1),
                               ),
                             ),
                             child: Text(
@@ -299,12 +358,15 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                                 child: SizedBox(
                                   height: 40,
                                   child: OutlinedButton.icon(
-                                    onPressed: () => _copyToClipboard(shareText, context),
+                                    onPressed: () =>
+                                        _copyToClipboard(shareText, context),
                                     icon: const Icon(Icons.copy, size: 16),
                                     label: const Text('Sao chép'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: const Color(0xFF6E7E91),
-                                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                      side: const BorderSide(
+                                        color: Color(0xFFCBD5E1),
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
@@ -317,7 +379,8 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                                 child: SizedBox(
                                   height: 40,
                                   child: ElevatedButton.icon(
-                                    onPressed: () => _shareLink(shareText, context),
+                                    onPressed: () =>
+                                        _shareLink(shareText, context),
                                     icon: const Icon(Icons.share, size: 16),
                                     label: const Text('Chia sẻ'),
                                     style: ElevatedButton.styleFrom(
@@ -355,45 +418,50 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                           isBusy: _busySearchResultId == result.profile.id,
                           onAdd: result.canRequest
                               ? () => _runSearchResultAction(
-                                    result,
-                                    friendsNotifier.addFriend,
-                                    (item) => item.copyWith(
-                                      relationStatus: FriendRelationStatus.pending,
-                                      relationDirection: FriendRelationDirection.outgoing,
-                                      canRequest: false,
-                                      canCancelRequest: true,
-                                      canAcceptRequest: false,
-                                    ),
-                                    'Đã gửi lời mời kết bạn',
-                                  )
+                                  result,
+                                  friendsNotifier.addFriend,
+                                  (item) => item.copyWith(
+                                    relationStatus:
+                                        FriendRelationStatus.pending,
+                                    relationDirection:
+                                        FriendRelationDirection.outgoing,
+                                    canRequest: false,
+                                    canCancelRequest: true,
+                                    canAcceptRequest: false,
+                                  ),
+                                  'Đã gửi lời mời kết bạn',
+                                )
                               : null,
                           onCancel: result.canCancelRequest
                               ? () => _runSearchResultAction(
-                                    result,
-                                    friendsNotifier.cancelFriendRequest,
-                                    (item) => item.copyWith(
-                                      relationStatus: FriendRelationStatus.none,
-                                      relationDirection: FriendRelationDirection.none,
-                                      canRequest: true,
-                                      canCancelRequest: false,
-                                      canAcceptRequest: false,
-                                    ),
-                                    'Đã hủy lời mời kết bạn',
-                                  )
+                                  result,
+                                  friendsNotifier.cancelFriendRequest,
+                                  (item) => item.copyWith(
+                                    relationStatus: FriendRelationStatus.none,
+                                    relationDirection:
+                                        FriendRelationDirection.none,
+                                    canRequest: true,
+                                    canCancelRequest: false,
+                                    canAcceptRequest: false,
+                                  ),
+                                  'Đã hủy lời mời kết bạn',
+                                )
                               : null,
                           onAccept: result.canAcceptRequest
                               ? () => _runSearchResultAction(
-                                    result,
-                                    friendsNotifier.accept,
-                                    (item) => item.copyWith(
-                                      relationStatus: FriendRelationStatus.accepted,
-                                      relationDirection: FriendRelationDirection.none,
-                                      canRequest: false,
-                                      canCancelRequest: false,
-                                      canAcceptRequest: false,
-                                    ),
-                                    'Đã chấp nhận lời mời',
-                                  )
+                                  result,
+                                  friendsNotifier.accept,
+                                  (item) => item.copyWith(
+                                    relationStatus:
+                                        FriendRelationStatus.accepted,
+                                    relationDirection:
+                                        FriendRelationDirection.none,
+                                    canRequest: false,
+                                    canCancelRequest: false,
+                                    canAcceptRequest: false,
+                                  ),
+                                  'Đã chấp nhận lời mời',
+                                )
                               : null,
                         ),
                       const SizedBox(height: 28),
@@ -417,24 +485,24 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                         itemBuilder: (context, index) {
                           final req = friendsState.requests[index];
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: FriendRequestActionRow(
-                                request: req,
-                                tone: FriendRequestTone.light,
-                                isBusy: _busyRequestId == req.id,
-                                onAccept: () => _runRequestAction(
-                                  req.id,
-                                  friendsNotifier.accept,
-                                  'Đã chấp nhận lời mời',
-                                ),
-                                onDecline: () => _runRequestAction(
-                                  req.id,
-                                  friendsNotifier.decline,
-                                  'Đã từ chối lời mời',
-                                ),
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: FriendRequestActionRow(
+                              request: req,
+                              tone: FriendRequestTone.light,
+                              isBusy: _busyRequestId == req.id,
+                              onAccept: () => _runRequestAction(
+                                req.id,
+                                friendsNotifier.accept,
+                                'Đã chấp nhận lời mời',
                               ),
-                            );
+                              onDecline: () => _runRequestAction(
+                                req.id,
+                                friendsNotifier.decline,
+                                'Đã từ chối lời mời',
+                              ),
+                            ),
+                          );
                         },
                       ),
                       const SizedBox(height: 28),
@@ -466,7 +534,8 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                             FriendSearchResult(
                               profile: sentRequest,
                               relationStatus: FriendRelationStatus.pending,
-                              relationDirection: FriendRelationDirection.outgoing,
+                              relationDirection:
+                                  FriendRelationDirection.outgoing,
                               canRequest: false,
                               canCancelRequest: true,
                               canAcceptRequest: false,
@@ -508,129 +577,171 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                      friendsState.isInitialLoading
-                          ? const _FriendsDetailListSkeleton()
+                    friendsState.isInitialLoading
+                        ? const _FriendsDetailListSkeleton()
                         : filteredFriends.isEmpty
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 32.0),
-                                  child: Text(
-                                    _searchQuery.isEmpty
-                                        ? 'Chưa có bạn bè trong danh sách.'
-                                        : 'Không tìm thấy kết quả phù hợp.',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontSize: 13,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 32.0,
+                              ),
+                              child: Text(
+                                _searchQuery.isEmpty
+                                    ? 'Chưa có bạn bè trong danh sách.'
+                                    : 'Không tìm thấy kết quả phù hợp.',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                  fontStyle: FontStyle.italic,
                                 ),
-                              )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: filteredFriends.length,
-                                itemBuilder: (context, index) {
-                                  final friend = filteredFriends[index];
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filteredFriends.length,
+                            itemBuilder: (context, index) {
+                              final friend = filteredFriends[index];
 
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 48,
-                                          height: 48,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: const Color(0xFFFFD4DA),
-                                            image: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
-                                                ? DecorationImage(
-                                                    image: NetworkImage(friend.avatarUrl!),
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                : null,
-                                          ),
-                                          child: friend.avatarUrl == null || friend.avatarUrl!.isEmpty
-                                              ? Center(
-                                                  child: Text(
-                                                    friend.initials,
-                                                    style: const TextStyle(
-                                                      color: Color(0xFFEF4050),
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                )
-                                              : null,
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                friend.name,
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFFFFD4DA),
+                                        image:
+                                            friend.avatarUrl != null &&
+                                                friend.avatarUrl!.isNotEmpty
+                                            ? DecorationImage(
+                                                image: NetworkImage(
+                                                  friend.avatarUrl!,
+                                                ),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
+                                      ),
+                                      child:
+                                          friend.avatarUrl == null ||
+                                              friend.avatarUrl!.isEmpty
+                                          ? Center(
+                                              child: Text(
+                                                friend.initials,
                                                 style: const TextStyle(
-                                                  color: Color(0xFF151515),
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w800,
+                                                  color: Color(0xFFEF4050),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
                                                 ),
                                               ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                '@${friend.handle}',
-                                                style: const TextStyle(
-                                                  color: Color(0xFF8D8D8D),
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            friend.name,
+                                            style: const TextStyle(
+                                              color: Color(0xFF151515),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '@${friend.handle}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF8D8D8D),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        // Show confirm dialog
+                                        showDialog<void>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Hủy kết bạn?'),
+                                            content: Text(
+                                              'Bạn có chắc chắn muốn hủy kết bạn với ${friend.name}?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx),
+                                                child: const Text(
+                                                  'Hủy',
+                                                  style: TextStyle(
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(ctx);
+                                                  friendsNotifier.unfriend(
+                                                    friend.id,
+                                                  );
+                                                },
+                                                child: const Text(
+                                                  'Xác nhận',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFEF4050),
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFFFFECEF,
                                         ),
-                                        const SizedBox(width: 8),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            // Show confirm dialog
-                                            showDialog<void>(
-                                              context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                title: const Text('Hủy kết bạn?'),
-                                                content: Text('Bạn có chắc chắn muốn hủy kết bạn với ${friend.name}?'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(ctx),
-                                                    child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      Navigator.pop(ctx);
-                                                      friendsNotifier.unfriend(friend.id);
-                                                    },
-                                                    child: const Text('Xác nhận', style: TextStyle(color: Color(0xFFEF4050))),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFFFFECEF),
-                                            foregroundColor: const Color(0xFFEF4050),
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
+                                        foregroundColor: const Color(
+                                          0xFFEF4050,
+                                        ),
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
                                           ),
-                                          child: const Text('Hủy kết bạn', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                         ),
-                                      ],
+                                      ),
+                                      child: const Text(
+                                        'Hủy kết bạn',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
-                              ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                   ],
                 ),
               ),

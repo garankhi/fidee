@@ -5,7 +5,12 @@ import { query } from '../db/client';
 import { extractAuth } from '../middleware/auth';
 import { ValidationError } from '../media/validation';
 import { getUserPlan, UserPlan } from '../repositories/user-profiles';
-import { buildCandidateId, isPlaceCategory, PlaceCategory, QUOTA_LIMITS } from '../repositories/place-candidates';
+import {
+  buildCandidateId,
+  isPlaceCategory,
+  PlaceCategory,
+  QUOTA_LIMITS,
+} from '../repositories/place-candidates';
 import { normalizeName } from '../utils/geo';
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -65,7 +70,9 @@ function validateCandidateRequest(value: unknown): CandidateRequest {
 
   const category = body.category;
   if (!isPlaceCategory(category)) {
-    throw new ValidationError('category must be one of: cafe, restaurant, hotel, tourist_attraction, office, shopping, other');
+    throw new ValidationError(
+      'category must be one of: cafe, restaurant, hotel, tourist_attraction, office, shopping, other',
+    );
   }
 
   const mediaId = body.mediaId;
@@ -186,7 +193,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
       `;
       const countRes = await query(countSql, [userId]);
       const usedToday = parseInt(countRes.rows[0].count as string, 10);
-      
+
       if (usedToday >= limit) {
         return jsonResponse(429, {
           status: 'error',
@@ -211,7 +218,11 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
             AND (normalized_name = $3 OR similarity(normalized_name, $3) > 0.3)
           LIMIT 5;
         `;
-        const dupRes = await query(dedupSql, [request.coordinates.lng, request.coordinates.lat, normalized]);
+        const dupRes = await query(dedupSql, [
+          request.coordinates.lng,
+          request.coordinates.lat,
+          normalized,
+        ]);
         if (dupRes.rows.length > 0) {
           return jsonResponse(409, {
             status: 'conflict',
@@ -223,7 +234,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
               candidateId: r.id,
               name: r.name,
               normalizedName: r.normalized_name,
-              distanceMeters: Math.round(parseFloat(r.distance_meters))
+              distanceMeters: Math.round(parseFloat(r.distance_meters)),
             })),
           });
         }
@@ -243,7 +254,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
           $9, $10, $11, $12, $13, $14, $15
         ) RETURNING created_at;
       `;
-      
+
       const insertRes = await query(insertSql, [
         uuidCandidateId,
         request.name,
@@ -259,7 +270,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
         request.priceMin || null,
         request.priceMax || null,
         request.phoneNumber || null,
-        request.description || null
+        request.description || null,
       ]);
 
       return jsonResponse(201, {
@@ -285,21 +296,31 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
       });
     } catch (error) {
       if (error instanceof ValidationError) {
-        return jsonResponse(400, { status: 'error', error: { code: 'VALIDATION_ERROR', message: error.message } });
+        return jsonResponse(400, {
+          status: 'error',
+          error: { code: 'VALIDATION_ERROR', message: error.message },
+        });
       }
       if (error instanceof Error && error.message.startsWith('Missing auth context')) {
-        return jsonResponse(401, { status: 'error', error: { code: 'UNAUTHORIZED', message: error.message } });
+        return jsonResponse(401, {
+          status: 'error',
+          error: { code: 'UNAUTHORIZED', message: error.message },
+        });
       }
       if (error instanceof Error && error.message.startsWith('Forbidden')) {
-        return jsonResponse(403, { status: 'error', error: { code: 'FORBIDDEN', message: error.message } });
+        return jsonResponse(403, {
+          status: 'error',
+          error: { code: 'FORBIDDEN', message: error.message },
+        });
       }
       console.error('Failed to create place candidate', error);
-      return jsonResponse(500, { status: 'error', error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      return jsonResponse(500, {
+        status: 'error',
+        error: { code: 'INTERNAL_ERROR', message: 'Internal server error' },
+      });
     }
   };
 }
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> =>
   createPlaceCandidateHandler(defaultDeps())(event);
-
-

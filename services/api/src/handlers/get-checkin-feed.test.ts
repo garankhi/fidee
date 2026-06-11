@@ -40,10 +40,10 @@ describe('get-checkin-feed handler', () => {
     const result = await handler(event());
 
     expect(result.statusCode).toBe(200);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining('ORDER BY ci.created_at DESC'),
-      ['user-1', 21],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('ORDER BY ci.created_at DESC'), [
+      'user-1',
+      21,
+    ]);
     expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('ci.user_id = $1'), [
       'user-1',
       21,

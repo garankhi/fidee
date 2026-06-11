@@ -51,7 +51,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const isPlace = placeCheck.rowCount! > 0;
 
     if (!isPlace) {
-      const candidateCheck = await query('SELECT id FROM place_candidates WHERE id = $1', [placeId]);
+      const candidateCheck = await query('SELECT id FROM place_candidates WHERE id = $1', [
+        placeId,
+      ]);
       if (candidateCheck.rowCount === 0) {
         return {
           statusCode: 404,

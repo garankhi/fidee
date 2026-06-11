@@ -18,15 +18,24 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const adminId = event.requestContext.authorizer?.jwt?.claims?.sub
-      || event.requestContext.authorizer?.claims?.sub;
+    const adminId =
+      event.requestContext.authorizer?.jwt?.claims?.sub ||
+      event.requestContext.authorizer?.claims?.sub;
     if (!adminId) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const candidateId = event.pathParameters?.id;
     if (!candidateId) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing candidate id' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing candidate id' }),
+      };
     }
 
     // Parse body
@@ -44,7 +53,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const fetchCandidateSql = 'SELECT id, name, created_by FROM place_candidates WHERE id = $1;';
     const candidateResult = await query(fetchCandidateSql, [candidateId]);
     if (candidateResult.rows.length === 0) {
-      return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Candidate not found' }) };
+      return {
+        statusCode: 404,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Candidate not found' }),
+      };
     }
     const candidateName = candidateResult.rows[0].name;
 
@@ -68,7 +81,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // 3. Re-point check-ins: find check-ins by the candidate creator
     //    near the candidate location and update their place_id
     //    (This is a best-effort merge; in practice there may be 0 check-ins)
-    const candidateLocSql = 'SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM place_candidates WHERE id = $1;';
+    const candidateLocSql =
+      'SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM place_candidates WHERE id = $1;';
     const locResult = await query(candidateLocSql, [candidateId]);
     if (locResult.rows.length > 0) {
       const { lat, lng } = locResult.rows[0];
@@ -82,11 +96,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
             100
           );
       `;
-      await query(updateCheckinsSql, [
-        targetPlaceId,
-        candidateResult.rows[0].created_by,
-        lng, lat,
-      ]);
+      await query(updateCheckinsSql, [targetPlaceId, candidateResult.rows[0].created_by, lng, lat]);
     }
 
     // 4. Delete candidate

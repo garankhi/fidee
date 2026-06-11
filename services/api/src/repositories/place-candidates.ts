@@ -1,13 +1,22 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
-
 import { randomUUID } from 'crypto';
-import { encodeGeohash, geohashNeighbors, haversineDistance, levenshteinDistance } from '../utils/geo';
+import {
+  encodeGeohash,
+  geohashNeighbors,
+  haversineDistance,
+  levenshteinDistance,
+} from '../utils/geo';
 
 export const PLACE_CATEGORIES = [
-  'cafe', 'restaurant', 'hotel', 'tourist_attraction',
-  'office', 'shopping', 'other',
+  'cafe',
+  'restaurant',
+  'hotel',
+  'tourist_attraction',
+  'office',
+  'shopping',
+  'other',
 ] as const;
 
 export type PlaceCategory = (typeof PLACE_CATEGORIES)[number];

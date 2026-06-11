@@ -1,7 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { extractAuth } from '../middleware/auth';
 import { query } from '../db/client';
-import { enqueueFriendRequestRealtimeEvent } from '../realtime/enqueue-friend-request-event';
+import {
+  enqueueFriendRealtimeEvent,
+  FriendRealtimeEventInput,
+  FriendRealtimeEventType,
+} from '../realtime/friend-realtime-event';
 
 function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGatewayProxyResult {
   return {
@@ -41,6 +45,68 @@ function relationDirection(
 ): 'NONE' | 'OUTGOING' | 'INCOMING' {
   if (relationStatus !== 'PENDING') return 'NONE';
   return initiatedBy === currentUserId ? 'OUTGOING' : 'INCOMING';
+}
+
+interface ActorProfile {
+  name: string;
+  username: string | null;
+  avatarUrl: string | null;
+}
+
+async function getActorProfile(userId: string, fallbackName: string): Promise<ActorProfile> {
+  const result = await query(
+    'SELECT display_name as name, username, avatar_url as "avatarUrl" FROM users WHERE id = $1',
+    [userId],
+  );
+  const row = (result.rows[0] ?? {}) as {
+    name?: string;
+    username?: string | null;
+    avatarUrl?: string | null;
+  };
+  return {
+    name: row.name ?? fallbackName,
+    username: row.username ?? null,
+    avatarUrl: row.avatarUrl ?? null,
+  };
+}
+
+function friendRealtimeEvent({
+  type,
+  targetUserId,
+  actorUserId,
+  relatedUserId,
+  actor,
+  createdAt,
+}: {
+  type: FriendRealtimeEventType;
+  targetUserId: string;
+  actorUserId: string;
+  relatedUserId: string;
+  actor: ActorProfile;
+  createdAt: string;
+}): FriendRealtimeEventInput {
+  return {
+    type,
+    targetUserId,
+    actorUserId,
+    relatedUserId,
+    actorName: actor.name,
+    actorUsername: actor.username,
+    actorAvatarUrl: actor.avatarUrl,
+    createdAt,
+  };
+}
+
+async function enqueueFriendRelationshipEvents(events: FriendRealtimeEventInput[]): Promise<void> {
+  for (const event of events) {
+    try {
+      await enqueueFriendRealtimeEvent(event);
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
+        console.error('enqueueFriendRealtimeEvent error', error);
+      }
+    }
+  }
 }
 
 /**
@@ -226,30 +292,17 @@ export const sendFriendRequest = async (
       throw e;
     }
 
-    try {
-      const requester = await query(
-        'SELECT display_name as name, username, avatar_url as "avatarUrl" FROM users WHERE id = $1',
-        [auth.sub],
-      );
-      const requesterRow = (requester.rows[0] ?? {}) as {
-        name?: string;
-        username?: string | null;
-        avatarUrl?: string | null;
-      };
-
-      await enqueueFriendRequestRealtimeEvent({
-        requesterId: auth.sub,
-        requesterName: requesterRow.name ?? auth.username ?? 'Một người bạn',
-        requesterUsername: requesterRow.username ?? null,
-        requesterAvatarUrl: requesterRow.avatarUrl ?? null,
+    const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+    await enqueueFriendRelationshipEvents([
+      friendRealtimeEvent({
+        type: 'FRIEND_REQUEST_RECEIVED',
         targetUserId,
+        actorUserId: auth.sub,
+        relatedUserId: auth.sub,
+        actor,
         createdAt: now,
-      });
-    } catch (error) {
-      if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
-        console.error('enqueueFriendRequestRealtimeEvent error', error);
-      }
-    }
+      }),
+    ]);
 
     return jsonResponse(200, { success: true, message: 'Friend request sent' });
   } catch (error) {
@@ -301,31 +354,25 @@ export const cancelFriendRequest = async (
       throw e;
     }
 
-    try {
-      const requester = await query(
-        'SELECT display_name as name, username, avatar_url as "avatarUrl" FROM users WHERE id = $1',
-        [auth.sub],
-      );
-      const requesterRow = (requester.rows[0] ?? {}) as {
-        name?: string;
-        username?: string | null;
-        avatarUrl?: string | null;
-      };
-
-      await enqueueFriendRequestRealtimeEvent({
+    const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+    await enqueueFriendRelationshipEvents([
+      friendRealtimeEvent({
         type: 'FRIEND_REQUEST_CANCELED',
-        requesterId: auth.sub,
-        requesterName: requesterRow.name ?? auth.username ?? 'Một người bạn',
-        requesterUsername: requesterRow.username ?? null,
-        requesterAvatarUrl: requesterRow.avatarUrl ?? null,
         targetUserId,
+        actorUserId: auth.sub,
+        relatedUserId: auth.sub,
+        actor,
         createdAt: now,
-      });
-    } catch (error) {
-      if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
-        console.error('enqueueFriendRequestRealtimeEvent cancel error', error);
-      }
-    }
+      }),
+      friendRealtimeEvent({
+        type: 'FRIEND_REQUEST_CANCELED',
+        targetUserId: auth.sub,
+        actorUserId: auth.sub,
+        relatedUserId: targetUserId,
+        actor,
+        createdAt: now,
+      }),
+    ]);
 
     return jsonResponse(200, { success: true, message: 'Friend request canceled' });
   } catch (error) {
@@ -380,6 +427,26 @@ export const acceptFriend = async (event: APIGatewayProxyEvent): Promise<APIGate
       throw e;
     }
 
+    const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+    await enqueueFriendRelationshipEvents([
+      friendRealtimeEvent({
+        type: 'FRIEND_REQUEST_ACCEPTED',
+        targetUserId,
+        actorUserId: auth.sub,
+        relatedUserId: auth.sub,
+        actor,
+        createdAt: now,
+      }),
+      friendRealtimeEvent({
+        type: 'FRIEND_REQUEST_ACCEPTED',
+        targetUserId: auth.sub,
+        actorUserId: auth.sub,
+        relatedUserId: targetUserId,
+        actor,
+        createdAt: now,
+      }),
+    ]);
+
     return jsonResponse(200, { success: true, message: 'Friend request accepted' });
   } catch (error) {
     console.error('acceptFriend error', error);
@@ -401,6 +468,8 @@ export const declineFriend = async (
     if (!targetUserId) {
       return jsonResponse(400, { error: 'targetUserId is required' });
     }
+
+    const now = new Date().toISOString();
 
     await query('BEGIN');
     try {
@@ -426,6 +495,26 @@ export const declineFriend = async (
       await query('ROLLBACK');
       throw e;
     }
+
+    const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+    await enqueueFriendRelationshipEvents([
+      friendRealtimeEvent({
+        type: 'FRIEND_REQUEST_DECLINED',
+        targetUserId,
+        actorUserId: auth.sub,
+        relatedUserId: auth.sub,
+        actor,
+        createdAt: now,
+      }),
+      friendRealtimeEvent({
+        type: 'FRIEND_REQUEST_DECLINED',
+        targetUserId: auth.sub,
+        actorUserId: auth.sub,
+        relatedUserId: targetUserId,
+        actor,
+        createdAt: now,
+      }),
+    ]);
 
     return jsonResponse(200, { success: true, message: 'Friend request declined' });
   } catch (error) {
@@ -459,6 +548,18 @@ export const hideFriend = async (event: APIGatewayProxyEvent): Promise<APIGatewa
       return jsonResponse(400, { error: 'Not currently friends' });
     }
 
+    const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+    await enqueueFriendRelationshipEvents([
+      friendRealtimeEvent({
+        type: 'FRIENDSHIP_HIDDEN',
+        targetUserId: auth.sub,
+        actorUserId: auth.sub,
+        relatedUserId: targetUserId,
+        actor,
+        createdAt: new Date().toISOString(),
+      }),
+    ]);
+
     return jsonResponse(200, { success: true, message: 'Friend hidden' });
   } catch (error) {
     console.error('hideFriend error', error);
@@ -478,6 +579,8 @@ export const unfriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayP
     if (!targetUserId) {
       return jsonResponse(400, { error: 'targetUserId is required' });
     }
+
+    const now = new Date().toISOString();
 
     await query('BEGIN');
     try {
@@ -512,6 +615,26 @@ export const unfriend = async (event: APIGatewayProxyEvent): Promise<APIGatewayP
       throw e;
     }
 
+    const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+    await enqueueFriendRelationshipEvents([
+      friendRealtimeEvent({
+        type: 'FRIENDSHIP_REMOVED',
+        targetUserId,
+        actorUserId: auth.sub,
+        relatedUserId: auth.sub,
+        actor,
+        createdAt: now,
+      }),
+      friendRealtimeEvent({
+        type: 'FRIENDSHIP_REMOVED',
+        targetUserId: auth.sub,
+        actorUserId: auth.sub,
+        relatedUserId: targetUserId,
+        actor,
+        createdAt: now,
+      }),
+    ]);
+
     return jsonResponse(200, { success: true, message: 'Unfriended successfully' });
   } catch (error) {
     console.error('unfriend error', error);
@@ -536,6 +659,9 @@ export const blockFriend = async (event: APIGatewayProxyEvent): Promise<APIGatew
       return jsonResponse(400, { error: 'Cannot block yourself' });
     }
 
+    const now = new Date().toISOString();
+    let shouldNotifyRelationshipChange = false;
+
     await query('BEGIN');
     try {
       const blockResult = await query(
@@ -551,13 +677,18 @@ export const blockFriend = async (event: APIGatewayProxyEvent): Promise<APIGatew
         [auth.sub, targetUserId],
       );
 
-      await query(
+      const reverseDelete = await query(
         `DELETE FROM friendships
-         WHERE user_id = $2 AND friend_id = $1 AND status IN ('ACCEPTED', 'PENDING')`,
+      WHERE user_id = $2 AND friend_id = $1 AND status IN ('ACCEPTED', 'PENDING')`,
         [auth.sub, targetUserId],
       );
 
-      const wasAccepted = blockResult.rows[0]?.status === 'ACCEPTED';
+      const previousStatus = blockResult.rows[0]?.status;
+      const wasAccepted = previousStatus === 'ACCEPTED';
+      shouldNotifyRelationshipChange =
+        previousStatus === 'ACCEPTED' ||
+        previousStatus === 'PENDING' ||
+        (reverseDelete.rowCount ?? 0) > 0;
       if (wasAccepted) {
         await query('UPDATE users SET friend_count = GREATEST(0, friend_count - 1) WHERE id = $1', [
           auth.sub,
@@ -571,6 +702,28 @@ export const blockFriend = async (event: APIGatewayProxyEvent): Promise<APIGatew
     } catch (e) {
       await query('ROLLBACK');
       throw e;
+    }
+
+    if (shouldNotifyRelationshipChange) {
+      const actor = await getActorProfile(auth.sub, auth.username ?? 'Một người bạn');
+      await enqueueFriendRelationshipEvents([
+        friendRealtimeEvent({
+          type: 'FRIEND_BLOCKED',
+          targetUserId,
+          actorUserId: auth.sub,
+          relatedUserId: auth.sub,
+          actor,
+          createdAt: now,
+        }),
+        friendRealtimeEvent({
+          type: 'FRIEND_BLOCKED',
+          targetUserId: auth.sub,
+          actorUserId: auth.sub,
+          relatedUserId: targetUserId,
+          actor,
+          createdAt: now,
+        }),
+      ]);
     }
 
     return jsonResponse(200, { success: true, message: 'Friend blocked' });

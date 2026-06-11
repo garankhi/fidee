@@ -28,9 +28,7 @@ async function getCredentials(): Promise<DbCredentials> {
   const secretArn = process.env.DB_SECRET_ARN;
   if (!secretArn) throw new Error('DB_SECRET_ARN env var is required');
 
-  const result = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: secretArn }),
-  );
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: secretArn }));
 
   if (!result.SecretString) throw new Error('DB secret is empty');
 

@@ -8,6 +8,18 @@ type Query {
   noop: String @aws_iam @aws_cognito_user_pools
 }
 
+type FriendRealtimeEvent @aws_iam @aws_cognito_user_pools {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  actorUserId: ID!
+  relatedUserId: ID!
+  actorName: String!
+  actorUsername: String
+  actorAvatarUrl: String
+  createdAt: AWSDateTime!
+}
+
 type FriendRequestRealtimeEvent @aws_iam @aws_cognito_user_pools {
   eventId: ID!
   type: String!
@@ -16,6 +28,18 @@ type FriendRequestRealtimeEvent @aws_iam @aws_cognito_user_pools {
   requesterName: String!
   requesterUsername: String
   requesterAvatarUrl: String
+  createdAt: AWSDateTime!
+}
+
+input PublishFriendRealtimeEventInput {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  actorUserId: ID!
+  relatedUserId: ID!
+  actorName: String!
+  actorUsername: String
+  actorAvatarUrl: String
   createdAt: AWSDateTime!
 }
 
@@ -42,11 +66,15 @@ input PublishFriendRequestCanceledInput {
 }
 
 type Mutation {
+  publishFriendRealtimeEvent(input: PublishFriendRealtimeEventInput!): FriendRealtimeEvent @aws_iam
   publishFriendRequestReceived(input: PublishFriendRequestReceivedInput!): FriendRequestRealtimeEvent @aws_iam
   publishFriendRequestCanceled(input: PublishFriendRequestCanceledInput!): FriendRequestRealtimeEvent @aws_iam
 }
 
 type Subscription {
+  onFriendRealtimeEvent(targetUserId: ID!): FriendRealtimeEvent
+    @aws_subscribe(mutations: ["publishFriendRealtimeEvent"])
+    @aws_cognito_user_pools
   onFriendRequestReceived(targetUserId: ID!): FriendRequestRealtimeEvent
     @aws_subscribe(mutations: ["publishFriendRequestReceived"])
     @aws_cognito_user_pools

@@ -47,7 +47,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   try {
     // 1. Authenticate user
     const auth = await extractAuth(event);
-    
+
     // 2. Parse and validate request
     const body = parseJsonBody(event);
     const contentType = body.contentType;
@@ -57,7 +57,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       throw new ValidationError('contentType must be image/jpeg, image/png, or image/webp');
     }
 
-    if (typeof contentLength !== 'number' || !Number.isInteger(contentLength) || contentLength <= 0) {
+    if (
+      typeof contentLength !== 'number' ||
+      !Number.isInteger(contentLength) ||
+      contentLength <= 0
+    ) {
       throw new ValidationError('contentLength must be a positive integer');
     }
     if (contentLength > MAX_UPLOAD_BYTES) {

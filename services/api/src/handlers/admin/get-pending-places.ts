@@ -14,10 +14,15 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const userId = event.requestContext.authorizer?.jwt?.claims?.sub
-      || event.requestContext.authorizer?.claims?.sub;
+    const userId =
+      event.requestContext.authorizer?.jwt?.claims?.sub ||
+      event.requestContext.authorizer?.claims?.sub;
     if (!userId) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const statusFilter = event.queryStringParameters?.status || 'PENDING_REVIEW';

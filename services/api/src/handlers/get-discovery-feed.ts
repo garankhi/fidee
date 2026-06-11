@@ -39,14 +39,22 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const auth = await extractAuth(event);
       userId = auth.sub;
     } catch {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
 
     const lat = parseFloat(event.queryStringParameters?.lat || '');
     const lng = parseFloat(event.queryStringParameters?.lng || '');
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing or invalid lat/lng' }) };
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Missing or invalid lat/lng' }),
+      };
     }
 
     // 1. Hot Places — global, sorted by check-in count

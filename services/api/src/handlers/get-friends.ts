@@ -35,7 +35,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Missing auth context')) {
-      return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
     console.error('Failed to get friends:', error);
     return {

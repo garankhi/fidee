@@ -10,17 +10,17 @@ import {
 
 describe('haversineDistance', () => {
   it('returns 0 for same point', () => {
-    expect(haversineDistance(10.77, 106.70, 10.77, 106.70)).toBe(0);
+    expect(haversineDistance(10.77, 106.7, 10.77, 106.7)).toBe(0);
   });
 
   it('calculates distance between Bitexco and Ben Thanh (~550m)', () => {
-    const d = haversineDistance(10.7716, 106.7042, 10.7726, 106.6980);
+    const d = haversineDistance(10.7716, 106.7042, 10.7726, 106.698);
     expect(d).toBeGreaterThan(500);
     expect(d).toBeLessThan(700);
   });
 
   it('calculates distance between two nearby points within 100m', () => {
-    const d = haversineDistance(10.7716, 106.7042, 10.7720, 106.7045);
+    const d = haversineDistance(10.7716, 106.7042, 10.772, 106.7045);
     expect(d).toBeLessThan(100);
   });
 });
@@ -39,7 +39,7 @@ describe('encodeGeohash', () => {
 
   it('nearby points share geohash prefix', () => {
     const h1 = encodeGeohash(10.7716, 106.7042, 4);
-    const h2 = encodeGeohash(10.7720, 106.7045, 4);
+    const h2 = encodeGeohash(10.772, 106.7045, 4);
     expect(h1).toBe(h2);
   });
 });

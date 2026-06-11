@@ -31,7 +31,9 @@ export const handler = async (
     }
 
     try {
-      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+      const response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+      );
       if (!response.ok) {
         console.error('[Verify Auth] Google tokeninfo API returned error status:', response.status);
         event.response.answerCorrect = false;
@@ -46,7 +48,8 @@ export const handler = async (
 
       const isAudValid = tokenInfo.aud === googleClientId;
       const isEmailValid = tokenInfo.email && tokenInfo.email.toLowerCase() === email.toLowerCase();
-      const isEmailVerified = tokenInfo.email_verified === 'true' || tokenInfo.email_verified === true;
+      const isEmailVerified =
+        tokenInfo.email_verified === 'true' || tokenInfo.email_verified === true;
 
       if (isAudValid && isEmailValid && isEmailVerified) {
         console.log('[Verify Auth] Google token verified successfully for', email);

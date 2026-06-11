@@ -156,18 +156,16 @@ describe('createPlaceCandidateHandler', () => {
   });
 
   it('returns 409 for near-duplicate', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ count: '0' }] })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 'cand_existing',
-            name: 'Quán Cà Phê Bình Minh',
-            normalized_name: 'quan ca phe binh minh',
-            distance_meters: '45',
-          },
-        ],
-      });
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'cand_existing',
+          name: 'Quán Cà Phê Bình Minh',
+          normalized_name: 'quan ca phe binh minh',
+          distance_meters: '45',
+        },
+      ],
+    });
     const deps = mockDeps();
     const handler = createPlaceCandidateHandler(deps);
     const result = await handler(mockEvent(validBody));
