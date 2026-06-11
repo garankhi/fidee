@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:fidee_mobile/services/appsync_realtime_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stream_channel/stream_channel.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
   group('FriendRequestRealtimeEvent', () {
@@ -79,5 +82,95 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
+
+    test('waits for connection_ack before starting the subscription', () async {
+      final fakeChannel = _FakeWebSocketChannel();
+      final service = AppSyncRealtimeService(
+        getToken: () async => 'token-123',
+        graphqlUrl:
+            'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+        realtimeUrl:
+            'wss://abc123.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
+        region: 'ap-southeast-1',
+        connect: (_, {protocols}) => fakeChannel,
+      );
+
+      final subscription = service
+          .subscribeToFriendRequests(targetUserId: 'user-sub-1')
+          .listen((_) {});
+      addTearDown(subscription.cancel);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeChannel.sentTypes, ['connection_init']);
+
+      fakeChannel.receive({'type': 'connection_ack'});
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeChannel.sentTypes, ['connection_init', 'start']);
+    });
   });
+}
+
+class _FakeWebSocketChannel
+    with StreamChannelMixin
+    implements WebSocketChannel {
+  final _incoming = StreamController<dynamic>();
+  final _sink = _FakeWebSocketSink();
+
+  @override
+  int? get closeCode => null;
+
+  @override
+  String? get closeReason => null;
+
+  @override
+  String? get protocol => 'graphql-ws';
+
+  @override
+  Future<void> get ready => Future<void>.value();
+
+  @override
+  WebSocketSink get sink => _sink;
+
+  @override
+  Stream<dynamic> get stream => _incoming.stream;
+
+  List<String?> get sentTypes => _sink.sentMessages
+      .map((message) => jsonDecode(message as String) as Map<String, dynamic>)
+      .map((message) => message['type'] as String?)
+      .toList(growable: false);
+
+  void receive(Map<String, dynamic> message) {
+    _incoming.add(jsonEncode(message));
+  }
+}
+
+class _FakeWebSocketSink implements WebSocketSink {
+  final sentMessages = <dynamic>[];
+  final _done = Completer<void>();
+
+  @override
+  Future<void> get done => _done.future;
+
+  @override
+  void add(dynamic data) {
+    sentMessages.add(data);
+  }
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<dynamic> stream) async {
+    await for (final message in stream) {
+      add(message);
+    }
+  }
+
+  @override
+  Future<void> close([int? closeCode, String? closeReason]) async {
+    if (!_done.isCompleted) {
+      _done.complete();
+    }
+  }
 }

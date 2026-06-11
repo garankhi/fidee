@@ -110,21 +110,31 @@ class AppSyncRealtimeService {
       );
       _channel = channel;
       await channel.ready;
-      channel.sink.add(jsonEncode({'type': 'connection_init'}));
-      channel.sink.add(
-        jsonEncode(
-          _buildSubscriptionStartMessage(
-            token: token,
-            targetUserId: targetUserId,
+
+      var subscriptionStarted = false;
+      void startSubscription() {
+        if (subscriptionStarted) return;
+        subscriptionStarted = true;
+        channel.sink.add(
+          jsonEncode(
+            _buildSubscriptionStartMessage(
+              token: token,
+              targetUserId: targetUserId,
+            ),
           ),
-        ),
-      );
+        );
+      }
 
       _socketSubscription = channel.stream.listen(
-        (message) => _handleSocketMessage(message, controller),
+        (message) => _handleSocketMessage(
+          message,
+          controller,
+          onConnectionAck: startSubscription,
+        ),
         onError: controller.addError,
         onDone: controller.close,
       );
+      channel.sink.add(jsonEncode({'type': 'connection_init'}));
     } catch (error, stackTrace) {
       controller.addError(error, stackTrace);
       await controller.close();
@@ -180,18 +190,21 @@ subscription OnFriendRequestReceived(\$targetUserId: ID!) {
 
   void _handleSocketMessage(
     dynamic message,
-    StreamController<FriendRequestRealtimeEvent> controller,
-  ) {
+    StreamController<FriendRequestRealtimeEvent> controller, {
+    required VoidCallback onConnectionAck,
+  }) {
     final decoded = jsonDecode(message as String) as Map<String, dynamic>;
     final type = decoded['type'] as String?;
-    if (type == 'data') {
+    if (type == 'connection_ack') {
+      onConnectionAck();
+    } else if (type == 'data') {
       final payload = decoded['payload'] as Map<String, dynamic>?;
       final data = payload?['data'] as Map<String, dynamic>?;
       final event = data?['onFriendRequestReceived'] as Map<String, dynamic>?;
       if (event != null) {
         controller.add(FriendRequestRealtimeEvent.fromGraphqlData(event));
       }
-    } else if (type == 'error') {
+    } else if (type == 'error' || type == 'connection_error') {
       controller.addError((decoded['payload'] ?? decoded) as Object);
     }
   }
