@@ -82,4 +82,12 @@ async function publishFriendRequestReceived(input: FriendRealtimePayload): Promi
   if (!response.ok) {
     throw new Error(`AppSync publish failed: ${response.status}`);
   }
+
+  const responseBody = (await response.json()) as {
+    errors?: Array<{ message?: string }>;
+  };
+  if (responseBody.errors?.length) {
+    const message = responseBody.errors.map((error) => error.message ?? 'Unknown error').join('; ');
+    throw new Error(`AppSync publish failed: ${message}`);
+  }
 }

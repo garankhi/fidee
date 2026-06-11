@@ -4,10 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-typedef WebSocketConnector = WebSocketChannel Function(
-  Uri uri, {
-  Iterable<String>? protocols,
-});
+typedef WebSocketConnector =
+    WebSocketChannel Function(Uri uri, {Iterable<String>? protocols});
 
 class FriendRequestRealtimeEvent {
   final String eventId;
@@ -28,7 +26,9 @@ class FriendRequestRealtimeEvent {
     required this.createdAt,
   });
 
-  factory FriendRequestRealtimeEvent.fromGraphqlData(Map<String, dynamic> data) {
+  factory FriendRequestRealtimeEvent.fromGraphqlData(
+    Map<String, dynamic> data,
+  ) {
     return FriendRequestRealtimeEvent(
       eventId: data['eventId'] as String? ?? '',
       targetUserId: data['targetUserId'] as String? ?? '',
@@ -36,7 +36,9 @@ class FriendRequestRealtimeEvent {
       requesterName: data['requesterName'] as String? ?? 'Một người bạn',
       requesterUsername: data['requesterUsername'] as String? ?? '',
       requesterAvatarUrl: data['requesterAvatarUrl'] as String? ?? '',
-      createdAt: DateTime.tryParse(data['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(data['createdAt'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 }
@@ -59,13 +61,9 @@ class AppSyncRealtimeService {
     WebSocketConnector connect = WebSocketChannel.connect,
   }) : _connect = connect;
 
-  static String deriveRealtimeUrl(String graphqlUrl) {
-    return graphqlUrl
-        .replaceFirst('https://', 'wss://')
-        .replaceFirst('appsync-api', 'appsync-realtime-api');
-  }
-
-  Stream<FriendRequestRealtimeEvent> subscribeToFriendRequests({required String targetUserId}) {
+  Stream<FriendRequestRealtimeEvent> subscribeToFriendRequests({
+    required String targetUserId,
+  }) {
     final controller = StreamController<FriendRequestRealtimeEvent>();
     unawaited(_connectSubscription(targetUserId, controller));
     return controller.stream;
@@ -86,7 +84,10 @@ class AppSyncRealtimeService {
     required String token,
     required String targetUserId,
   }) {
-    return _buildSubscriptionStartMessage(token: token, targetUserId: targetUserId);
+    return _buildSubscriptionStartMessage(
+      token: token,
+      targetUserId: targetUserId,
+    );
   }
 
   Future<void> _connectSubscription(
@@ -94,24 +95,29 @@ class AppSyncRealtimeService {
     StreamController<FriendRequestRealtimeEvent> controller,
   ) async {
     final token = await getToken();
-    if (token == null || token.isEmpty || graphqlUrl.isEmpty) {
-      await controller.close();
-      return;
-    }
-
-    final effectiveRealtimeUrl = realtimeUrl.isEmpty ? deriveRealtimeUrl(graphqlUrl) : realtimeUrl;
-    if (effectiveRealtimeUrl.isEmpty) {
+    if (token == null ||
+        token.isEmpty ||
+        graphqlUrl.isEmpty ||
+        realtimeUrl.isEmpty) {
       await controller.close();
       return;
     }
 
     try {
-      final channel = _connect(_buildRealtimeUri(token, effectiveRealtimeUrl), protocols: ['graphql-ws']);
+      final channel = _connect(
+        _buildRealtimeUri(token),
+        protocols: ['graphql-ws'],
+      );
       _channel = channel;
       await channel.ready;
       channel.sink.add(jsonEncode({'type': 'connection_init'}));
       channel.sink.add(
-        jsonEncode(_buildSubscriptionStartMessage(token: token, targetUserId: targetUserId)),
+        jsonEncode(
+          _buildSubscriptionStartMessage(
+            token: token,
+            targetUserId: targetUserId,
+          ),
+        ),
       );
 
       _socketSubscription = channel.stream.listen(
@@ -125,19 +131,19 @@ class AppSyncRealtimeService {
     }
   }
 
-  Uri _buildRealtimeUri(String token, [String? overrideRealtimeUrl]) {
+  Uri _buildRealtimeUri(String token) {
     final graphqlHost = Uri.parse(graphqlUrl).host;
     final header = _base64UrlJson({
       'host': graphqlHost,
       'Authorization': token,
     });
     final payload = _base64UrlJson(<String, dynamic>{});
-    return Uri.parse(overrideRealtimeUrl ?? realtimeUrl).replace(
-      queryParameters: {
-        'header': header,
-        'payload': payload,
-      },
-    );
+    final uri = Uri.parse(realtimeUrl);
+    if (!uri.hasScheme || uri.host.isEmpty) {
+      throw StateError('AppSync realtimeUrl must be an absolute WebSocket URL');
+    }
+
+    return uri.replace(queryParameters: {'header': header, 'payload': payload});
   }
 
   Map<String, dynamic> _buildSubscriptionStartMessage({
@@ -166,10 +172,7 @@ subscription OnFriendRequestReceived(\$targetUserId: ID!) {
           'variables': {'targetUserId': targetUserId},
         }),
         'extensions': {
-          'authorization': {
-            'host': graphqlHost,
-            'Authorization': token,
-          },
+          'authorization': {'host': graphqlHost, 'Authorization': token},
         },
       },
     };

@@ -27,32 +27,33 @@ void main() {
   });
 
   group('AppSyncRealtimeService', () {
-    test('derives realtime URL from GraphQL URL', () {
-      expect(
-        AppSyncRealtimeService.deriveRealtimeUrl(
-          'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
-        ),
-        'wss://abc123.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
-      );
-    });
-
     test('builds realtime URI and subscription variables for the user sub', () {
       final service = AppSyncRealtimeService(
         getToken: () async => 'token-123',
-        graphqlUrl: 'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
-        realtimeUrl: 'wss://abc123.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
+        graphqlUrl:
+            'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+        realtimeUrl:
+            'wss://abc123.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
         region: 'ap-southeast-1',
       );
 
       final realtimeUri = service.buildRealtimeUriForTesting('token-123');
-      final header = jsonDecode(
-        utf8.decode(base64Url.decode(base64Url.normalize(realtimeUri.queryParameters['header']!))),
-      ) as Map<String, dynamic>;
+      final header =
+          jsonDecode(
+                utf8.decode(
+                  base64Url.decode(
+                    base64Url.normalize(realtimeUri.queryParameters['header']!),
+                  ),
+                ),
+              )
+              as Map<String, dynamic>;
       final startMessage = service.buildSubscriptionStartMessageForTesting(
         token: 'token-123',
         targetUserId: 'user-sub-1',
       );
-      final payloadData = jsonDecode(startMessage['payload']['data'] as String) as Map<String, dynamic>;
+      final payloadData =
+          jsonDecode(startMessage['payload']['data'] as String)
+              as Map<String, dynamic>;
 
       expect(header['host'], 'abc123.appsync-api.ap-southeast-1.amazonaws.com');
       expect(header['Authorization'], 'token-123');
@@ -61,6 +62,21 @@ void main() {
       expect(
         startMessage['payload']['extensions']['authorization']['Authorization'],
         'token-123',
+      );
+    });
+
+    test('rejects realtime config that is not an absolute URL', () {
+      final service = AppSyncRealtimeService(
+        getToken: () async => 'token-123',
+        graphqlUrl:
+            'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+        realtimeUrl: 'xjx2dmbn4jgjpgrfhgvxc7ujte',
+        region: 'ap-southeast-1',
+      );
+
+      expect(
+        () => service.buildRealtimeUriForTesting('token-123'),
+        throwsA(isA<StateError>()),
       );
     });
   });

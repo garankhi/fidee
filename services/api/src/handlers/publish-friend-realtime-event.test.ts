@@ -5,7 +5,10 @@ const { mockFetch } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
 }));
 
-vi.stubEnv('FRIEND_REALTIME_GRAPHQL_URL', 'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql');
+vi.stubEnv(
+  'FRIEND_REALTIME_GRAPHQL_URL',
+  'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+);
 vi.stubEnv('AWS_REGION', 'ap-southeast-1');
 
 vi.stubGlobal('fetch', mockFetch);
@@ -43,7 +46,11 @@ const streamEvent = (eventName: 'INSERT' | 'MODIFY'): DynamoDBStreamEvent =>
 describe('publish friend realtime event handler', () => {
   beforeEach(() => {
     mockFetch.mockReset();
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { publishFriendRequestReceived: {} } }),
+    });
   });
 
   it('publishes friend request INSERT records to AppSync', async () => {
@@ -58,6 +65,16 @@ describe('publish friend realtime event handler', () => {
       requesterId: 'user-1',
       requesterName: 'Minh Nguyen',
     });
+  });
+
+  it('throws when AppSync returns GraphQL errors with a 200 response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ errors: [{ message: 'Unauthorized' }] }),
+    });
+
+    await expect(handler(streamEvent('INSERT'))).rejects.toThrow('AppSync publish failed');
   });
 
   it('ignores non-insert stream records', async () => {
