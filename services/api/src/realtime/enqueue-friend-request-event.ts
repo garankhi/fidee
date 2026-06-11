@@ -17,7 +17,7 @@ export async function enqueueFriendRequestRealtimeEvent(
   const tableName = process.env.FRIEND_REQUEST_REALTIME_EVENTS_TABLE;
   if (!tableName) return;
 
-  const eventId = `friend_request#${input.requesterId}#${input.targetUserId}`;
+  const eventId = `friend_request#${input.requesterId}#${input.targetUserId}#${input.createdAt}`;
   const ttlDays = 7;
   const expiresAt = Math.floor(Date.now() / 1000) + ttlDays * 24 * 60 * 60;
 
