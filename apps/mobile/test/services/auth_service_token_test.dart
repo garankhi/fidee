@@ -13,7 +13,9 @@ class _TokenAuthService extends AuthService {
 }
 
 String _jwtWithPayload(Map<String, dynamic> payload) {
-  final encodedPayload = base64Url.encode(utf8.encode(jsonEncode(payload))).replaceAll('=', '');
+  final encodedPayload = base64Url
+      .encode(utf8.encode(jsonEncode(payload)))
+      .replaceAll('=', '');
   return 'header.$encodedPayload.signature';
 }
 
@@ -28,7 +30,58 @@ void main() {
     test('returns null for malformed or missing tokens', () async {
       expect(await _TokenAuthService(null).getCurrentUserSub(), isNull);
       expect(await _TokenAuthService('not-a-jwt').getCurrentUserSub(), isNull);
-      expect(await _TokenAuthService(_jwtWithPayload({})).getCurrentUserSub(), isNull);
+      expect(
+        await _TokenAuthService(_jwtWithPayload({})).getCurrentUserSub(),
+        isNull,
+      );
+    });
+  });
+
+  group('AuthService profile lifecycle', () {
+    test('signOut clears in-memory profile details', () async {
+      final service = AuthService(isTestMode: true);
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Alice Nguyen',
+        'username': 'alice',
+        'avatarUrl': 'https://cdn.example.com/alice.jpg',
+        'plan': 'PRO',
+        'createdAt': '2025-05-01T00:00:00.000Z',
+      });
+
+      await service.signOut();
+
+      expect(service.state, AuthState.unauthenticated);
+      expect(service.firstName, isNull);
+      expect(service.lastName, isNull);
+      expect(service.preferredUsername, isNull);
+      expect(service.avatarUrl, isNull);
+      expect(service.since, isNull);
+      expect(service.tier, UserTier.free);
+    });
+
+    test('applying a new profile clears omitted optional fields', () async {
+      final service = AuthService(isTestMode: true);
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Alice Nguyen',
+        'username': 'alice',
+        'avatarUrl': 'https://cdn.example.com/alice.jpg',
+        'plan': 'PRO',
+        'createdAt': '2025-05-01T00:00:00.000Z',
+      });
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Bob',
+        'plan': 'FREE',
+      });
+
+      expect(service.firstName, 'Bob');
+      expect(service.lastName, isNull);
+      expect(service.preferredUsername, isNull);
+      expect(service.avatarUrl, isNull);
+      expect(service.since, isNull);
+      expect(service.tier, UserTier.free);
     });
   });
 }

@@ -213,9 +213,9 @@ class AuthService {
 
     try {
       final normalized = base64Url.normalize(parts[1]);
-      final payload = jsonDecode(
-        utf8.decode(base64Url.decode(normalized)),
-      ) as Map<String, dynamic>;
+      final payload =
+          jsonDecode(utf8.decode(base64Url.decode(normalized)))
+              as Map<String, dynamic>;
       return payload['sub'] as String?;
     } catch (_) {
       return null;
@@ -231,13 +231,22 @@ class AuthService {
 
   bool get canResendOtp => resendCooldownRemaining == 0;
 
+  void _resetProfileDetails() {
+    _tier = UserTier.free;
+    _firstName = null;
+    _lastName = null;
+    _preferredUsername = null;
+    _avatarUrl = null;
+    _since = null;
+  }
+
   void _applyProfileDetails(ProfileDetails details) {
-    _firstName = details.firstName ?? _firstName;
-    _lastName = details.lastName ?? _lastName;
-    _preferredUsername = details.preferredUsername ?? _preferredUsername;
-    _avatarUrl = details.avatarUrl ?? _avatarUrl;
+    _firstName = details.firstName;
+    _lastName = details.lastName;
+    _preferredUsername = details.preferredUsername;
+    _avatarUrl = details.avatarUrl;
     _tier = details.tier;
-    _since = details.since ?? _since;
+    _since = details.since;
   }
 
   @visibleForTesting
@@ -246,6 +255,8 @@ class AuthService {
   }
 
   Future<bool> _hydrateAuthenticatedProfile() async {
+    _resetProfileDetails();
+
     if (_cognitoUser != null) {
       final attributes = await _cognitoUser!.getUserAttributes();
       if (attributes != null) {
@@ -293,6 +304,7 @@ class AuthService {
       final user = await _userPool.getCurrentUser();
 
       if (user == null) {
+        _resetProfileDetails();
         _state = AuthState.unauthenticated;
         return;
       }
@@ -309,11 +321,13 @@ class AuthService {
             : AuthState.incompleteProfile;
       } else {
         await user.signOut();
+        _resetProfileDetails();
         _state = AuthState.unauthenticated;
       }
     } catch (_) {
       // Token invalid or network error; force re-login.
       await storage?.clear();
+      _resetProfileDetails();
       _state = AuthState.unauthenticated;
       _username = null;
       _cognitoUser = null;
@@ -322,6 +336,7 @@ class AuthService {
   }
 
   Future<AuthResult> signIn(String email, String password) async {
+    _resetProfileDetails();
     _username = email.trim();
 
     if (isTestMode) {
@@ -364,6 +379,7 @@ class AuthService {
   }
 
   Future<AuthResult> signUp(String email, String password) async {
+    _resetProfileDetails();
     _username = email.trim();
     _destination = _maskDestination(_username!);
 
@@ -395,6 +411,8 @@ class AuthService {
   }
 
   Future<AuthResult> signInWithGoogle() async {
+    _resetProfileDetails();
+
     if (isTestMode) {
       _state = AuthState.authenticated;
       return const AuthResult(success: true);
@@ -588,6 +606,7 @@ class AuthService {
         );
       }
     } finally {
+      _resetProfileDetails();
       _state = AuthState.unauthenticated;
       _username = null;
       _cognitoUser = null;
