@@ -18,7 +18,9 @@ final appSyncRealtimeServiceProvider = Provider<AppSyncRealtimeService>((ref) {
   );
 });
 
-final friendRealtimeControllerProvider = Provider<FriendRealtimeController>((ref) {
+final friendRealtimeControllerProvider = Provider<FriendRealtimeController>((
+  ref,
+) {
   final controller = FriendRealtimeController(ref);
   ref.onDispose(controller.dispose);
   return controller;
@@ -40,14 +42,20 @@ class FriendRealtimeController {
     await _subscription?.cancel();
     _connectedUserId = targetUserId;
     final service = _ref.read(appSyncRealtimeServiceProvider);
-    _subscription = service.subscribeToFriendRequests(targetUserId: targetUserId).listen(
-      (_) {
-        unawaited(_ref.read(friendsControllerProvider.notifier).refreshFromRealtimeEvent());
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        debugPrint('Friend realtime subscription error: $error');
-      },
-    );
+    _subscription = service
+        .subscribeToFriendRequests(targetUserId: targetUserId)
+        .listen(
+          (_) {
+            unawaited(
+              _ref
+                  .read(friendsControllerProvider.notifier)
+                  .refreshFromRealtimeEvent(),
+            );
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Friend realtime subscription error: $error');
+          },
+        );
   }
 
   Future<void> disconnect() async {

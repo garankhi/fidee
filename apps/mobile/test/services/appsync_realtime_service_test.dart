@@ -44,9 +44,7 @@ void main() {
       final header =
           jsonDecode(
                 utf8.decode(
-                  base64Url.decode(
-                    base64Url.normalize(realtimeUri.queryParameters['header']!),
-                  ),
+                  base64.decode(realtimeUri.queryParameters['header']!),
                 ),
               )
               as Map<String, dynamic>;
@@ -60,6 +58,7 @@ void main() {
 
       expect(header['host'], 'abc123.appsync-api.ap-southeast-1.amazonaws.com');
       expect(header['Authorization'], 'token-123');
+      expect(realtimeUri.queryParameters['payload'], 'e30=');
       expect(startMessage['type'], 'start');
       expect(payloadData['variables'], {'targetUserId': 'user-sub-1'});
       expect(
@@ -112,7 +111,7 @@ void main() {
 }
 
 class _FakeWebSocketChannel
-    with StreamChannelMixin
+    with StreamChannelMixin<dynamic>
     implements WebSocketChannel {
   final _incoming = StreamController<dynamic>();
   final _sink = _FakeWebSocketSink();

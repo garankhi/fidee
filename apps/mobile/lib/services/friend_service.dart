@@ -37,7 +37,8 @@ class FriendProfile {
   factory FriendProfile.fromJson(Map<String, dynamic> json) {
     return FriendProfile(
       id: json['id'] as String,
-      name: json['name'] as String? ??
+      name:
+          json['name'] as String? ??
           json['displayName'] as String? ??
           json['display_name'] as String? ??
           json['username'] as String? ??
@@ -75,7 +76,8 @@ class FriendSearchResult {
     return FriendSearchResult(
       profile: FriendProfile.fromJson(json),
       relationStatus: status,
-      canRequest: json['canRequest'] as bool? ?? status == FriendRelationStatus.none,
+      canRequest:
+          json['canRequest'] as bool? ?? status == FriendRelationStatus.none,
     );
   }
 }
@@ -85,7 +87,7 @@ class FriendService {
   final http.Client _client;
 
   FriendService(this._authService, {http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   Future<List<FriendProfile>> fetchFriends() async {
     return _fetchProfiles(
@@ -104,7 +106,9 @@ class FriendService {
     );
   }
 
-  Future<List<FriendSearchResult>> searchUsersByUsername(String username) async {
+  Future<List<FriendSearchResult>> searchUsersByUsername(
+    String username,
+  ) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
       return const <FriendSearchResult>[];
@@ -116,8 +120,9 @@ class FriendService {
     }
 
     try {
-      final uri = Uri.parse('${Config.apiBaseUrl}/friends/search')
-          .replace(queryParameters: {'username': normalizedUsername});
+      final uri = Uri.parse(
+        '${Config.apiBaseUrl}/friends/search',
+      ).replace(queryParameters: {'username': normalizedUsername});
       final response = await _client.get(
         uri,
         headers: {'Authorization': token},
@@ -128,7 +133,8 @@ class FriendService {
       }
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final itemList = (decoded['users'] as List<dynamic>?) ??
+      final itemList =
+          (decoded['users'] as List<dynamic>?) ??
           (decoded['data'] as List<dynamic>?) ??
           const <dynamic>[];
       return itemList
@@ -211,10 +217,7 @@ class FriendService {
     try {
       final response = await _client.post(
         Uri.parse('${Config.apiBaseUrl}$path'),
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
+        headers: {'Authorization': token, 'Content-Type': 'application/json'},
         body: jsonEncode({'targetUserId': userId}),
       );
 

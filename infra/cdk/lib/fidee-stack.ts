@@ -253,7 +253,7 @@ export class FideeStack extends cdk.Stack {
 
       const friendRealtimeApi = new appsync.GraphqlApi(this, 'FriendRealtimeApi', {
         name: resourceName(stage, 'friend-realtime'),
-        schema: appsync.SchemaFile.fromAsset('graphql/friend-realtime.graphql'),
+        definition: appsync.Definition.fromFile('graphql/friend-realtime.graphql'),
         authorizationConfig: {
           defaultAuthorization: {
             authorizationType: appsync.AuthorizationType.USER_POOL,
@@ -288,9 +288,9 @@ export class FideeStack extends cdk.Stack {
 #if($ctx.identity.sub != $ctx.args.targetUserId)
   $util.unauthorized()
 #end
-{"version":"2018-05-29","payload":{}}
+{"version":"2018-05-29","payload":null}
 `),
-        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
       });
 
       new cdk.CfnOutput(this, 'FriendRealtimeGraphqlUrl', {

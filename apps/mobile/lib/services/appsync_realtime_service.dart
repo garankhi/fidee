@@ -143,11 +143,8 @@ class AppSyncRealtimeService {
 
   Uri _buildRealtimeUri(String token) {
     final graphqlHost = Uri.parse(graphqlUrl).host;
-    final header = _base64UrlJson({
-      'host': graphqlHost,
-      'Authorization': token,
-    });
-    final payload = _base64UrlJson(<String, dynamic>{});
+    final header = _base64Json({'host': graphqlHost, 'Authorization': token});
+    final payload = _base64Json(<String, dynamic>{});
     final uri = Uri.parse(realtimeUrl);
     if (!uri.hasScheme || uri.host.isEmpty) {
       throw StateError('AppSync realtimeUrl must be an absolute WebSocket URL');
@@ -209,7 +206,7 @@ subscription OnFriendRequestReceived(\$targetUserId: ID!) {
     }
   }
 
-  String _base64UrlJson(Map<String, dynamic> value) {
-    return base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+  String _base64Json(Map<String, dynamic> value) {
+    return base64.encode(utf8.encode(jsonEncode(value)));
   }
 }

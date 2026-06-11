@@ -18,38 +18,47 @@ class FakeAuthService extends AuthService {
 
 void main() {
   group('FriendService', () {
-    test('fetchFriendRequests parses request profiles from /friends/requests', () async {
-      final client = MockClient((request) async {
-        expect(request.method, 'GET');
-        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/requests');
-        expect(request.headers['Authorization'], 'token-123');
+    test(
+      'fetchFriendRequests parses request profiles from /friends/requests',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(
+            request.url.toString(),
+            '${Config.apiBaseUrl}/friends/requests',
+          );
+          expect(request.headers['Authorization'], 'token-123');
 
-        return http.Response(
-          jsonEncode({
-            'requests': [
-              {
-                'id': 'user-1',
-                'name': 'Minh Nguyen',
-                'username': 'minh',
-                'avatarUrl': 'https://cdn.example/avatar.png',
-              },
-            ],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
+          return http.Response(
+            jsonEncode({
+              'requests': [
+                {
+                  'id': 'user-1',
+                  'name': 'Minh Nguyen',
+                  'username': 'minh',
+                  'avatarUrl': 'https://cdn.example/avatar.png',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final service = FriendService(
+          FakeAuthService('token-123'),
+          client: client,
         );
-      });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+        final requests = await service.fetchFriendRequests();
 
-      final requests = await service.fetchFriendRequests();
-
-      expect(requests, hasLength(1));
-      expect(requests.single.id, 'user-1');
-      expect(requests.single.name, 'Minh Nguyen');
-      expect(requests.single.handle, 'minh');
-      expect(requests.single.avatarUrl, 'https://cdn.example/avatar.png');
-    });
+        expect(requests, hasLength(1));
+        expect(requests.single.id, 'user-1');
+        expect(requests.single.name, 'Minh Nguyen');
+        expect(requests.single.handle, 'minh');
+        expect(requests.single.avatarUrl, 'https://cdn.example/avatar.png');
+      },
+    );
 
     test('sendFriendRequest posts targetUserId to /friends/request', () async {
       final client = MockClient((request) async {
@@ -61,7 +70,10 @@ void main() {
         return http.Response(jsonEncode({'success': true}), 200);
       });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+      final service = FriendService(
+        FakeAuthService('token-123'),
+        client: client,
+      );
 
       expect(await service.sendFriendRequest('user-2'), isTrue);
     });
@@ -74,7 +86,10 @@ void main() {
         return http.Response(jsonEncode({'success': true}), 200);
       });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+      final service = FriendService(
+        FakeAuthService('token-123'),
+        client: client,
+      );
 
       expect(await service.acceptFriend('user-2'), isTrue);
     });
@@ -87,7 +102,10 @@ void main() {
         return http.Response(jsonEncode({'success': true}), 200);
       });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+      final service = FriendService(
+        FakeAuthService('token-123'),
+        client: client,
+      );
 
       expect(await service.declineFriend('user-2'), isTrue);
     });
@@ -100,61 +118,76 @@ void main() {
         return http.Response(jsonEncode({'success': true}), 200);
       });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+      final service = FriendService(
+        FakeAuthService('token-123'),
+        client: client,
+      );
 
       expect(await service.unfriend('user-2'), isTrue);
     });
 
-    test('action methods return false and skip HTTP when token is missing', () async {
-      var called = false;
-      final client = MockClient((request) async {
-        called = true;
-        return http.Response('{}', 500);
-      });
+    test(
+      'action methods return false and skip HTTP when token is missing',
+      () async {
+        var called = false;
+        final client = MockClient((request) async {
+          called = true;
+          return http.Response('{}', 500);
+        });
 
-      final service = FriendService(FakeAuthService(null), client: client);
+        final service = FriendService(FakeAuthService(null), client: client);
 
-      expect(await service.sendFriendRequest('user-2'), isFalse);
-      expect(await service.acceptFriend('user-2'), isFalse);
-      expect(await service.declineFriend('user-2'), isFalse);
-      expect(await service.unfriend('user-2'), isFalse);
-      expect(called, isFalse);
-    });
-    test('searchUsersByUsername gets matching users from /friends/search', () async {
-      final client = MockClient((request) async {
-        expect(request.method, 'GET');
-        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/search?username=minh');
-        expect(request.headers['Authorization'], 'token-123');
+        expect(await service.sendFriendRequest('user-2'), isFalse);
+        expect(await service.acceptFriend('user-2'), isFalse);
+        expect(await service.declineFriend('user-2'), isFalse);
+        expect(await service.unfriend('user-2'), isFalse);
+        expect(called, isFalse);
+      },
+    );
+    test(
+      'searchUsersByUsername gets matching users from /friends/search',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(
+            request.url.toString(),
+            '${Config.apiBaseUrl}/friends/search?username=minh',
+          );
+          expect(request.headers['Authorization'], 'token-123');
 
-        return http.Response(
-          jsonEncode({
-            'users': [
-              {
-                'id': 'user-2',
-                'name': 'Minh Tran',
-                'username': 'minh',
-                'avatarUrl': 'https://cdn.example/minh.png',
-                'relationStatus': 'NONE',
-                'canRequest': true,
-              },
-            ],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
+          return http.Response(
+            jsonEncode({
+              'users': [
+                {
+                  'id': 'user-2',
+                  'name': 'Minh Tran',
+                  'username': 'minh',
+                  'avatarUrl': 'https://cdn.example/minh.png',
+                  'relationStatus': 'NONE',
+                  'canRequest': true,
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final service = FriendService(
+          FakeAuthService('token-123'),
+          client: client,
         );
-      });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+        final results = await service.searchUsersByUsername(' Minh ');
 
-      final results = await service.searchUsersByUsername(' Minh ');
-
-      expect(results, hasLength(1));
-      expect(results.single.profile.id, 'user-2');
-      expect(results.single.profile.name, 'Minh Tran');
-      expect(results.single.profile.handle, 'minh');
-      expect(results.single.relationStatus, FriendRelationStatus.none);
-      expect(results.single.canRequest, isTrue);
-    });
+        expect(results, hasLength(1));
+        expect(results.single.profile.id, 'user-2');
+        expect(results.single.profile.name, 'Minh Tran');
+        expect(results.single.profile.handle, 'minh');
+        expect(results.single.relationStatus, FriendRelationStatus.none);
+        expect(results.single.canRequest, isTrue);
+      },
+    );
 
     test('hideFriend posts targetUserId to /friends/hide', () async {
       final client = MockClient((request) async {
@@ -164,7 +197,10 @@ void main() {
         return http.Response(jsonEncode({'success': true}), 200);
       });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+      final service = FriendService(
+        FakeAuthService('token-123'),
+        client: client,
+      );
 
       expect(await service.hideFriend('user-2'), isTrue);
     });
@@ -177,7 +213,10 @@ void main() {
         return http.Response(jsonEncode({'success': true}), 200);
       });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+      final service = FriendService(
+        FakeAuthService('token-123'),
+        client: client,
+      );
 
       expect(await service.blockFriend('user-2'), isTrue);
     });

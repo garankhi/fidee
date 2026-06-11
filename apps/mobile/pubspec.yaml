@@ -71,6 +71,7 @@ dev_dependencies:
   build_runner: ^2.4.13
   riverpod_generator: ^2.6.3
   flutter_launcher_icons: ^0.14.4
+  stream_channel: ^2.1.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

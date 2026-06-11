@@ -43,6 +43,7 @@ FriendService friendService(FriendServiceRef ref) {
 class FriendsController extends _$FriendsController {
   late FriendService _service;
   bool _isLoadingNow = false;
+  bool _shouldReloadAfterCurrentLoad = false;
 
   @override
   FriendsState build() {
@@ -53,25 +54,34 @@ class FriendsController extends _$FriendsController {
   }
 
   Future<void> load({bool silent = false}) async {
-    if (_isLoadingNow) return;
-    _isLoadingNow = true;
-    try {
-      if (!silent) {
-        state = state.copyWith(isLoading: true);
-      }
-      final results = await Future.wait<List<FriendProfile>>([
-        _service.fetchFriends(),
-        _service.fetchFriendRequests(),
-      ]);
-
-      state = FriendsState(
-        friends: results[0],
-        requests: results[1],
-        isLoading: false,
-      );
-    } finally {
-      _isLoadingNow = false;
+    if (_isLoadingNow) {
+      _shouldReloadAfterCurrentLoad = true;
+      return;
     }
+
+    var nextLoadIsSilent = silent;
+    do {
+      _shouldReloadAfterCurrentLoad = false;
+      _isLoadingNow = true;
+      try {
+        if (!nextLoadIsSilent) {
+          state = state.copyWith(isLoading: true);
+        }
+        final results = await Future.wait<List<FriendProfile>>([
+          _service.fetchFriends(),
+          _service.fetchFriendRequests(),
+        ]);
+
+        state = FriendsState(
+          friends: results[0],
+          requests: results[1],
+          isLoading: false,
+        );
+      } finally {
+        _isLoadingNow = false;
+      }
+      nextLoadIsSilent = true;
+    } while (_shouldReloadAfterCurrentLoad);
   }
 
   Future<void> refreshFromRealtimeEvent() => load(silent: true);

@@ -20,18 +20,22 @@ class _FakeAuthService extends AuthService {
 
 class _FakeRealtimeService extends AppSyncRealtimeService {
   _FakeRealtimeService()
-      : super(
-          getToken: () async => 'token-123',
-          graphqlUrl: 'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
-          realtimeUrl: 'wss://abc123.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
-          region: 'ap-southeast-1',
-        );
+    : super(
+        getToken: () async => 'token-123',
+        graphqlUrl:
+            'https://abc123.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+        realtimeUrl:
+            'wss://abc123.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
+        region: 'ap-southeast-1',
+      );
 
   final controller = StreamController<FriendRequestRealtimeEvent>.broadcast();
   String? subscribedUserId;
 
   @override
-  Stream<FriendRequestRealtimeEvent> subscribeToFriendRequests({required String targetUserId}) {
+  Stream<FriendRequestRealtimeEvent> subscribeToFriendRequests({
+    required String targetUserId,
+  }) {
     subscribedUserId = targetUserId;
     return controller.stream;
   }
