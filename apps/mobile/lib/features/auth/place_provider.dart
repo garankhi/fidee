@@ -29,6 +29,8 @@ class Place {
   final List<dynamic> friendReviews;
   final List<dynamic> otherReviews;
   final List<dynamic> photos;
+  final List<String> vibes;
+  final List<String> services;
 
   const Place({
     this.id,
@@ -49,6 +51,8 @@ class Place {
     this.friendReviews = const [],
     this.otherReviews = const [],
     this.photos = const [],
+    this.vibes = const [],
+    this.services = const [],
   });
 
   Place copyWith({
@@ -70,6 +74,8 @@ class Place {
     List<dynamic>? friendReviews,
     List<dynamic>? otherReviews,
     List<dynamic>? photos,
+    List<String>? vibes,
+    List<String>? services,
   }) {
     return Place(
       id: id ?? this.id,
@@ -90,8 +96,20 @@ class Place {
       friendReviews: friendReviews ?? this.friendReviews,
       otherReviews: otherReviews ?? this.otherReviews,
       photos: photos ?? this.photos,
+      vibes: vibes ?? this.vibes,
+      services: services ?? this.services,
     );
   }
+}
+
+String _formatTime(String? timeStr) {
+  if (timeStr == null || timeStr.isEmpty) return '00:00';
+
+  final parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    return '${parts[0]}:${parts[1]}';
+  }
+  return timeStr;
 }
 
 @riverpod
@@ -134,8 +152,8 @@ class PlaceController extends _$PlaceController {
 
         lng: double.tryParse(coordinates['lng']?.toString() ?? '') ?? 0,
 
-        openTime: data['openTime']?.toString(),
-        closeTime: data['closeTime']?.toString(),
+        openTime: _formatTime(data['openTime']?.toString()),
+        closeTime: _formatTime(data['closeTime']?.toString()),
 
         priceMin: int.tryParse(data['priceMin']?.toString() ?? ''),
 
@@ -148,6 +166,9 @@ class PlaceController extends _$PlaceController {
         ratingCount: int.tryParse(data['ratingCount']?.toString() ?? '') ?? 0,
 
         checkinCount: int.tryParse(data['checkinCount']?.toString() ?? '') ?? 0,
+
+        vibes: List<String>.from(data['vibes'] as Iterable? ?? []),
+        services: List<String>.from(data['services'] as Iterable? ?? []),
 
         friendCheckins: List<dynamic>.from(
           data['friendCheckins'] as Iterable? ?? [],

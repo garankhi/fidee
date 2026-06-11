@@ -234,7 +234,7 @@ class _AddSpotHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 10, 22, 14),
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 14),
       child: Column(
         children: [
           Stack(
@@ -243,27 +243,28 @@ class _AddSpotHeader extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: _IconCircleButton(
-                  icon: Icons.chevron_left,
+                  icon: Icons.arrow_back_ios_new,
                   onTap: onBack,
                 ),
               ),
               Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Bước ${step + 1} / 4',
                     style: const TextStyle(
-                      color: _AddSpotScreenState._text,
+                      color: _AddSpotScreenState._muted,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   const Text(
                     'Thêm địa điểm',
                     style: TextStyle(
                       color: _AddSpotScreenState._text,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
@@ -1842,22 +1843,20 @@ class _IconCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 40,
+        height: 40,
         decoration: const BoxDecoration(
-          color: _AddSpotScreenState._softAccent,
+          color: Color(0xFFFFE9EC),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: _AddSpotScreenState._accent, size: 22),
+        child: const Icon(
+          Icons.arrow_back_ios_new,
+          color: Color(0xFFEF4050),
+          size: 16,
+        ),
       ),
     );
   }
 }
 
 enum _SpotImageSlot { menu, vibe, dishes, checkIn }
-
-
-
-
-
-

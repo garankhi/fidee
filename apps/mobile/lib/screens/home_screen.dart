@@ -9,10 +9,8 @@ import '../features/auth/auth_providers.dart';
 import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
-import 'ai_chat_screen.dart';
 import 'camera_screen.dart';
-import 'explore_screen.dart';
-import 'home_ai_search_bar.dart';
+import 'dashboard.dart';
 import 'profile_screen.dart';
 
 /// Home screen with OpenStreetMap, current location, and check-in CTA.
@@ -186,23 +184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _onExplore() {
     Navigator.push(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => const ExploreScreen(),
-      ),
-    );
-  }
-
-  void _openAiChat(String query) {
-    final trimmedQuery = query.trim();
-    if (trimmedQuery.isEmpty) {
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => AiChatScreen(initialMessage: trimmedQuery),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const DashboardScreen()),
     );
   }
 
@@ -224,7 +206,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               children: [
                 TileLayer(
                   urlTemplate:
-                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.fidee.fidee',
                   maxZoom: 20,
@@ -245,15 +227,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     markers: _feedItems
                         .map(
                           (item) => Marker(
-                            point: LatLng(item.lat, item.lng),
-                            width: 48,
-                            height: 48,
-                            child: GestureDetector(
-                              onTap: () => _showFeedItemDetails(context, item),
-                              child: _FeedMarker(item: item),
-                            ),
-                          ),
-                        )
+                        point: LatLng(item.lat, item.lng),
+                        width: 48,
+                        height: 48,
+                        child: GestureDetector(
+                          onTap: () => _showFeedItemDetails(context, item),
+                          child: _FeedMarker(item: item),
+                        ),
+                      ),
+                    )
                         .toList(),
                   ),
               ],
@@ -326,38 +308,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       color: const Color(0xFFEF4050),
                                       shape: BoxShape.circle,
                                       image:
-                                          authService.avatarUrl != null &&
-                                              authService.avatarUrl!.isNotEmpty
+                                      authService.avatarUrl != null &&
+                                          authService.avatarUrl!.isNotEmpty
                                           ? DecorationImage(
-                                              image:
-                                                  authService.avatarUrl!
-                                                      .startsWith('http')
-                                                  ? NetworkImage(
-                                                          authService
-                                                              .avatarUrl!,
-                                                        )
-                                                        as ImageProvider
-                                                  : FileImage(
-                                                      File(
-                                                        authService.avatarUrl!,
-                                                      ),
-                                                    ),
-                                              fit: BoxFit.cover,
-                                            )
+                                        image:
+                                        authService.avatarUrl!
+                                            .startsWith('http')
+                                            ? NetworkImage(
+                                          authService
+                                              .avatarUrl!,
+                                        )
+                                        as ImageProvider
+                                            : FileImage(
+                                          File(
+                                            authService.avatarUrl!,
+                                          ),
+                                        ),
+                                        fit: BoxFit.cover,
+                                      )
                                           : null,
                                     ),
                                     child:
-                                        authService.avatarUrl == null ||
-                                            authService.avatarUrl!.isEmpty
+                                    authService.avatarUrl == null ||
+                                        authService.avatarUrl!.isEmpty
                                         ? Center(
-                                            child: Text(
-                                              initials,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          )
+                                      child: Text(
+                                        initials,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    )
                                         : null,
                                   );
                                 },
@@ -369,10 +351,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: HomeAiSearchBar(onSubmitted: _openAiChat),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search, color: Color(0xFFFF3B30)),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Want something today?',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.mic, color: Colors.grey.shade600),
+                        ],
+                      ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -516,7 +529,7 @@ class _BottomNavIcon extends StatelessWidget {
                   fit: BoxFit.contain,
                   cacheWidth: 152,
                   errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.error, color: Colors.grey),
+                  const Icon(Icons.error, color: Colors.grey),
                 ),
               ),
             ),

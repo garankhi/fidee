@@ -100,7 +100,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 const SizedBox(height: 20),
 
                 // 4. Tiện nghi đi kèm
-                _buildAmenities(),
+                _buildAmenities(place),
                 const SizedBox(height: 25),
 
                 // 5. Nút chỉ đường tích hợp tọa độ lat, lng động từ API thật
@@ -272,12 +272,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Đóng ${place.closeTime ?? "22:00"}',
+                        'Đóng ${place.closeTime ?? "Chưa có thông tin"}',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 10,
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ],
@@ -329,7 +329,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           ),
           _buildInfoRow(
             'Khung giờ hoạt động:',
-            ' ${place.openTime ?? "07:00"} - ${place.closeTime ?? "22:00"}',
+            ' ${place.openTime ?? "Chưa có thông tin"} - ${place.closeTime ?? "Chưa có thông tin"}',
           ),
           _buildInfoRow('Tầm giá:', ' $priceRange'),
         ],
@@ -362,23 +362,31 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   }
 
   Widget _buildCategoryTags(Place place) {
+    if (place.vibes.isNotEmpty) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: place.vibes.map((vibe) => _buildTag('✨ ${vibe.toUpperCase()}')).toList(),
+      );
+    }
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTag(
-          place.category != null
-              ? '✨ ${place.category!.toUpperCase()}'
-              : '✨ CAFE',
-        ),
+        _buildTag(place.category != null ? '✨ ${place.category!.toUpperCase()}' : '✨ CAFE'),
         _buildTag('🛡️ Đã xác minh'),
         _buildTag('💵 Tầm Giá Tốt'),
       ],
     );
   }
 
-  Widget _buildAmenities() {
-    final List<String> amenities = ['Wifi', 'Trong nhà', 'Chỗ đỗ xe'];
+  Widget _buildAmenities(Place place) { // Thêm tham số place vào đây
+    // Nếu API không trả về hoặc mảng rỗng, hiển thị thông báo hoặc ẩn đi
+    if (place.services.isEmpty) {
+      return const SizedBox.shrink(); // Hoặc hiển thị Text('Chưa cập nhật tiện nghi')
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -394,7 +402,8 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: amenities.map((amenity) => _buildTag(amenity)).toList(),
+          // Sử dụng dữ liệu thực tế từ place.services thay vì mảng hardcode ban đầu
+          children: place.services.map((service) => _buildTag(service.toString())).toList(),
         ),
       ],
     );
