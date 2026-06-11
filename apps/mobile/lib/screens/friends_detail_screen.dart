@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
+import '../features/friends/widgets/friend_search_result_action_row.dart';
+import '../services/friend_service.dart';
 
 class FriendsDetailScreen extends ConsumerStatefulWidget {
   const FriendsDetailScreen({super.key});
@@ -14,23 +18,52 @@ class FriendsDetailScreen extends ConsumerStatefulWidget {
 
 class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
   final _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
   String _searchQuery = '';
   String? _busyRequestId;
+  String? _busySearchResultId;
+  bool _isSearchingUsers = false;
+  List<FriendSearchResult> _searchResults = const <FriendSearchResult>[];
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.addListener(() {
+      final nextQuery = _searchCtrl.text.trim().toLowerCase();
       setState(() {
-        _searchQuery = _searchCtrl.text.trim().toLowerCase();
+        _searchQuery = nextQuery;
       });
+      _onSearchChanged(nextQuery);
     });
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    if (query.length < 2) {
+      setState(() {
+        _isSearchingUsers = false;
+        _searchResults = const <FriendSearchResult>[];
+      });
+      return;
+    }
+
+    setState(() => _isSearchingUsers = true);
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      final controller = ref.read(friendsControllerProvider.notifier);
+      final results = await controller.searchUsers(query);
+      if (!mounted || _searchCtrl.text.trim().toLowerCase() != query) return;
+      setState(() {
+        _searchResults = results;
+        _isSearchingUsers = false;
+      });
+    });
   }
 
   void _copyToClipboard(String text, BuildContext context) {
@@ -61,6 +94,31 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
     final success = await action(userId);
     if (!mounted) return;
     setState(() => _busyRequestId = null);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _runSearchResultAction(
+    FriendSearchResult result,
+    Future<bool> Function(String userId) action,
+    FriendSearchResult Function(FriendSearchResult result) optimisticResult,
+    String successMessage,
+  ) async {
+    setState(() => _busySearchResultId = result.profile.id);
+    final success = await action(result.profile.id);
+    if (!mounted) return;
+    setState(() {
+      _busySearchResultId = null;
+      if (success) {
+        _searchResults = _searchResults
+            .map((item) => item.profile.id == result.profile.id ? optimisticResult(item) : item)
+            .toList(growable: false);
+      }
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.'),
@@ -163,6 +221,15 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                       GestureDetector(
                         onTap: () => _searchCtrl.clear(),
                         child: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 18),
+                      ),
+                    if (_isSearchingUsers)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFEF4050)),
+                        ),
                       ),
                   ],
                 ),
@@ -271,6 +338,67 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                     ),
                     const SizedBox(height: 28),
 
+                    if (_searchResults.isNotEmpty) ...[
+                      const Text(
+                        'Kết quả tìm kiếm',
+                        style: TextStyle(
+                          color: Color(0xFF151515),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final result in _searchResults)
+                        FriendSearchResultActionRow(
+                          result: result,
+                          tone: FriendRequestTone.light,
+                          isBusy: _busySearchResultId == result.profile.id,
+                          onAdd: result.canRequest
+                              ? () => _runSearchResultAction(
+                                    result,
+                                    friendsNotifier.addFriend,
+                                    (item) => item.copyWith(
+                                      relationStatus: FriendRelationStatus.pending,
+                                      relationDirection: FriendRelationDirection.outgoing,
+                                      canRequest: false,
+                                      canCancelRequest: true,
+                                      canAcceptRequest: false,
+                                    ),
+                                    'Đã gửi lời mời kết bạn',
+                                  )
+                              : null,
+                          onCancel: result.canCancelRequest
+                              ? () => _runSearchResultAction(
+                                    result,
+                                    friendsNotifier.cancelFriendRequest,
+                                    (item) => item.copyWith(
+                                      relationStatus: FriendRelationStatus.none,
+                                      relationDirection: FriendRelationDirection.none,
+                                      canRequest: true,
+                                      canCancelRequest: false,
+                                      canAcceptRequest: false,
+                                    ),
+                                    'Đã hủy lời mời kết bạn',
+                                  )
+                              : null,
+                          onAccept: result.canAcceptRequest
+                              ? () => _runSearchResultAction(
+                                    result,
+                                    friendsNotifier.accept,
+                                    (item) => item.copyWith(
+                                      relationStatus: FriendRelationStatus.accepted,
+                                      relationDirection: FriendRelationDirection.none,
+                                      canRequest: false,
+                                      canCancelRequest: false,
+                                      canAcceptRequest: false,
+                                    ),
+                                    'Đã chấp nhận lời mời',
+                                  )
+                              : null,
+                        ),
+                      const SizedBox(height: 28),
+                    ],
+
                     // 3. Pending Friend Requests (Lời mời kết bạn)
                     if (friendsState.requests.isNotEmpty) ...[
                       const Text(
@@ -309,6 +437,50 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                             );
                         },
                       ),
+                      const SizedBox(height: 28),
+                    ],
+
+                    if (friendsState.sentRequests.isNotEmpty) ...[
+                      const Text(
+                        'Lời mời đã gửi',
+                        style: TextStyle(
+                          color: Color(0xFF151515),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final sentRequest in friendsState.sentRequests)
+                        FriendSearchResultActionRow(
+                          result: FriendSearchResult(
+                            profile: sentRequest,
+                            relationStatus: FriendRelationStatus.pending,
+                            relationDirection: FriendRelationDirection.outgoing,
+                            canRequest: false,
+                            canCancelRequest: true,
+                            canAcceptRequest: false,
+                          ),
+                          tone: FriendRequestTone.light,
+                          isBusy: _busySearchResultId == sentRequest.id,
+                          onCancel: () => _runSearchResultAction(
+                            FriendSearchResult(
+                              profile: sentRequest,
+                              relationStatus: FriendRelationStatus.pending,
+                              relationDirection: FriendRelationDirection.outgoing,
+                              canRequest: false,
+                              canCancelRequest: true,
+                              canAcceptRequest: false,
+                            ),
+                            friendsNotifier.cancelFriendRequest,
+                            (item) => item.copyWith(
+                              relationStatus: FriendRelationStatus.none,
+                              relationDirection: FriendRelationDirection.none,
+                              canRequest: true,
+                              canCancelRequest: false,
+                            ),
+                            'Đã hủy lời mời kết bạn',
+                          ),
+                        ),
                       const SizedBox(height: 28),
                     ],
 

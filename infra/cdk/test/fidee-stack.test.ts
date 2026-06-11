@@ -293,10 +293,33 @@ describe('FideeStack', () => {
       FieldName: 'publishFriendRequestReceived',
     });
     template.hasResourceProperties('AWS::AppSync::Resolver', {
+      TypeName: 'Mutation',
+      FieldName: 'publishFriendRequestCanceled',
+    });
+    template.hasResourceProperties('AWS::AppSync::Resolver', {
       TypeName: 'Subscription',
       FieldName: 'onFriendRequestReceived',
       RequestMappingTemplate: Match.stringLikeRegexp('payload":null'),
       ResponseMappingTemplate: '$util.toJson(null)',
+    });
+    template.hasResourceProperties('AWS::AppSync::Resolver', {
+      TypeName: 'Subscription',
+      FieldName: 'onFriendRequestCanceled',
+      RequestMappingTemplate: Match.stringLikeRegexp('payload":null'),
+      ResponseMappingTemplate: '$util.toJson(null)',
+    });
+  });
+
+  it('creates sent friend request and cancel endpoints', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'fidee-dev-get-sent-friend-requests',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'fidee-dev-cancel-friend-request',
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'DELETE',
+      AuthorizationType: 'COGNITO_USER_POOLS',
     });
   });
 

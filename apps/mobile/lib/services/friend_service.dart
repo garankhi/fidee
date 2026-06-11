@@ -6,6 +6,8 @@ import 'auth_service.dart';
 
 enum FriendRelationStatus { none, pending, accepted, blocked, unknown }
 
+enum FriendRelationDirection { none, outgoing, incoming, unknown }
+
 FriendRelationStatus friendRelationStatusFromApi(String? value) {
   switch (value?.toUpperCase()) {
     case 'NONE':
@@ -18,6 +20,19 @@ FriendRelationStatus friendRelationStatusFromApi(String? value) {
       return FriendRelationStatus.blocked;
     default:
       return FriendRelationStatus.unknown;
+  }
+}
+
+FriendRelationDirection friendRelationDirectionFromApi(String? value) {
+  switch (value?.toUpperCase()) {
+    case 'NONE':
+      return FriendRelationDirection.none;
+    case 'OUTGOING':
+      return FriendRelationDirection.outgoing;
+    case 'INCOMING':
+      return FriendRelationDirection.incoming;
+    default:
+      return FriendRelationDirection.unknown;
   }
 }
 
@@ -61,23 +76,58 @@ class FriendProfile {
 class FriendSearchResult {
   final FriendProfile profile;
   final FriendRelationStatus relationStatus;
+  final FriendRelationDirection relationDirection;
   final bool canRequest;
+  final bool canCancelRequest;
+  final bool canAcceptRequest;
 
   const FriendSearchResult({
     required this.profile,
     required this.relationStatus,
+    this.relationDirection = FriendRelationDirection.none,
     required this.canRequest,
+    this.canCancelRequest = false,
+    this.canAcceptRequest = false,
   });
 
   factory FriendSearchResult.fromJson(Map<String, dynamic> json) {
     final status = friendRelationStatusFromApi(
       json['relationStatus'] as String? ?? json['status'] as String?,
     );
+    final direction = friendRelationDirectionFromApi(
+      json['relationDirection'] as String?,
+    );
     return FriendSearchResult(
       profile: FriendProfile.fromJson(json),
       relationStatus: status,
+      relationDirection: direction,
       canRequest:
           json['canRequest'] as bool? ?? status == FriendRelationStatus.none,
+      canCancelRequest:
+          json['canCancelRequest'] as bool? ??
+          (status == FriendRelationStatus.pending &&
+              direction == FriendRelationDirection.outgoing),
+      canAcceptRequest:
+          json['canAcceptRequest'] as bool? ??
+          (status == FriendRelationStatus.pending &&
+              direction == FriendRelationDirection.incoming),
+    );
+  }
+
+  FriendSearchResult copyWith({
+    FriendRelationStatus? relationStatus,
+    FriendRelationDirection? relationDirection,
+    bool? canRequest,
+    bool? canCancelRequest,
+    bool? canAcceptRequest,
+  }) {
+    return FriendSearchResult(
+      profile: profile,
+      relationStatus: relationStatus ?? this.relationStatus,
+      relationDirection: relationDirection ?? this.relationDirection,
+      canRequest: canRequest ?? this.canRequest,
+      canCancelRequest: canCancelRequest ?? this.canCancelRequest,
+      canAcceptRequest: canAcceptRequest ?? this.canAcceptRequest,
     );
   }
 }
@@ -103,6 +153,14 @@ class FriendService {
       path: '/friends/requests',
       listKey: 'requests',
       debugLabel: 'friend requests',
+    );
+  }
+
+  Future<List<FriendProfile>> fetchSentFriendRequests() async {
+    return _fetchProfiles(
+      path: '/friends/requests/sent',
+      listKey: 'requests',
+      debugLabel: 'sent friend requests',
     );
   }
 
@@ -149,6 +207,10 @@ class FriendService {
 
   Future<bool> sendFriendRequest(String userId) {
     return _postFriendAction('/friends/request', userId);
+  }
+
+  Future<bool> cancelFriendRequest(String userId) {
+    return _deleteFriendAction('/friends/request', userId);
   }
 
   Future<bool> acceptFriend(String userId) {
@@ -209,17 +271,30 @@ class FriendService {
   }
 
   Future<bool> _postFriendAction(String path, String userId) async {
+    return _friendAction(path, userId, method: 'POST');
+  }
+
+  Future<bool> _deleteFriendAction(String path, String userId) async {
+    return _friendAction(path, userId, method: 'DELETE');
+  }
+
+  Future<bool> _friendAction(
+    String path,
+    String userId, {
+    required String method,
+  }) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
       return false;
     }
 
     try {
-      final response = await _client.post(
-        Uri.parse('${Config.apiBaseUrl}$path'),
-        headers: {'Authorization': token, 'Content-Type': 'application/json'},
-        body: jsonEncode({'targetUserId': userId}),
-      );
+      final uri = Uri.parse('${Config.apiBaseUrl}$path');
+      final headers = {'Authorization': token, 'Content-Type': 'application/json'};
+      final body = jsonEncode({'targetUserId': userId});
+      final response = method == 'DELETE'
+          ? await _client.delete(uri, headers: headers, body: body)
+          : await _client.post(uri, headers: headers, body: body);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return false;
@@ -230,7 +305,7 @@ class FriendService {
           : jsonDecode(response.body) as Map<String, dynamic>;
       return decoded['success'] == true;
     } catch (error) {
-      debugPrint('Error posting friend action $path: $error');
+      debugPrint('Error running friend action $method $path: $error');
       return false;
     }
   }

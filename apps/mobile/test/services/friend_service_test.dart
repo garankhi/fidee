@@ -78,6 +78,44 @@ void main() {
       expect(await service.sendFriendRequest('user-2'), isTrue);
     });
 
+    test('fetchSentFriendRequests gets profiles from /friends/requests/sent', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/requests/sent');
+        expect(request.headers['Authorization'], 'token-123');
+        return http.Response(
+          jsonEncode({
+            'requests': [
+              {'id': 'user-2', 'name': 'Minh Tran', 'username': 'minh'},
+            ],
+          }),
+          200,
+        );
+      });
+
+      final service = FriendService(FakeAuthService('token-123'), client: client);
+
+      final requests = await service.fetchSentFriendRequests();
+
+      expect(requests.single.id, 'user-2');
+      expect(requests.single.handle, 'minh');
+    });
+
+    test('cancelFriendRequest deletes targetUserId from /friends/request', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'DELETE');
+        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/request');
+        expect(request.headers['Authorization'], 'token-123');
+        expect(request.headers['Content-Type'], 'application/json');
+        expect(jsonDecode(request.body), {'targetUserId': 'user-2'});
+        return http.Response(jsonEncode({'success': true}), 200);
+      });
+
+      final service = FriendService(FakeAuthService('token-123'), client: client);
+
+      expect(await service.cancelFriendRequest('user-2'), isTrue);
+    });
+
     test('acceptFriend posts targetUserId to /friends/accept', () async {
       final client = MockClient((request) async {
         expect(request.method, 'POST');
@@ -140,6 +178,7 @@ void main() {
         expect(await service.sendFriendRequest('user-2'), isFalse);
         expect(await service.acceptFriend('user-2'), isFalse);
         expect(await service.declineFriend('user-2'), isFalse);
+        expect(await service.cancelFriendRequest('user-2'), isFalse);
         expect(await service.unfriend('user-2'), isFalse);
         expect(called, isFalse);
       },
@@ -164,7 +203,10 @@ void main() {
                   'username': 'minh',
                   'avatarUrl': 'https://cdn.example/minh.png',
                   'relationStatus': 'NONE',
+                  'relationDirection': 'NONE',
                   'canRequest': true,
+                  'canCancelRequest': false,
+                  'canAcceptRequest': false,
                 },
               ],
             }),
@@ -185,7 +227,10 @@ void main() {
         expect(results.single.profile.name, 'Minh Tran');
         expect(results.single.profile.handle, 'minh');
         expect(results.single.relationStatus, FriendRelationStatus.none);
+        expect(results.single.relationDirection, FriendRelationDirection.none);
         expect(results.single.canRequest, isTrue);
+        expect(results.single.canCancelRequest, isFalse);
+        expect(results.single.canAcceptRequest, isFalse);
       },
     );
 

@@ -10,7 +10,7 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGat
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
     },
     body: JSON.stringify(body),
   };
@@ -32,6 +32,15 @@ function normalizeUsernameQuery(value: unknown): string | null {
 
 function canRequest(relationStatus: string): boolean {
   return relationStatus === 'NONE';
+}
+
+function relationDirection(
+  relationStatus: string,
+  initiatedBy: string | null | undefined,
+  currentUserId: string,
+): 'NONE' | 'OUTGOING' | 'INCOMING' {
+  if (relationStatus !== 'PENDING') return 'NONE';
+  return initiatedBy === currentUserId ? 'OUTGOING' : 'INCOMING';
 }
 
 /**
@@ -80,7 +89,8 @@ export const searchUsersByUsername = async (
           u.display_name as name,
           u.username,
           u.avatar_url as "avatarUrl",
-          f.status as "relationStatus"
+          f.status as "relationStatus",
+          f.initiated_by as "initiatedBy"
         FROM users u
         LEFT JOIN friendships f ON f.user_id = $1 AND f.friend_id = u.id
         WHERE u.id <> $1
@@ -95,13 +105,17 @@ export const searchUsersByUsername = async (
 
     const users = res.rows.map((row: any) => {
       const relationStatus = row.relationStatus ?? 'NONE';
+      const direction = relationDirection(relationStatus, row.initiatedBy, auth.sub);
       return {
         id: row.id,
         name: row.name,
         username: row.username,
         avatarUrl: row.avatarUrl ?? null,
         relationStatus,
+        relationDirection: direction,
         canRequest: canRequest(relationStatus),
+        canCancelRequest: direction === 'OUTGOING',
+        canAcceptRequest: direction === 'INCOMING',
       };
     });
 
@@ -133,6 +147,31 @@ export const getFriendRequests = async (
     return jsonResponse(200, { requests: res.rows });
   } catch (error) {
     console.error('getFriendRequests error', error);
+    return jsonResponse(500, { error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /friends/requests/sent
+ * Fetch all pending friend requests sent by the current user.
+ */
+export const getSentFriendRequests = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
+  try {
+    const auth = await extractAuth(event);
+
+    const sql = `
+      SELECT u.id, u.display_name as name, u.username, u.avatar_url as "avatarUrl"
+      FROM friendships f
+      JOIN users u ON u.id = f.friend_id
+      WHERE f.user_id = $1 AND f.status = 'PENDING' AND f.initiated_by = $1
+      ORDER BY f.created_at DESC
+    `;
+    const res = await query(sql, [auth.sub]);
+    return jsonResponse(200, { requests: res.rows });
+  } catch (error) {
+    console.error('getSentFriendRequests error', error);
     return jsonResponse(500, { error: 'Internal server error' });
   }
 };
@@ -215,6 +254,82 @@ export const sendFriendRequest = async (
     return jsonResponse(200, { success: true, message: 'Friend request sent' });
   } catch (error) {
     console.error('sendFriendRequest error', error);
+    return jsonResponse(500, { error: 'Internal server error' });
+  }
+};
+
+/**
+ * DELETE /friends/request
+ * Cancel an outgoing pending friend request.
+ */
+export const cancelFriendRequest = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
+  try {
+    const auth = await extractAuth(event);
+    const targetUserId = readTargetUserId(event);
+
+    if (!targetUserId) {
+      return jsonResponse(400, { error: 'targetUserId is required' });
+    }
+
+    const now = new Date().toISOString();
+
+    await query('BEGIN');
+    try {
+      const del1 = await query(
+        `DELETE FROM friendships
+         WHERE user_id = $1 AND friend_id = $2 AND status = 'PENDING' AND initiated_by = $1
+         RETURNING status`,
+        [auth.sub, targetUserId],
+      );
+
+      if (del1.rowCount === 0) {
+        await query('ROLLBACK');
+        return jsonResponse(400, { error: 'No outgoing request found' });
+      }
+
+      await query(
+        `DELETE FROM friendships
+         WHERE user_id = $2 AND friend_id = $1 AND status = 'PENDING' AND initiated_by = $1`,
+        [auth.sub, targetUserId],
+      );
+
+      await query('COMMIT');
+    } catch (e) {
+      await query('ROLLBACK');
+      throw e;
+    }
+
+    try {
+      const requester = await query(
+        'SELECT display_name as name, username, avatar_url as "avatarUrl" FROM users WHERE id = $1',
+        [auth.sub],
+      );
+      const requesterRow = (requester.rows[0] ?? {}) as {
+        name?: string;
+        username?: string | null;
+        avatarUrl?: string | null;
+      };
+
+      await enqueueFriendRequestRealtimeEvent({
+        type: 'FRIEND_REQUEST_CANCELED',
+        requesterId: auth.sub,
+        requesterName: requesterRow.name ?? auth.username ?? 'Một người bạn',
+        requesterUsername: requesterRow.username ?? null,
+        requesterAvatarUrl: requesterRow.avatarUrl ?? null,
+        targetUserId,
+        createdAt: now,
+      });
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
+        console.error('enqueueFriendRequestRealtimeEvent cancel error', error);
+      }
+    }
+
+    return jsonResponse(200, { success: true, message: 'Friend request canceled' });
+  } catch (error) {
+    console.error('cancelFriendRequest error', error);
     return jsonResponse(500, { error: 'Internal server error' });
   }
 };

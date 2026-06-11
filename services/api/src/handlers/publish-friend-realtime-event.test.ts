@@ -22,7 +22,10 @@ vi.mock('@aws-sdk/credential-provider-node', () => ({
 
 import { handler } from './publish-friend-realtime-event';
 
-const streamEvent = (eventName: 'INSERT' | 'MODIFY'): DynamoDBStreamEvent =>
+const streamEvent = (
+  eventName: 'INSERT' | 'MODIFY',
+  type = 'FRIEND_REQUEST_RECEIVED',
+): DynamoDBStreamEvent =>
   ({
     Records: [
       {
@@ -30,7 +33,7 @@ const streamEvent = (eventName: 'INSERT' | 'MODIFY'): DynamoDBStreamEvent =>
         dynamodb: {
           NewImage: {
             eventId: { S: 'friend_request#user-1#user-2' },
-            type: { S: 'FRIEND_REQUEST_RECEIVED' },
+            type: { S: type },
             targetUserId: { S: 'user-2' },
             requesterId: { S: 'user-1' },
             requesterName: { S: 'Minh Nguyen' },
@@ -65,6 +68,15 @@ describe('publish friend realtime event handler', () => {
       requesterId: 'user-1',
       requesterName: 'Minh Nguyen',
     });
+  });
+
+  it('publishes friend request canceled INSERT records to AppSync', async () => {
+    await handler(streamEvent('INSERT', 'FRIEND_REQUEST_CANCELED'));
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.body).toContain('publishFriendRequestCanceled');
+    expect(JSON.parse(init.body).variables.input.type).toBe('FRIEND_REQUEST_CANCELED');
   });
 
   it('throws when AppSync returns GraphQL errors with a 200 response', async () => {

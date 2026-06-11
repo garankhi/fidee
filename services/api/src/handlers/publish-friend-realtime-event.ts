@@ -20,11 +20,17 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
     if (record.eventName !== 'INSERT') continue;
 
     const image = record.dynamodb?.NewImage;
-    if (!image || image.type?.S !== 'FRIEND_REQUEST_RECEIVED') continue;
+    const eventType = image?.type?.S;
+    if (
+      !image ||
+      (eventType !== 'FRIEND_REQUEST_RECEIVED' && eventType !== 'FRIEND_REQUEST_CANCELED')
+    ) {
+      continue;
+    }
 
-    await publishFriendRequestReceived({
+    await publishFriendRequestEvent({
       eventId: image.eventId?.S ?? '',
-      type: image.type.S,
+      type: eventType,
       targetUserId: image.targetUserId?.S ?? '',
       requesterId: image.requesterId?.S ?? '',
       requesterName: image.requesterName?.S ?? 'Một người bạn',
@@ -35,13 +41,22 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
   }
 }
 
-async function publishFriendRequestReceived(input: FriendRealtimePayload): Promise<void> {
+async function publishFriendRequestEvent(input: FriendRealtimePayload): Promise<void> {
   const graphqlUrl = process.env.FRIEND_REALTIME_GRAPHQL_URL!;
   const region = process.env.AWS_REGION ?? 'ap-southeast-1';
   const url = new URL(graphqlUrl);
+  const mutationName = input.type === 'FRIEND_REQUEST_CANCELED'
+    ? 'PublishFriendRequestCanceled'
+    : 'PublishFriendRequestReceived';
+  const fieldName = input.type === 'FRIEND_REQUEST_CANCELED'
+    ? 'publishFriendRequestCanceled'
+    : 'publishFriendRequestReceived';
+  const inputType = input.type === 'FRIEND_REQUEST_CANCELED'
+    ? 'PublishFriendRequestCanceledInput'
+    : 'PublishFriendRequestReceivedInput';
   const body = JSON.stringify({
-    query: `mutation PublishFriendRequestReceived($input: PublishFriendRequestReceivedInput!) {
-      publishFriendRequestReceived(input: $input) {
+    query: `mutation ${mutationName}($input: ${inputType}!) {
+      ${fieldName}(input: $input) {
         eventId
         type
         targetUserId

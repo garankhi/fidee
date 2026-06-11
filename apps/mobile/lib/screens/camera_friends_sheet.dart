@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
+import '../features/friends/widgets/friend_search_result_action_row.dart';
 import '../services/friend_service.dart';
 
 Future<void> showCameraFriendsSheet(BuildContext context) {
@@ -31,9 +32,10 @@ class CameraFriendsSheet extends ConsumerWidget {
         friends: friendsState.friends,
         requests: friendsState.requests,
         isLoading: friendsState.isLoading,
-        onSearchUsers: controller.searchUsers,
-        onAddFriend: controller.addFriend,
-        onAcceptFriend: controller.accept,
+          onSearchUsers: controller.searchUsers,
+          onAddFriend: controller.addFriend,
+          onCancelFriendRequest: controller.cancelFriendRequest,
+          onAcceptFriend: controller.accept,
         onDeclineFriend: controller.decline,
         onHideFriend: controller.hide,
         onUnfriend: controller.unfriend,
@@ -49,6 +51,7 @@ class CameraFriendsSheetContent extends StatefulWidget {
   final bool isLoading;
   final Future<List<FriendSearchResult>> Function(String username) onSearchUsers;
   final Future<bool> Function(String userId) onAddFriend;
+  final Future<bool> Function(String userId) onCancelFriendRequest;
   final Future<bool> Function(String userId) onAcceptFriend;
   final Future<bool> Function(String userId) onDeclineFriend;
   final Future<bool> Function(String userId) onHideFriend;
@@ -62,6 +65,7 @@ class CameraFriendsSheetContent extends StatefulWidget {
     required this.isLoading,
     required this.onSearchUsers,
     required this.onAddFriend,
+    required this.onCancelFriendRequest,
     required this.onAcceptFriend,
     required this.onDeclineFriend,
     required this.onHideFriend,
@@ -146,6 +150,31 @@ class _CameraFriendsSheetContentState extends State<CameraFriendsSheetContent> {
     });
   }
 
+  Future<void> _runSearchResultAction(
+    FriendSearchResult result,
+    Future<bool> Function(String userId) action,
+    FriendSearchResult Function(FriendSearchResult result) optimisticResult,
+    String successMessage,
+  ) async {
+    setState(() {
+      _busyFriendId = result.profile.id;
+      _message = null;
+    });
+
+    final success = await action(result.profile.id);
+    if (!mounted) return;
+
+    setState(() {
+      _busyFriendId = null;
+      _message = success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.';
+      if (success) {
+        _searchResults = _searchResults
+            .map((item) => item.profile.id == result.profile.id ? optimisticResult(item) : item)
+            .toList(growable: false);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleFriends = _isExpanded ? widget.friends : widget.friends.take(3).toList();
@@ -223,20 +252,56 @@ class _CameraFriendsSheetContentState extends State<CameraFriendsSheetContent> {
                       const SizedBox(height: 16),
                     ],
                     if (_searchResults.isNotEmpty) ...[
-                      const _SectionTitle(icon: LucideIcons.search, label: 'Kết quả tìm kiếm'),
-                      const SizedBox(height: 12),
-                      for (final result in _searchResults)
-                        _SearchResultRow(
-                          result: result,
-                          isBusy: _busyFriendId == result.profile.id,
-                          onAdd: result.canRequest
-                              ? () => _runFriendAction(
-                                    result.profile.id,
-                                    widget.onAddFriend,
-                                    'Đã gửi lời mời kết bạn',
-                                  )
-                              : null,
-                        ),
+                        const _SectionTitle(icon: LucideIcons.search, label: 'Kết quả tìm kiếm'),
+                        const SizedBox(height: 12),
+                        for (final result in _searchResults)
+                          FriendSearchResultActionRow(
+                            result: result,
+                            tone: FriendRequestTone.dark,
+                            isBusy: _busyFriendId == result.profile.id,
+                            onAdd: result.canRequest
+                                ? () => _runSearchResultAction(
+                                      result,
+                                      widget.onAddFriend,
+                                      (item) => item.copyWith(
+                                        relationStatus: FriendRelationStatus.pending,
+                                        relationDirection: FriendRelationDirection.outgoing,
+                                        canRequest: false,
+                                        canCancelRequest: true,
+                                        canAcceptRequest: false,
+                                      ),
+                                      'Đã gửi lời mời kết bạn',
+                                    )
+                                : null,
+                            onCancel: result.canCancelRequest
+                                ? () => _runSearchResultAction(
+                                      result,
+                                      widget.onCancelFriendRequest,
+                                      (item) => item.copyWith(
+                                        relationStatus: FriendRelationStatus.none,
+                                        relationDirection: FriendRelationDirection.none,
+                                        canRequest: true,
+                                        canCancelRequest: false,
+                                        canAcceptRequest: false,
+                                      ),
+                                      'Đã hủy lời mời kết bạn',
+                                    )
+                                : null,
+                            onAccept: result.canAcceptRequest
+                                ? () => _runSearchResultAction(
+                                      result,
+                                      widget.onAcceptFriend,
+                                      (item) => item.copyWith(
+                                        relationStatus: FriendRelationStatus.accepted,
+                                        relationDirection: FriendRelationDirection.none,
+                                        canRequest: false,
+                                        canCancelRequest: false,
+                                        canAcceptRequest: false,
+                                      ),
+                                      'Đã chấp nhận lời mời',
+                                    )
+                                : null,
+                          ),
                       const SizedBox(height: 24),
                     ],
                     const _SectionTitle(icon: LucideIcons.users, label: 'Bạn bè của bạn'),
@@ -496,77 +561,12 @@ class _FriendActionButton extends StatelessWidget {
   }
 }
 
-class _SearchResultRow extends StatelessWidget {
-  final FriendSearchResult result;
-  final bool isBusy;
-  final VoidCallback? onAdd;
-
-  const _SearchResultRow({required this.result, required this.isBusy, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        children: [
-          _FriendAvatar(profile: result.profile, size: 58),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  result.profile.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900),
-                ),
-                if (result.profile.handle.isNotEmpty)
-                  Text(
-                    '@${result.profile.handle}',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.56), fontWeight: FontWeight.w700),
-                  ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            key: ValueKey('friend-add-${result.profile.id}'),
-            onPressed: isBusy ? null : onAdd,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: onAdd == null ? const Color(0xFF575757) : const Color(0xFFFFC400),
-              foregroundColor: Colors.black,
-              disabledBackgroundColor: const Color(0xFF575757),
-              disabledForegroundColor: Colors.white70,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            ),
-            child: Text(onAdd == null ? _statusLabel(result.relationStatus) : 'Thêm'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _statusLabel(FriendRelationStatus status) {
-    switch (status) {
-      case FriendRelationStatus.pending:
-        return 'Đã gửi';
-      case FriendRelationStatus.accepted:
-        return 'Bạn bè';
-      case FriendRelationStatus.blocked:
-        return 'Đã chặn';
-      case FriendRelationStatus.none:
-      case FriendRelationStatus.unknown:
-        return 'Thêm';
-    }
-  }
-}
-
 class _FriendAvatar extends StatelessWidget {
   final FriendProfile profile;
-  final double size;
 
-  const _FriendAvatar({required this.profile, this.size = 72});
+  const _FriendAvatar({required this.profile});
+
+  static const double size = 72;
 
   @override
   Widget build(BuildContext context) {
@@ -581,7 +581,7 @@ class _FriendAvatar extends StatelessWidget {
         child: profile.avatarUrl == null
             ? Text(
                 profile.initials,
-                style: TextStyle(color: Colors.white, fontSize: size * 0.26, fontWeight: FontWeight.w900),
+                  style: const TextStyle(color: Colors.white, fontSize: size * 0.26, fontWeight: FontWeight.w900),
               )
             : null,
       ),

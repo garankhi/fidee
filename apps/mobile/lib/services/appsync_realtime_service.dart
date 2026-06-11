@@ -8,6 +8,7 @@ typedef WebSocketConnector =
     WebSocketChannel Function(Uri uri, {Iterable<String>? protocols});
 
 class FriendRequestRealtimeEvent {
+  final String type;
   final String eventId;
   final String targetUserId;
   final String requesterId;
@@ -17,6 +18,7 @@ class FriendRequestRealtimeEvent {
   final DateTime createdAt;
 
   const FriendRequestRealtimeEvent({
+    this.type = 'FRIEND_REQUEST_RECEIVED',
     required this.eventId,
     required this.targetUserId,
     required this.requesterId,
@@ -30,6 +32,7 @@ class FriendRequestRealtimeEvent {
     Map<String, dynamic> data,
   ) {
     return FriendRequestRealtimeEvent(
+      type: data['type'] as String? ?? 'FRIEND_REQUEST_RECEIVED',
       eventId: data['eventId'] as String? ?? '',
       targetUserId: data['targetUserId'] as String? ?? '',
       requesterId: data['requesterId'] as String? ?? '',
@@ -84,11 +87,12 @@ class AppSyncRealtimeService {
     required String token,
     required String targetUserId,
   }) {
-    return _buildSubscriptionStartMessage(
-      token: token,
-      targetUserId: targetUserId,
-    );
-  }
+      return _buildSubscriptionStartMessage(
+        token: token,
+        targetUserId: targetUserId,
+        kind: _FriendRequestSubscriptionKind.received,
+      );
+    }
 
   Future<void> _connectSubscription(
     String targetUserId,
@@ -111,18 +115,16 @@ class AppSyncRealtimeService {
       _channel = channel;
       await channel.ready;
 
-      var subscriptionStarted = false;
+      var subscriptionsStarted = false;
       void startSubscription() {
-        if (subscriptionStarted) return;
-        subscriptionStarted = true;
-        channel.sink.add(
-          jsonEncode(
-            _buildSubscriptionStartMessage(
-              token: token,
-              targetUserId: targetUserId,
-            ),
-          ),
-        );
+        if (subscriptionsStarted) return;
+        subscriptionsStarted = true;
+        for (final message in _buildSubscriptionStartMessages(
+          token: token,
+          targetUserId: targetUserId,
+        )) {
+          channel.sink.add(jsonEncode(message));
+        }
       }
 
       _socketSubscription = channel.stream.listen(
@@ -153,20 +155,43 @@ class AppSyncRealtimeService {
     return uri.replace(queryParameters: {'header': header, 'payload': payload});
   }
 
-  Map<String, dynamic> _buildSubscriptionStartMessage({
+  List<Map<String, dynamic>> _buildSubscriptionStartMessages({
     required String token,
     required String targetUserId,
   }) {
+    return [
+      _buildSubscriptionStartMessage(
+        token: token,
+        targetUserId: targetUserId,
+        kind: _FriendRequestSubscriptionKind.received,
+      ),
+      _buildSubscriptionStartMessage(
+        token: token,
+        targetUserId: targetUserId,
+        kind: _FriendRequestSubscriptionKind.canceled,
+      ),
+    ];
+  }
+
+  Map<String, dynamic> _buildSubscriptionStartMessage({
+    required String token,
+    required String targetUserId,
+    required _FriendRequestSubscriptionKind kind,
+  }) {
     final graphqlHost = Uri.parse(graphqlUrl).host;
+    final isCanceled = kind == _FriendRequestSubscriptionKind.canceled;
+    final operationName = isCanceled ? 'OnFriendRequestCanceled' : 'OnFriendRequestReceived';
+    final fieldName = isCanceled ? 'onFriendRequestCanceled' : 'onFriendRequestReceived';
     return {
-      'id': 'friend-request-$targetUserId',
+      'id': 'friend-request-${isCanceled ? 'canceled' : 'received'}-$targetUserId',
       'type': 'start',
       'payload': {
         'data': jsonEncode({
           'query': '''
-subscription OnFriendRequestReceived(\$targetUserId: ID!) {
-  onFriendRequestReceived(targetUserId: \$targetUserId) {
+subscription $operationName(\$targetUserId: ID!) {
+  $fieldName(targetUserId: \$targetUserId) {
     eventId
+    type
     targetUserId
     requesterId
     requesterName
@@ -197,7 +222,9 @@ subscription OnFriendRequestReceived(\$targetUserId: ID!) {
     } else if (type == 'data') {
       final payload = decoded['payload'] as Map<String, dynamic>?;
       final data = payload?['data'] as Map<String, dynamic>?;
-      final event = data?['onFriendRequestReceived'] as Map<String, dynamic>?;
+      final event =
+          data?['onFriendRequestReceived'] as Map<String, dynamic>? ??
+          data?['onFriendRequestCanceled'] as Map<String, dynamic>?;
       if (event != null) {
         controller.add(FriendRequestRealtimeEvent.fromGraphqlData(event));
       }
@@ -210,3 +237,5 @@ subscription OnFriendRequestReceived(\$targetUserId: ID!) {
     return base64.encode(utf8.encode(jsonEncode(value)));
   }
 }
+
+enum _FriendRequestSubscriptionKind { received, canceled }

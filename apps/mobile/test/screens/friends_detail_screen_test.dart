@@ -16,17 +16,26 @@ class _FakeAuthService extends AuthService {
 
 class _RequestsFriendsController extends FriendsController {
   String? acceptedUserId;
+  String? canceledUserId;
 
   @override
   FriendsState build() {
     return const FriendsState(
       requests: [FriendProfile(id: 'request-1', name: 'Lan Tran', handle: 'lan')],
+      sentRequests: [FriendProfile(id: 'sent-1', name: 'Bao Le', handle: 'bao')],
     );
   }
 
   @override
   Future<bool> accept(String userId) async {
     acceptedUserId = userId;
+    return true;
+  }
+
+  @override
+  Future<bool> cancelFriendRequest(String userId) async {
+    canceledUserId = userId;
+    state = state.copyWith(sentRequests: const <FriendProfile>[]);
     return true;
   }
 }
@@ -53,5 +62,28 @@ void main() {
 
     expect(friendsController.acceptedUserId, 'request-1');
     expect(find.text('Đã chấp nhận lời mời'), findsOneWidget);
+  });
+
+  testWidgets('shows sent requests and cancels one from friends detail', (tester) async {
+    final friendsController = _RequestsFriendsController();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authServiceProvider.overrideWithValue(_FakeAuthService()),
+          friendsControllerProvider.overrideWith(() => friendsController),
+        ],
+        child: const MaterialApp(home: FriendsDetailScreen()),
+      ),
+    );
+
+    expect(find.text('Lời mời đã gửi'), findsOneWidget);
+    expect(find.text('Bao Le'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('friend-cancel-sent-1')));
+    await tester.pump();
+
+    expect(friendsController.canceledUserId, 'sent-1');
+    expect(find.text('Đã hủy lời mời kết bạn'), findsOneWidget);
   });
 }

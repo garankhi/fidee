@@ -30,12 +30,27 @@ input PublishFriendRequestReceivedInput {
   createdAt: AWSDateTime!
 }
 
+input PublishFriendRequestCanceledInput {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  requesterId: ID!
+  requesterName: String!
+  requesterUsername: String
+  requesterAvatarUrl: String
+  createdAt: AWSDateTime!
+}
+
 type Mutation {
   publishFriendRequestReceived(input: PublishFriendRequestReceivedInput!): FriendRequestRealtimeEvent @aws_iam
+  publishFriendRequestCanceled(input: PublishFriendRequestCanceledInput!): FriendRequestRealtimeEvent @aws_iam
 }
 
 type Subscription {
   onFriendRequestReceived(targetUserId: ID!): FriendRequestRealtimeEvent
     @aws_subscribe(mutations: ["publishFriendRequestReceived"])
+    @aws_cognito_user_pools
+  onFriendRequestCanceled(targetUserId: ID!): FriendRequestRealtimeEvent
+    @aws_subscribe(mutations: ["publishFriendRequestCanceled"])
     @aws_cognito_user_pools
 }

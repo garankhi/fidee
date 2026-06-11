@@ -9,12 +9,16 @@ class _FakeFriendService extends FriendService {
 
   List<FriendProfile> friends = const <FriendProfile>[];
   List<FriendProfile> requests = const <FriendProfile>[];
+  List<FriendProfile> sentRequests = const <FriendProfile>[];
 
   @override
   Future<List<FriendProfile>> fetchFriends() async => friends;
 
   @override
   Future<List<FriendProfile>> fetchFriendRequests() async => requests;
+
+  @override
+  Future<List<FriendProfile>> fetchSentFriendRequests() async => sentRequests;
 }
 
 void main() {
@@ -22,12 +26,15 @@ void main() {
     const state = FriendsState(
       friends: [FriendProfile(id: 'friend-1', name: 'Minh', handle: 'minh')],
       requests: [FriendProfile(id: 'request-1', name: 'Lan', handle: 'lan')],
+      sentRequests: [FriendProfile(id: 'sent-1', name: 'Bao', handle: 'bao')],
       isLoading: true,
     );
 
     expect(state.friendCount, 1);
     expect(state.requestCount, 1);
+    expect(state.sentRequestCount, 1);
     expect(state.hasFriendRequests, isTrue);
+    expect(state.hasSentFriendRequests, isTrue);
     expect(state.isInitialLoading, isFalse);
     expect(const FriendsState(isLoading: true).isInitialLoading, isTrue);
   });
@@ -35,7 +42,8 @@ void main() {
   test('refreshFromRealtimeEvent reloads without setting loading state', () async {
     final service = _FakeFriendService()
       ..friends = const [FriendProfile(id: 'friend-1', name: 'Minh', handle: 'minh')]
-      ..requests = const [FriendProfile(id: 'request-1', name: 'Lan', handle: 'lan')];
+      ..requests = const [FriendProfile(id: 'request-1', name: 'Lan', handle: 'lan')]
+      ..sentRequests = const [FriendProfile(id: 'sent-1', name: 'Bao', handle: 'bao')];
     final container = ProviderContainer(
       overrides: [friendServiceProvider.overrideWithValue(service)],
     );
@@ -48,5 +56,6 @@ void main() {
     expect(state.isLoading, isFalse);
     expect(state.friends.single.id, 'friend-1');
     expect(state.requests.single.id, 'request-1');
+    expect(state.sentRequests.single.id, 'sent-1');
   });
 }

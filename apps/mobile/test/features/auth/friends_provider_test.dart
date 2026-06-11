@@ -29,6 +29,9 @@ class _QueuedFriendService extends FriendService {
       FriendProfile(id: 'user-1', name: 'Nguyen Minh', handle: 'user23'),
     ]);
   }
+
+  @override
+  Future<List<FriendProfile>> fetchSentFriendRequests() async => const <FriendProfile>[];
 }
 
 void main() {

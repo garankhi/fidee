@@ -22,7 +22,9 @@ vi.mock('../realtime/enqueue-friend-request-event', () => ({
 import {
   acceptFriend,
   blockFriend,
+  cancelFriendRequest,
   declineFriend,
+  getSentFriendRequests,
   hideFriend,
   searchUsersByUsername,
   sendFriendRequest,
@@ -30,16 +32,18 @@ import {
 
 const mockEvent = ({
   body,
+  httpMethod,
   queryStringParameters,
 }: {
   body?: Record<string, unknown> | null;
+  httpMethod?: string;
   queryStringParameters?: Record<string, string> | null;
 } = {}): APIGatewayProxyEvent =>
   ({
     requestContext: { authorizer: { claims: { sub: 'user-1' } } },
     headers: {},
     body: body === undefined || body === null ? null : JSON.stringify(body),
-    httpMethod: body === undefined ? 'GET' : 'POST',
+    httpMethod: httpMethod ?? (body === undefined ? 'GET' : 'POST'),
     isBase64Encoded: false,
     path: '/friends',
     pathParameters: null,
@@ -74,6 +78,7 @@ describe('friends handlers', () => {
           username: 'minh',
           avatarUrl: null,
           relationStatus: null,
+          initiatedBy: null,
         },
       ],
     });
@@ -95,8 +100,63 @@ describe('friends handlers', () => {
         username: 'minh',
         avatarUrl: null,
         relationStatus: 'NONE',
+        relationDirection: 'NONE',
         canRequest: true,
+        canCancelRequest: false,
+        canAcceptRequest: false,
       },
+    ]);
+  });
+
+  it('searchUsersByUsername marks outgoing pending requests as cancelable', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'user-2',
+          name: 'Minh Tran',
+          username: 'minh',
+          avatarUrl: null,
+          relationStatus: 'PENDING',
+          initiatedBy: 'user-1',
+        },
+      ],
+    });
+
+    const result = await searchUsersByUsername(
+      mockEvent({ queryStringParameters: { username: 'minh' } }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body).users).toEqual([
+      {
+        id: 'user-2',
+        name: 'Minh Tran',
+        username: 'minh',
+        avatarUrl: null,
+        relationStatus: 'PENDING',
+        relationDirection: 'OUTGOING',
+        canRequest: false,
+        canCancelRequest: true,
+        canAcceptRequest: false,
+      },
+    ]);
+  });
+
+  it('getSentFriendRequests returns pending requests initiated by the current user', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 'user-2', name: 'Minh Tran', username: 'minh', avatarUrl: null }],
+    });
+
+    const result = await getSentFriendRequests(mockEvent());
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('f.initiated_by = $1'), [
+      'user-1',
+    ]);
+    expect(JSON.parse(result.body).requests).toEqual([
+      { id: 'user-2', name: 'Minh Tran', username: 'minh', avatarUrl: null },
     ]);
   });
 
@@ -140,6 +200,34 @@ describe('friends handlers', () => {
         requesterName: 'Minh Nguyen',
         requesterUsername: 'minh',
         requesterAvatarUrl: 'https://cdn.example/minh.png',
+        targetUserId: 'user-2',
+      }),
+    );
+  });
+
+  it('cancelFriendRequest deletes only outgoing pending rows and enqueues cancel realtime event', async () => {
+    mockQuery.mockResolvedValueOnce({});
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [{ status: 'PENDING' }] });
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    mockQuery.mockResolvedValueOnce({});
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ name: 'Minh Nguyen', username: 'minh', avatarUrl: null }],
+    });
+
+    const result = await cancelFriendRequest(
+      mockEvent({ body: { targetUserId: 'user-2' }, httpMethod: 'DELETE' }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('initiated_by = $1'), [
+      'user-1',
+      'user-2',
+    ]);
+    expect(mockEnqueueFriendRequestRealtimeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'FRIEND_REQUEST_CANCELED',
+        requesterId: 'user-1',
         targetUserId: 'user-2',
       }),
     );

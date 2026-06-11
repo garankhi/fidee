@@ -11,6 +11,7 @@ void main() {
     test('parses all fields from GraphQL payload', () {
       final event = FriendRequestRealtimeEvent.fromGraphqlData({
         'eventId': 'friend_request#user-1#user-2',
+        'type': 'FRIEND_REQUEST_CANCELED',
         'targetUserId': 'user-2',
         'requesterId': 'user-1',
         'requesterName': 'Minh Nguyen',
@@ -20,6 +21,7 @@ void main() {
       });
 
       expect(event.eventId, 'friend_request#user-1#user-2');
+      expect(event.type, 'FRIEND_REQUEST_CANCELED');
       expect(event.targetUserId, 'user-2');
       expect(event.requesterId, 'user-1');
       expect(event.requesterName, 'Minh Nguyen');
@@ -82,7 +84,7 @@ void main() {
       );
     });
 
-    test('waits for connection_ack before starting the subscription', () async {
+    test('waits for connection_ack before starting received and canceled subscriptions', () async {
       final fakeChannel = _FakeWebSocketChannel();
       final service = AppSyncRealtimeService(
         getToken: () async => 'token-123',
@@ -105,7 +107,15 @@ void main() {
       fakeChannel.receive({'type': 'connection_ack'});
       await Future<void>.delayed(Duration.zero);
 
-      expect(fakeChannel.sentTypes, ['connection_init', 'start']);
+      expect(fakeChannel.sentTypes, ['connection_init', 'start', 'start']);
+      final startBodies = fakeChannel.sentMessages
+          .skip(1)
+          .map((message) => jsonDecode(message as String) as Map<String, dynamic>)
+          .map((message) => jsonDecode(message['payload']['data'] as String) as Map<String, dynamic>)
+          .map((payload) => payload['query'] as String)
+          .toList(growable: false);
+      expect(startBodies.first, contains('onFriendRequestReceived'));
+      expect(startBodies.last, contains('onFriendRequestCanceled'));
     });
   });
 }
@@ -138,6 +148,8 @@ class _FakeWebSocketChannel
       .map((message) => jsonDecode(message as String) as Map<String, dynamic>)
       .map((message) => message['type'] as String?)
       .toList(growable: false);
+
+  List<dynamic> get sentMessages => _sink.sentMessages;
 
   void receive(Map<String, dynamic> message) {
     _incoming.add(jsonEncode(message));

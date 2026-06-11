@@ -281,9 +281,30 @@ export class FideeStack extends cdk.Stack {
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
       });
 
+      friendRealtimeNoneDataSource.createResolver('PublishFriendRequestCanceledResolver', {
+        typeName: 'Mutation',
+        fieldName: 'publishFriendRequestCanceled',
+        requestMappingTemplate: appsync.MappingTemplate.fromString(
+          '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
+        ),
+        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+      });
+
       friendRealtimeNoneDataSource.createResolver('OnFriendRequestReceivedResolver', {
         typeName: 'Subscription',
         fieldName: 'onFriendRequestReceived',
+        requestMappingTemplate: appsync.MappingTemplate.fromString(`
+#if($ctx.identity.sub != $ctx.args.targetUserId)
+  $util.unauthorized()
+#end
+{"version":"2018-05-29","payload":null}
+`),
+        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
+      });
+
+      friendRealtimeNoneDataSource.createResolver('OnFriendRequestCanceledResolver', {
+        typeName: 'Subscription',
+        fieldName: 'onFriendRequestCanceled',
         requestMappingTemplate: appsync.MappingTemplate.fromString(`
 #if($ctx.identity.sub != $ctx.args.targetUserId)
   $util.unauthorized()
@@ -579,13 +600,21 @@ export class FideeStack extends cdk.Stack {
     });
     dbCluster.secret!.grantRead(getFriendsFn);
 
-    const getFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetFriendRequestsFunction', {
-      ...friendsLambdaProps,
+      const getFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetFriendRequestsFunction', {
+        ...friendsLambdaProps,
       functionName: resourceName(stage, 'get-friend-requests'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'getFriendRequests',
-    });
-    dbCluster.secret!.grantRead(getFriendRequestsFn);
+      });
+      dbCluster.secret!.grantRead(getFriendRequestsFn);
+
+      const getSentFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetSentFriendRequestsFunction', {
+        ...friendsLambdaProps,
+        functionName: resourceName(stage, 'get-sent-friend-requests'),
+        entry: '../../services/api/src/handlers/friends-handlers.ts',
+        handler: 'getSentFriendRequests',
+      });
+      dbCluster.secret!.grantRead(getSentFriendRequestsFn);
 
       const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
         ...friendsLambdaProps,
@@ -597,8 +626,21 @@ export class FideeStack extends cdk.Stack {
           FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
         },
       });
-      dbCluster.secret!.grantRead(sendFriendRequestFn);
-      friendRequestRealtimeEventsTable.grantWriteData(sendFriendRequestFn);
+        dbCluster.secret!.grantRead(sendFriendRequestFn);
+        friendRequestRealtimeEventsTable.grantWriteData(sendFriendRequestFn);
+
+        const cancelFriendRequestFn = new nodejs.NodejsFunction(this, 'CancelFriendRequestFunction', {
+          ...friendsLambdaProps,
+          functionName: resourceName(stage, 'cancel-friend-request'),
+          entry: '../../services/api/src/handlers/friends-handlers.ts',
+          handler: 'cancelFriendRequest',
+          environment: {
+            ...friendsLambdaProps.environment,
+            FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
+          },
+        });
+        dbCluster.secret!.grantRead(cancelFriendRequestFn);
+        friendRequestRealtimeEventsTable.grantWriteData(cancelFriendRequestFn);
 
     const acceptFriendFn = new nodejs.NodejsFunction(this, 'AcceptFriendFunction', {
       ...friendsLambdaProps,
@@ -893,16 +935,26 @@ export class FideeStack extends cdk.Stack {
     });
 
     const requestsResource = friendsResource.addResource('requests');
-    requestsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendRequestsFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
+      requestsResource.addMethod('GET', new apigateway.LambdaIntegration(getFriendRequestsFn), {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      });
+
+      const sentRequestsResource = requestsResource.addResource('sent');
+      sentRequestsResource.addMethod('GET', new apigateway.LambdaIntegration(getSentFriendRequestsFn), {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      });
 
     const requestActionResource = friendsResource.addResource('request');
-    requestActionResource.addMethod('POST', new apigateway.LambdaIntegration(sendFriendRequestFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
+      requestActionResource.addMethod('POST', new apigateway.LambdaIntegration(sendFriendRequestFn), {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      });
+      requestActionResource.addMethod('DELETE', new apigateway.LambdaIntegration(cancelFriendRequestFn), {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      });
 
     const acceptActionResource = friendsResource.addResource('accept');
     acceptActionResource.addMethod('POST', new apigateway.LambdaIntegration(acceptFriendFn), {

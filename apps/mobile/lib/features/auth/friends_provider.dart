@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../services/friend_service.dart';
 import 'auth_providers.dart';
@@ -7,30 +9,37 @@ part 'friends_provider.g.dart';
 class FriendsState {
   final List<FriendProfile> friends;
   final List<FriendProfile> requests;
+  final List<FriendProfile> sentRequests;
   final bool isLoading;
 
   const FriendsState({
     this.friends = const [],
     this.requests = const [],
+    this.sentRequests = const [],
     this.isLoading = false,
   });
 
   FriendsState copyWith({
     List<FriendProfile>? friends,
     List<FriendProfile>? requests,
+    List<FriendProfile>? sentRequests,
     bool? isLoading,
   }) {
     return FriendsState(
       friends: friends ?? this.friends,
       requests: requests ?? this.requests,
+      sentRequests: sentRequests ?? this.sentRequests,
       isLoading: isLoading ?? this.isLoading,
     );
   }
 
   int get friendCount => friends.length;
   int get requestCount => requests.length;
+  int get sentRequestCount => sentRequests.length;
   bool get hasFriendRequests => requests.isNotEmpty;
-  bool get isInitialLoading => isLoading && friends.isEmpty && requests.isEmpty;
+  bool get hasSentFriendRequests => sentRequests.isNotEmpty;
+  bool get isInitialLoading =>
+      isLoading && friends.isEmpty && requests.isEmpty && sentRequests.isEmpty;
 }
 
 @Riverpod(keepAlive: true)
@@ -70,11 +79,13 @@ class FriendsController extends _$FriendsController {
         final results = await Future.wait<List<FriendProfile>>([
           _service.fetchFriends(),
           _service.fetchFriendRequests(),
+          _service.fetchSentFriendRequests(),
         ]);
 
         state = FriendsState(
           friends: results[0],
           requests: results[1],
+          sentRequests: results[2],
           isLoading: false,
         );
       } finally {
@@ -139,7 +150,20 @@ class FriendsController extends _$FriendsController {
   Future<bool> addFriend(String userId) async {
     final success = await _service.sendFriendRequest(userId);
     if (success) {
-      await load();
+      unawaited(load(silent: true));
+    }
+    return success;
+  }
+
+  Future<bool> cancelFriendRequest(String userId) async {
+    final success = await _service.cancelFriendRequest(userId);
+    if (success) {
+      state = state.copyWith(
+        sentRequests: state.sentRequests
+            .where((request) => request.id != userId)
+            .toList(growable: false),
+      );
+      unawaited(load(silent: true));
     }
     return success;
   }

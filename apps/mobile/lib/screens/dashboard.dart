@@ -1,8 +1,8 @@
+import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/dashboard_provider.dart';
 import '../models/dashboard_place.dart';
@@ -39,8 +39,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
-    } catch (e) {
-    }
+      } catch (e) {
+        debugPrint('Failed to load nearby spots: $e');
+      }
   }
 
   void _onAddSpot() {
@@ -61,9 +62,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _searchController.dispose();
     super.dispose();
   }
-
-  @override
-  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +143,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       children: [
         Text(
           'Hôm nay ăn gì cho hợp “vibe”?',
-          style: TextStyle(color: Colors.black.withOpacity(0.85), fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.black.withValues(alpha: 0.85), fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Row(
@@ -327,7 +325,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ? const LinearGradient(colors: [Color(0xFFEF484F), Color(0xCCFF1D27)])
                   : const LinearGradient(colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)]),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isSelected ? const Color(0xFFEF484F) : const Color(0xFFF7C6C7).withOpacity(0.5)),
+                border: Border.all(color: isSelected ? const Color(0xFFEF484F) : const Color(0xFFF7C6C7).withValues(alpha: 0.5)),
             ),
             child: Column(
               children: [
@@ -385,7 +383,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.black.withOpacity(0.1), Colors.black.withOpacity(0.85)],
+                      colors: [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.85)],
                   ),
                 ),
                 child: Column(
@@ -397,7 +395,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(10)),
+                            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
                           child: Row(
                             children: [
                               const Icon(Icons.star, color: Colors.amber, size: 12),
@@ -407,7 +405,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         CircleAvatar(
-                          backgroundColor: Colors.black.withOpacity(0.5),
+                            backgroundColor: Colors.black.withValues(alpha: 0.5),
                           radius: 15,
                           child: const Icon(Icons.favorite_border, color: Colors.white, size: 14),
                         )

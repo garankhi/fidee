@@ -3,6 +3,7 @@ import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
 const dynamo = new DynamoDBClient({});
 
 export interface FriendRequestRealtimeEventInput {
+  type?: 'FRIEND_REQUEST_RECEIVED' | 'FRIEND_REQUEST_CANCELED';
   requesterId: string;
   requesterName: string;
   requesterUsername?: string | null;
@@ -17,7 +18,11 @@ export async function enqueueFriendRequestRealtimeEvent(
   const tableName = process.env.FRIEND_REQUEST_REALTIME_EVENTS_TABLE;
   if (!tableName) return;
 
-  const eventId = `friend_request#${input.requesterId}#${input.targetUserId}#${input.createdAt}`;
+  const eventType = input.type ?? 'FRIEND_REQUEST_RECEIVED';
+  const eventPrefix = eventType === 'FRIEND_REQUEST_CANCELED'
+    ? 'friend_request_canceled'
+    : 'friend_request';
+  const eventId = `${eventPrefix}#${input.requesterId}#${input.targetUserId}#${input.createdAt}`;
   const ttlDays = 7;
   const expiresAt = Math.floor(Date.now() / 1000) + ttlDays * 24 * 60 * 60;
 
@@ -27,7 +32,7 @@ export async function enqueueFriendRequestRealtimeEvent(
       ConditionExpression: 'attribute_not_exists(eventId)',
       Item: {
         eventId: { S: eventId },
-        type: { S: 'FRIEND_REQUEST_RECEIVED' },
+        type: { S: eventType },
         targetUserId: { S: input.targetUserId },
         requesterId: { S: input.requesterId },
         requesterName: { S: input.requesterName },

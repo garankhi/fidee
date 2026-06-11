@@ -17,6 +17,7 @@ void main() {
     List<FriendProfile> requests = const <FriendProfile>[],
     Future<List<FriendSearchResult>> Function(String username)? onSearchUsers,
     Future<bool> Function(String userId)? onAddFriend,
+    Future<bool> Function(String userId)? onCancelFriendRequest,
     Future<bool> Function(String userId)? onAcceptFriend,
     Future<bool> Function(String userId)? onDeclineFriend,
     Future<bool> Function(String userId)? onHideFriend,
@@ -31,6 +32,7 @@ void main() {
           isLoading: false,
           onSearchUsers: onSearchUsers ?? (_) async => const <FriendSearchResult>[],
           onAddFriend: onAddFriend ?? (_) async => true,
+          onCancelFriendRequest: onCancelFriendRequest ?? (_) async => true,
           onAcceptFriend: onAcceptFriend ?? (_) async => true,
           onDeclineFriend: onDeclineFriend ?? (_) async => true,
           onHideFriend: onHideFriend ?? (_) async => true,
@@ -110,6 +112,42 @@ void main() {
     await tester.pump();
 
     expect(addedUserId, 'user-2');
+    expect(find.text('Hủy gửi'), findsOneWidget);
+  });
+
+  testWidgets('cancels an outgoing request from search results', (tester) async {
+    String? canceledUserId;
+
+    await tester.pumpWidget(
+      buildContent(
+        onSearchUsers: (_) async {
+          return const <FriendSearchResult>[
+            FriendSearchResult(
+              profile: FriendProfile(id: 'user-2', name: 'Minh Tran', handle: 'minh'),
+              relationStatus: FriendRelationStatus.pending,
+              relationDirection: FriendRelationDirection.outgoing,
+              canRequest: false,
+              canCancelRequest: true,
+            ),
+          ];
+        },
+        onCancelFriendRequest: (userId) async {
+          canceledUserId = userId;
+          return true;
+        },
+      ),
+    );
+
+    await tester.enterText(find.byKey(const ValueKey('friend-search-field')), 'minh');
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('friend-cancel-user-2')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(canceledUserId, 'user-2');
+    expect(find.text('Thêm'), findsOneWidget);
   });
 
   testWidgets('shows pending friend requests and accepts one', (tester) async {
