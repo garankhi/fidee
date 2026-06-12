@@ -30,7 +30,8 @@ void main() {
           friends: friends,
           requests: requests,
           isLoading: false,
-          onSearchUsers: onSearchUsers ?? (_) async => const <FriendSearchResult>[],
+          onSearchUsers:
+              onSearchUsers ?? (_) async => const <FriendSearchResult>[],
           onAddFriend: onAddFriend ?? (_) async => true,
           onCancelFriendRequest: onCancelFriendRequest ?? (_) async => true,
           onAcceptFriend: onAcceptFriend ?? (_) async => true,
@@ -43,7 +44,9 @@ void main() {
     );
   }
 
-  testWidgets('shows three friends by default and expands then collapses', (tester) async {
+  testWidgets('shows three friends by default and expands then collapses', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildContent());
 
     expect(find.text('5 người bạn'), findsOneWidget);
@@ -88,7 +91,11 @@ void main() {
           expect(username, 'minh');
           return const <FriendSearchResult>[
             FriendSearchResult(
-              profile: FriendProfile(id: 'user-2', name: 'Minh Tran', handle: 'minh'),
+              profile: FriendProfile(
+                id: 'user-2',
+                name: 'Minh Tran',
+                handle: 'minh',
+              ),
               relationStatus: FriendRelationStatus.none,
               canRequest: true,
             ),
@@ -101,7 +108,10 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byKey(const ValueKey('friend-search-field')), 'minh');
+    await tester.enterText(
+      find.byKey(const ValueKey('friend-search-field')),
+      'minh',
+    );
     await tester.pump(const Duration(milliseconds: 450));
     await tester.pump();
 
@@ -115,7 +125,9 @@ void main() {
     expect(find.text('Hủy gửi'), findsOneWidget);
   });
 
-  testWidgets('cancels an outgoing request from search results', (tester) async {
+  testWidgets('cancels an outgoing request from search results', (
+    tester,
+  ) async {
     String? canceledUserId;
 
     await tester.pumpWidget(
@@ -123,7 +135,11 @@ void main() {
         onSearchUsers: (_) async {
           return const <FriendSearchResult>[
             FriendSearchResult(
-              profile: FriendProfile(id: 'user-2', name: 'Minh Tran', handle: 'minh'),
+              profile: FriendProfile(
+                id: 'user-2',
+                name: 'Minh Tran',
+                handle: 'minh',
+              ),
               relationStatus: FriendRelationStatus.pending,
               relationDirection: FriendRelationDirection.outgoing,
               canRequest: false,
@@ -138,7 +154,10 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byKey(const ValueKey('friend-search-field')), 'minh');
+    await tester.enterText(
+      find.byKey(const ValueKey('friend-search-field')),
+      'minh',
+    );
     await tester.pump(const Duration(milliseconds: 450));
     await tester.pump();
 
@@ -168,7 +187,9 @@ void main() {
     expect(find.text('Lời mời kết bạn'), findsOneWidget);
     expect(find.text('Lan Tran'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('friend-request-accept-request-1')));
+    await tester.tap(
+      find.byKey(const ValueKey('friend-request-accept-request-1')),
+    );
     await tester.pump();
     await tester.pump();
 
@@ -191,7 +212,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('friend-request-decline-request-2')));
+    await tester.tap(
+      find.byKey(const ValueKey('friend-request-decline-request-2')),
+    );
     await tester.pump();
     await tester.pump();
 

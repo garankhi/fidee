@@ -31,6 +31,48 @@ type FriendRequestRealtimeEvent @aws_iam @aws_cognito_user_pools {
   createdAt: AWSDateTime!
 }
 
+type ChatRealtimeMessage @aws_iam @aws_cognito_user_pools {
+  id: ID!
+  conversationId: ID!
+  senderId: ID!
+  clientMessageId: String!
+  body: String!
+  status: String!
+  createdAt: AWSDateTime!
+}
+
+type ChatRealtimeReceipt @aws_iam @aws_cognito_user_pools {
+  conversationId: ID!
+  messageId: ID!
+  userId: ID!
+  deliveredAt: AWSDateTime
+  readAt: AWSDateTime
+}
+
+type ChatRealtimeTyping @aws_iam @aws_cognito_user_pools {
+  conversationId: ID!
+  userId: ID!
+  isTyping: Boolean!
+}
+
+type ChatRealtimePresence @aws_iam @aws_cognito_user_pools {
+  userId: ID!
+  status: String!
+  lastSeenAt: AWSDateTime!
+}
+
+type ChatRealtimeEvent @aws_iam @aws_cognito_user_pools {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  conversationId: ID
+  message: ChatRealtimeMessage
+  receipt: ChatRealtimeReceipt
+  typing: ChatRealtimeTyping
+  presence: ChatRealtimePresence
+  createdAt: AWSDateTime!
+}
+
 input PublishFriendRealtimeEventInput {
   eventId: ID!
   type: String!
@@ -65,10 +107,53 @@ input PublishFriendRequestCanceledInput {
   createdAt: AWSDateTime!
 }
 
+input PublishChatRealtimeMessageInput {
+  id: ID!
+  conversationId: ID!
+  senderId: ID!
+  clientMessageId: String!
+  body: String!
+  status: String!
+  createdAt: AWSDateTime!
+}
+
+input PublishChatRealtimeReceiptInput {
+  conversationId: ID!
+  messageId: ID!
+  userId: ID!
+  deliveredAt: AWSDateTime
+  readAt: AWSDateTime
+}
+
+input PublishChatRealtimeTypingInput {
+  conversationId: ID!
+  userId: ID!
+  isTyping: Boolean!
+}
+
+input PublishChatRealtimePresenceInput {
+  userId: ID!
+  status: String!
+  lastSeenAt: AWSDateTime!
+}
+
+input PublishChatRealtimeEventInput {
+  eventId: ID!
+  type: String!
+  targetUserId: ID!
+  conversationId: ID
+  message: PublishChatRealtimeMessageInput
+  receipt: PublishChatRealtimeReceiptInput
+  typing: PublishChatRealtimeTypingInput
+  presence: PublishChatRealtimePresenceInput
+  createdAt: AWSDateTime!
+}
+
 type Mutation {
   publishFriendRealtimeEvent(input: PublishFriendRealtimeEventInput!): FriendRealtimeEvent @aws_iam
   publishFriendRequestReceived(input: PublishFriendRequestReceivedInput!): FriendRequestRealtimeEvent @aws_iam
   publishFriendRequestCanceled(input: PublishFriendRequestCanceledInput!): FriendRequestRealtimeEvent @aws_iam
+  publishChatRealtimeEvent(input: PublishChatRealtimeEventInput!): ChatRealtimeEvent @aws_iam
 }
 
 type Subscription {
@@ -80,5 +165,8 @@ type Subscription {
     @aws_cognito_user_pools
   onFriendRequestCanceled(targetUserId: ID!): FriendRequestRealtimeEvent
     @aws_subscribe(mutations: ["publishFriendRequestCanceled"])
+    @aws_cognito_user_pools
+  onChatRealtimeEvent(targetUserId: ID!): ChatRealtimeEvent
+    @aws_subscribe(mutations: ["publishChatRealtimeEvent"])
     @aws_cognito_user_pools
 }

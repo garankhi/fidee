@@ -5,10 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('selects all or multiple friends for preview sharing', (tester) async {
+  testWidgets('selects all or multiple friends for preview sharing', (
+    tester,
+  ) async {
     var selected = CameraShareAudience.allFriends();
     const friends = <FriendProfile>[
-      FriendProfile(id: 'friend-1', name: 'Test Api', handle: 'testapi@fidee.com'),
+      FriendProfile(
+        id: 'friend-1',
+        name: 'Test Api',
+        handle: 'testapi@fidee.com',
+      ),
       FriendProfile(id: 'friend-2', name: 'Minh Nguyen', handle: 'minh'),
     ];
 
@@ -34,9 +40,13 @@ void main() {
     expect(find.text('testapi@fidee.com'), findsOneWidget);
     expect(find.text('minh'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('send-image-audience-friend-friend-1')));
+    await tester.tap(
+      find.byKey(const ValueKey('send-image-audience-friend-friend-1')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('send-image-audience-friend-friend-2')));
+    await tester.tap(
+      find.byKey(const ValueKey('send-image-audience-friend-friend-2')),
+    );
     await tester.pumpAndSettle();
 
     expect(selected.type, CameraShareAudienceType.direct);

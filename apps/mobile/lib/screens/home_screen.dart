@@ -206,7 +206,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               children: [
                 TileLayer(
                   urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.fidee.fidee',
                   maxZoom: 20,
@@ -227,15 +227,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     markers: _feedItems
                         .map(
                           (item) => Marker(
-                        point: LatLng(item.lat, item.lng),
-                        width: 48,
-                        height: 48,
-                        child: GestureDetector(
-                          onTap: () => _showFeedItemDetails(context, item),
-                          child: _FeedMarker(item: item),
-                        ),
-                      ),
-                    )
+                            point: LatLng(item.lat, item.lng),
+                            width: 48,
+                            height: 48,
+                            child: GestureDetector(
+                              onTap: () => _showFeedItemDetails(context, item),
+                              child: _FeedMarker(item: item),
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
               ],
@@ -308,38 +308,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       color: const Color(0xFFEF4050),
                                       shape: BoxShape.circle,
                                       image:
-                                      authService.avatarUrl != null &&
-                                          authService.avatarUrl!.isNotEmpty
+                                          authService.avatarUrl != null &&
+                                              authService.avatarUrl!.isNotEmpty
                                           ? DecorationImage(
-                                        image:
-                                        authService.avatarUrl!
-                                            .startsWith('http')
-                                            ? NetworkImage(
-                                          authService
-                                              .avatarUrl!,
-                                        )
-                                        as ImageProvider
-                                            : FileImage(
-                                          File(
-                                            authService.avatarUrl!,
-                                          ),
-                                        ),
-                                        fit: BoxFit.cover,
-                                      )
+                                              image:
+                                                  authService.avatarUrl!
+                                                      .startsWith('http')
+                                                  ? NetworkImage(
+                                                          authService
+                                                              .avatarUrl!,
+                                                        )
+                                                        as ImageProvider
+                                                  : FileImage(
+                                                      File(
+                                                        authService.avatarUrl!,
+                                                      ),
+                                                    ),
+                                              fit: BoxFit.cover,
+                                            )
                                           : null,
                                     ),
                                     child:
-                                    authService.avatarUrl == null ||
-                                        authService.avatarUrl!.isEmpty
+                                        authService.avatarUrl == null ||
+                                            authService.avatarUrl!.isEmpty
                                         ? Center(
-                                      child: Text(
-                                        initials,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    )
+                                            child: Text(
+                                              initials,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
                                         : null,
                                   );
                                 },
@@ -529,7 +529,7 @@ class _BottomNavIcon extends StatelessWidget {
                   fit: BoxFit.contain,
                   cacheWidth: 152,
                   errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.error, color: Colors.grey),
+                      const Icon(Icons.error, color: Colors.grey),
                 ),
               ),
             ),

@@ -23,7 +23,10 @@ class GalleryPreviewButton extends StatelessWidget {
 
   Widget _buildPreview() {
     if (thumbnails.isEmpty) {
-      return const Align(alignment: Alignment.centerLeft, child: _GalleryPlaceholder());
+      return const Align(
+        alignment: Alignment.centerLeft,
+        child: _GalleryPlaceholder(),
+      );
     }
 
     if (thumbnails.length == 1) {
@@ -76,12 +79,7 @@ class _GalleryPhoto extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Image.memory(
-        bytes,
-        width: 45,
-        height: 45,
-        fit: BoxFit.cover,
-      ),
+      child: Image.memory(bytes, width: 45, height: 45, fit: BoxFit.cover),
     );
   }
 }

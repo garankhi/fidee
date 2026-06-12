@@ -251,10 +251,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                               SizedBox(height: 2),
                               Row(
                                 children: [
-                                  Text(
-                                    '⚡',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
+                                  Text('⚡', style: TextStyle(fontSize: 14)),
                                   SizedBox(width: 6),
                                   Text(
                                     'Đang hoạt động',
@@ -366,7 +363,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                           ),
                           _QuickOptionChip(
                             label: 'Lãng mạn và yên tĩnh hơn',
-                            onTap: () => _sendMessage('Lãng mạn và yên tĩnh hơn'),
+                            onTap: () =>
+                                _sendMessage('Lãng mạn và yên tĩnh hơn'),
                           ),
                         ],
                       ),
@@ -391,7 +389,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                             child: Text(
                               message.text,
                               style: TextStyle(
-                                color: message.isUser ? Colors.white : Colors.black,
+                                color: message.isUser
+                                    ? Colors.white
+                                    : Colors.black,
                                 fontSize: 14,
                                 height: 1.35,
                               ),
@@ -406,7 +406,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(999),

@@ -59,7 +59,9 @@ class GalleryPermissionService {
   }
 
   static Future<PermissionState> _liveRequestPermission() {
-    return PhotoManager.requestPermissionExtend(requestOption: permissionOption);
+    return PhotoManager.requestPermissionExtend(
+      requestOption: permissionOption,
+    );
   }
 
   static Future<void> _livePresentLimited() {
@@ -73,8 +75,8 @@ extension GalleryPermissionStatusMapper on GalleryPermissionStatus {
       PermissionState.notDetermined => GalleryPermissionStatus.notDetermined,
       PermissionState.authorized => GalleryPermissionStatus.full,
       PermissionState.limited => GalleryPermissionStatus.limited,
-      PermissionState.denied || PermissionState.restricted =>
-        GalleryPermissionStatus.denied,
+      PermissionState.denied ||
+      PermissionState.restricted => GalleryPermissionStatus.denied,
     };
   }
 }

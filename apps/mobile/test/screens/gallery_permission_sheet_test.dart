@@ -18,12 +18,14 @@ void main() {
               body: Center(
                 child: ElevatedButton(
                   onPressed: () async {
-                    selectedAction = await showModalBottomSheet<GalleryPermissionAction>(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => GalleryPermissionSheet(status: status),
-                    );
+                    selectedAction =
+                        await showModalBottomSheet<GalleryPermissionAction>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) =>
+                              GalleryPermissionSheet(status: status),
+                        );
                   },
                   child: const Text('Open'),
                 ),
@@ -52,7 +54,10 @@ void main() {
   testWidgets('shows limited access management choices', (tester) async {
     await showPermissionSheet(tester, GalleryPermissionStatus.limited);
 
-    expect(find.text('Bạn đang chỉ chia sẻ một số ảnh với Fidee'), findsOneWidget);
+    expect(
+      find.text('Bạn đang chỉ chia sẻ một số ảnh với Fidee'),
+      findsOneWidget,
+    );
     expect(find.text('Chọn thêm ảnh'), findsOneWidget);
     expect(find.text('Chia sẻ tất cả ảnh'), findsOneWidget);
     expect(find.text('Không chia sẻ'), findsOneWidget);
@@ -70,14 +75,15 @@ void main() {
             return Scaffold(
               body: ElevatedButton(
                 onPressed: () async {
-                  selectedAction = await showModalBottomSheet<GalleryPermissionAction>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => const GalleryPermissionSheet(
-                      status: GalleryPermissionStatus.notDetermined,
-                    ),
-                  );
+                  selectedAction =
+                      await showModalBottomSheet<GalleryPermissionAction>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const GalleryPermissionSheet(
+                          status: GalleryPermissionStatus.notDetermined,
+                        ),
+                      );
                 },
                 child: const Text('Open'),
               ),
@@ -105,14 +111,15 @@ void main() {
             return Scaffold(
               body: ElevatedButton(
                 onPressed: () async {
-                  selectedAction = await showModalBottomSheet<GalleryPermissionAction>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => const GalleryPermissionSheet(
-                      status: GalleryPermissionStatus.limited,
-                    ),
-                  );
+                  selectedAction =
+                      await showModalBottomSheet<GalleryPermissionAction>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const GalleryPermissionSheet(
+                          status: GalleryPermissionStatus.limited,
+                        ),
+                      );
                 },
                 child: const Text('Open'),
               ),

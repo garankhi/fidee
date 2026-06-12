@@ -51,29 +51,29 @@ class CameraCheckinFeedView extends StatelessWidget {
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _FeedHeader(onRefresh: onRefresh),
-            const SizedBox(height: 18),
-            if (isLoading && items.isEmpty)
-              const _CameraFeedSkeleton()
-            else if (items.isEmpty)
-              const _CameraFeedEmptyState()
-            else ...[
-              for (final item in items) ...[
-                _CameraCheckinCard(item: item, now: now),
-                const SizedBox(height: 26),
-              ],
-              if (isLoadingMore)
-                const _InlineLoadMoreIndicator()
-              else if (hasMore)
-                TextButton(
-                  onPressed: onLoadMore,
-                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
-                  child: const Text('Xem thêm'),
-                ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FeedHeader(onRefresh: onRefresh),
+          const SizedBox(height: 18),
+          if (isLoading && items.isEmpty)
+            const _CameraFeedSkeleton()
+          else if (items.isEmpty)
+            const _CameraFeedEmptyState()
+          else ...[
+            for (final item in items) ...[
+              _CameraCheckinCard(item: item, now: now),
+              const SizedBox(height: 26),
             ],
+            if (isLoadingMore)
+              const _InlineLoadMoreIndicator()
+            else if (hasMore)
+              TextButton(
+                onPressed: onLoadMore,
+                style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                child: const Text('Xem thêm'),
+              ),
           ],
+        ],
       ),
     );
 
@@ -133,7 +133,9 @@ class _CameraFeedSkeleton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFF171717),
                     borderRadius: BorderRadius.circular(34),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                    ),
                   ),
                 ),
               ),

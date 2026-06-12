@@ -49,7 +49,8 @@ class CheckinService {
     final trimmedCaption = caption?.trim();
     final payload = <String, dynamic>{
       if (placeId != null && placeId.isNotEmpty) 'place_id': placeId,
-      if (candidateId != null && candidateId.isNotEmpty) 'candidate_id': candidateId,
+      if (candidateId != null && candidateId.isNotEmpty)
+        'candidate_id': candidateId,
       'media_id': mediaId,
       'gps_lat': gpsLat,
       'gps_lng': gpsLng,
@@ -74,11 +75,14 @@ class CheckinService {
       );
 
       if (response.statusCode != 201) {
-        throw CheckinException('Không tạo được check-in: HTTP ${response.statusCode}');
+        throw CheckinException(
+          'Không tạo được check-in: HTTP ${response.statusCode}',
+        );
       }
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final data = decoded['data'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+      final data =
+          decoded['data'] as Map<String, dynamic>? ?? const <String, dynamic>{};
       return CheckinResult(
         checkinId: data['id'] as String? ?? '',
         createdAt: data['created_at'] as String? ?? '',

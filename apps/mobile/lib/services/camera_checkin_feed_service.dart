@@ -12,7 +12,7 @@ class CameraCheckinFeedService {
   final http.Client _client;
 
   CameraCheckinFeedService(this._authService, {http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   Future<CameraCheckinFeedPage> fetchCheckins({
     required CameraFeedAudience audience,
@@ -24,16 +24,22 @@ class CameraCheckinFeedService {
 
     try {
       final query = <String, String>{
-        'filter': audience.type == CameraFeedAudienceType.me ? 'me' : 'everyone',
+        'filter': audience.type == CameraFeedAudienceType.me
+            ? 'me'
+            : 'everyone',
         'limit': limit.toString(),
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
         if (audience.type == CameraFeedAudienceType.friend &&
             audience.id != null)
           'friendId': audience.id!,
       };
-      final uri = Uri.parse('${Config.apiBaseUrl}/feed/checkins')
-          .replace(queryParameters: query);
-      final response = await _client.get(uri, headers: {'Authorization': token});
+      final uri = Uri.parse(
+        '${Config.apiBaseUrl}/feed/checkins',
+      ).replace(queryParameters: query);
+      final response = await _client.get(
+        uri,
+        headers: {'Authorization': token},
+      );
       if (response.statusCode != 200) return CameraCheckinFeedPage.empty();
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -43,7 +49,8 @@ class CameraCheckinFeedService {
           .where((item) => item.imageUrl.isNotEmpty)
           .toList(growable: false);
       final pagination =
-          decoded['pagination'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+          decoded['pagination'] as Map<String, dynamic>? ??
+          const <String, dynamic>{};
 
       return CameraCheckinFeedPage(
         items: items,

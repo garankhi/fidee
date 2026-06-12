@@ -4,67 +4,91 @@ import { HttpRequest } from '@smithy/core/transport';
 import { SignatureV4 } from '@smithy/signature-v4';
 import { DynamoDBStreamEvent } from 'aws-lambda';
 
-const friendRealtimeEventTypes = new Set([
-  'FRIEND_REQUEST_RECEIVED',
-  'FRIEND_REQUEST_CANCELED',
-  'FRIEND_REQUEST_DECLINED',
-  'FRIEND_REQUEST_ACCEPTED',
-  'FRIENDSHIP_REMOVED',
-  'FRIENDSHIP_HIDDEN',
-  'FRIEND_BLOCKED',
-]);
-
-interface FriendRealtimePayload {
+interface ChatRealtimePayload {
   eventId: string;
   type: string;
   targetUserId: string;
-  actorUserId: string;
-  relatedUserId: string;
-  actorName: string;
-  actorUsername: string;
-  actorAvatarUrl: string;
+  conversationId?: string | null;
+  message?: Record<string, unknown> | null;
+  receipt?: Record<string, unknown> | null;
+  typing?: Record<string, unknown> | null;
+  presence?: Record<string, unknown> | null;
   createdAt: string;
 }
+
+const chatEventTypes = new Set([
+  'MESSAGE_CREATED',
+  'MESSAGE_DELIVERED',
+  'MESSAGE_READ',
+  'TYPING',
+  'PRESENCE_CHANGED',
+]);
 
 export async function handler(event: DynamoDBStreamEvent): Promise<void> {
   for (const record of event.Records) {
     if (record.eventName !== 'INSERT') continue;
 
     const image = record.dynamodb?.NewImage;
-    const eventType = image?.type?.S;
-    if (!image || !eventType || !friendRealtimeEventTypes.has(eventType)) {
-      continue;
-    }
+    const type = image?.type?.S ?? '';
+    if (!image || !chatEventTypes.has(type)) continue;
 
-    await publishFriendRealtimeEvent({
+    await publishChatRealtimeEvent({
       eventId: image.eventId?.S ?? '',
-      type: eventType,
+      type,
       targetUserId: image.targetUserId?.S ?? '',
-      actorUserId: image.actorUserId?.S ?? image.requesterId?.S ?? '',
-      relatedUserId: image.relatedUserId?.S ?? image.requesterId?.S ?? image.actorUserId?.S ?? '',
-      actorName: image.actorName?.S ?? image.requesterName?.S ?? 'Một người bạn',
-      actorUsername: image.actorUsername?.S ?? image.requesterUsername?.S ?? '',
-      actorAvatarUrl: image.actorAvatarUrl?.S ?? image.requesterAvatarUrl?.S ?? '',
+      conversationId: image.conversationId?.S || null,
+      message: parseJsonAttribute(image.message?.S),
+      receipt: parseJsonAttribute(image.receipt?.S),
+      typing: parseJsonAttribute(image.typing?.S),
+      presence: parseJsonAttribute(image.presence?.S),
       createdAt: image.createdAt?.S ?? new Date().toISOString(),
     });
   }
 }
 
-async function publishFriendRealtimeEvent(input: FriendRealtimePayload): Promise<void> {
+function parseJsonAttribute(value: string | undefined): Record<string, unknown> | null {
+  if (!value) return null;
+  const parsed = JSON.parse(value) as unknown;
+  return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+}
+
+async function publishChatRealtimeEvent(input: ChatRealtimePayload): Promise<void> {
   const graphqlUrl = process.env.FRIEND_REALTIME_GRAPHQL_URL!;
   const region = process.env.AWS_REGION ?? 'ap-southeast-1';
   const url = new URL(graphqlUrl);
   const body = JSON.stringify({
-    query: `mutation PublishFriendRealtimeEvent($input: PublishFriendRealtimeEventInput!) {
-      publishFriendRealtimeEvent(input: $input) {
+    query: `mutation PublishChatRealtimeEvent($input: PublishChatRealtimeEventInput!) {
+      publishChatRealtimeEvent(input: $input) {
         eventId
         type
         targetUserId
-        actorUserId
-        relatedUserId
-        actorName
-        actorUsername
-        actorAvatarUrl
+        conversationId
+        message {
+          id
+          conversationId
+          senderId
+          clientMessageId
+          body
+          status
+          createdAt
+        }
+        receipt {
+          conversationId
+          messageId
+          userId
+          deliveredAt
+          readAt
+        }
+        typing {
+          conversationId
+          userId
+          isTyping
+        }
+        presence {
+          userId
+          status
+          lastSeenAt
+        }
         createdAt
       }
     }`,

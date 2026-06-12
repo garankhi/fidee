@@ -5,7 +5,10 @@ void main() {
   group('profileUpdateErrorMessage', () {
     test('includes status and message from API Gateway style body', () {
       expect(
-        profileUpdateErrorMessage(403, '{"message":"Missing Authentication Token"}'),
+        profileUpdateErrorMessage(
+          403,
+          '{"message":"Missing Authentication Token"}',
+        ),
         'Cập nhật profile thất bại (HTTP 403): Missing Authentication Token',
       );
     });

@@ -8,7 +8,8 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
   const PlaceDetailsFriends({super.key, required this.placeId});
 
   @override
-  ConsumerState<PlaceDetailsFriends> createState() => _PlaceDetailsFriendsState();
+  ConsumerState<PlaceDetailsFriends> createState() =>
+      _PlaceDetailsFriendsState();
 }
 
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
@@ -27,7 +28,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           child: CircleAvatar(
             backgroundColor: const Color(0x19EF484F),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, size: 16, color: Color(0xFFEF484F)),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                size: 16,
+                color: Color(0xFFEF484F),
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -48,7 +53,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: CircleAvatar(
               backgroundColor: const Color(0x19EF484F),
               child: IconButton(
-                icon: const Icon(Icons.share, size: 18, color: Color(0xFFEF484F)),
+                icon: const Icon(
+                  Icons.share,
+                  size: 18,
+                  color: Color(0xFFEF484F),
+                ),
                 onPressed: () {},
               ),
             ),
@@ -58,7 +67,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 100),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 100,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -79,10 +93,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 const SizedBox(height: 25),
 
                 // 5. Nút chỉ đường tích hợp tọa độ lat, lng từ state
-                _buildLargeButton(
-                  Icons.near_me,
-                  'Chỉ đường',
-                ),
+                _buildLargeButton(Icons.near_me, 'Chỉ đường'),
                 const SizedBox(height: 25),
 
                 // 6. Khu vực Check-in của bạn bè
@@ -109,9 +120,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
                 ),
                 const SizedBox(width: 15),
-                Expanded(
-                  child: _buildBottomButton(Icons.edit, 'Đánh giá'),
-                ),
+                Expanded(child: _buildBottomButton(Icons.edit, 'Đánh giá')),
               ],
             ),
           ),
@@ -129,7 +138,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         image: const DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600'),
+          image: NetworkImage(
+            'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600',
+          ),
           fit: BoxFit.cover,
         ),
       ),
@@ -148,7 +159,13 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 children: [
                   Icon(Icons.star, color: Colors.amber, size: 16),
                   SizedBox(width: 4),
-                  Text('4.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text(
+                    '4.0',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -159,7 +176,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             child: CircleAvatar(
               backgroundColor: Colors.black.withValues(alpha: 0.5),
               radius: 18,
-              child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.favorite_border,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
           Positioned(
@@ -182,13 +203,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       children: [
                         Text(
                           place.name ?? 'Chưa cập nhật tên',
-                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '📍 ${place.address ?? "Chưa cập nhật địa chỉ"}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -199,23 +227,33 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF229D00),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           'Đang mở cửa',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Đóng ${place.closeTime ?? "22:00"}',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 10,
+                        ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -237,7 +275,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         ),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 3)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Column(
@@ -245,11 +287,21 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         children: [
           const Text(
             'THÔNG TIN QUÁN',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 10),
-          _buildInfoRow('Mô tả:', ' Quán mới mở view đẹp, nhạc hay hóng gió cực chill'),
-          _buildInfoRow('Khung giờ hoạt động:', ' ${place.openTime ?? "08:00"} - ${place.closeTime ?? "22:00"}'),
+          _buildInfoRow(
+            'Mô tả:',
+            ' Quán mới mở view đẹp, nhạc hay hóng gió cực chill',
+          ),
+          _buildInfoRow(
+            'Khung giờ hoạt động:',
+            ' ${place.openTime ?? "08:00"} - ${place.closeTime ?? "22:00"}',
+          ),
           _buildInfoRow('Tầm giá:', ' 30k - 65k VND'),
         ],
       ),
@@ -262,8 +314,18 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       child: Text.rich(
         TextSpan(
           children: [
-            TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
-            TextSpan(text: value, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+            TextSpan(
+              text: label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
+            ),
           ],
         ),
       ),
@@ -288,7 +350,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tiện nghi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text(
+          'Tiện nghi',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -306,12 +371,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         color: const Color(0xFFFCEDEE),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: const Color(0xFFF7C6C7).withValues(alpha: 0.4), blurRadius: 4, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: const Color(0xFFF7C6C7).withValues(alpha: 0.4),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFF46090C), fontWeight: FontWeight.w600, fontSize: 13),
+        style: const TextStyle(
+          color: Color(0xFF46090C),
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
       ),
     );
   }
@@ -329,7 +402,14 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         children: [
           Icon(icon, color: Colors.white, size: 20),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
         ],
       ),
     );
@@ -362,26 +442,49 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: const Color(0xFFC5C5C5).withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                    ),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFFF7C6C7).withValues(alpha: 0.3), blurRadius: 5, offset: const Offset(0, 3)),
+                      BoxShadow(
+                        color: const Color(0xFFF7C6C7).withValues(alpha: 0.3),
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text(
+                        item['name']!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300', fit: BoxFit.cover, width: double.infinity),
+                          child: Image.network(
+                            'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Align(
                         alignment: Alignment.bottomRight,
-                        child: Text(item['time']!, style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w500)),
+                        child: Text(
+                          item['time']!,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -399,18 +502,35 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       children: [
         _buildSectionHeader('Bạn bè nói gì về quán này?'),
         const SizedBox(height: 12),
-        _buildReviewCard('Minh', 'đi nhóm 4 ngon, quán ngay Nguyễn Huệ không gian siêu thoáng vị trà sữa đậm đà bài bản — đi sớm nhé bro', 'NỔI BẬT', const Color(0xFFEF484F)),
+        _buildReviewCard(
+          'Minh',
+          'đi nhóm 4 ngon, quán ngay Nguyễn Huệ không gian siêu thoáng vị trà sữa đậm đà bài bản — đi sớm nhé bro',
+          'NỔI BẬT',
+          const Color(0xFFEF484F),
+        ),
         const SizedBox(height: 12),
-        _buildReviewCard('Ha', 'Thích nhất trân châu hoàng kim dai giòn sần sật. Chắc chắn sẽ quay lại rủ hội bạn thân!', 'ĐƯỢC GỢI Ý', const Color(0xFFEF484F)),
+        _buildReviewCard(
+          'Ha',
+          'Thích nhất trân châu hoàng kim dai giòn sần sật. Chắc chắn sẽ quay lại rủ hội bạn thân!',
+          'ĐƯỢC GỢI Ý',
+          const Color(0xFFEF484F),
+        ),
       ],
     );
   }
 
-  Widget _buildReviewCard(String name, String comment, String tag, Color tagColor) {
+  Widget _buildReviewCard(
+    String name,
+    String comment,
+    String tag,
+    Color tagColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFF7C6C7), Color(0x91EAE9E8)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF7C6C7), Color(0x91EAE9E8)],
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -420,28 +540,57 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'),
+                backgroundImage: NetworkImage(
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+                ),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$name · 5n', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(
+                    '$name · 5n',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                   Row(
-                    children: List.generate(5, (index) => const Icon(Icons.star, color: Colors.amber, size: 12)),
-                  )
+                    children: List.generate(
+                      5,
+                      (index) =>
+                          const Icon(Icons.star, color: Colors.amber, size: 12),
+                    ),
+                  ),
                 ],
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: tagColor, borderRadius: BorderRadius.circular(12)),
-                child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-              )
+                decoration: BoxDecoration(
+                  color: tagColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  tag,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(comment, style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)),
+          Text(
+            comment,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
@@ -457,8 +606,15 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             Container(
               width: 100,
               height: 100,
-              decoration: BoxDecoration(color: const Color(0xFFE6E6E6), borderRadius: BorderRadius.circular(15)),
-              child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 32),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE6E6E6),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Icon(
+                Icons.add_photo_alternate_outlined,
+                color: Colors.grey,
+                size: 32,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -474,7 +630,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         image: const DecorationImage(
-                          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200'),
+                          image: NetworkImage(
+                            'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200',
+                          ),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -482,9 +640,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   },
                 ),
               ),
-            )
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -493,10 +651,20 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         TextButton(
           onPressed: () {},
-          child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.bold)),
+          child: const Text(
+            'Xem tất cả',
+            style: TextStyle(
+              color: Color(0xFFEF484F),
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );
@@ -509,7 +677,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         color: const Color(0xFFEF484F),
         borderRadius: BorderRadius.circular(23),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 3)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Row(
@@ -517,7 +689,14 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         children: [
           Icon(icon, color: Colors.white, size: 18),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
         ],
       ),
     );

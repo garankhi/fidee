@@ -156,14 +156,15 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   Future<SelectedPlaceTag?> _createCustomPlaceTag(String name) async {
     final coordinates = _placeLookupCoordinates();
     try {
-      final response = await PlaceCandidateService(
-        ref.read(authServiceProvider),
-      ).createCandidate(
-        name: name,
-        category: 'restaurant',
-        lat: coordinates[0],
-        lng: coordinates[1],
-      );
+      final response =
+          await PlaceCandidateService(
+            ref.read(authServiceProvider),
+          ).createCandidate(
+            name: name,
+            category: 'restaurant',
+            lat: coordinates[0],
+            lng: coordinates[1],
+          );
 
       if (!response.isCreated || response.data == null) return null;
 
@@ -382,8 +383,8 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                         _buildBottomSheetPill(
                           icon: Icons.access_time_filled_rounded,
                           label: _timeString,
-                            isActive: _currentIndex == 1,
-                            onTap: () => _selectCaption(1),
+                          isActive: _currentIndex == 1,
+                          onTap: () => _selectCaption(1),
                         ),
                       ],
                     ),
@@ -408,15 +409,15 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                           isEmoji: true,
                           backgroundColor: const Color(0xFFC0FF61),
                           textColor: Colors.black,
-                            isActive: _currentIndex == 2,
-                            onTap: () => _selectCaption(2),
+                          isActive: _currentIndex == 2,
+                          onTap: () => _selectCaption(2),
                         ),
                         _buildBottomSheetPill(
                           icon: '🎆',
                           label: 'Boombayah',
                           isEmoji: true,
-                            isActive: _currentIndex == 3,
-                            onTap: () => _selectCaption(3),
+                          isActive: _currentIndex == 3,
+                          onTap: () => _selectCaption(3),
                         ),
                       ],
                     ),
@@ -641,7 +642,11 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                         alignment: Alignment.centerRight,
                         child: GestureDetector(
                           onTap: () {},
-                          child: const Icon(LucideIcons.download, color: Colors.white54, size: 24),
+                          child: const Icon(
+                            LucideIcons.download,
+                            color: Colors.white54,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ],
@@ -680,9 +685,12 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                             right: 16,
                             child: Center(
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 260),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 260,
+                                ),
                                 child: SendImagePlaceTagPill(
-                                  label: _selectedPlace?.displayName ??
+                                  label:
+                                      _selectedPlace?.displayName ??
                                       'Chọn địa điểm',
                                   onTap: _showPlacePickerSheet,
                                 ),
@@ -726,7 +734,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                 ), // 3: Boombayah
                               ],
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -823,7 +831,9 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                                   ? null
                                   : _handleSend,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _uploadStatus == _UploadStatus.error
                                       ? const Color(0xFF8B0000)
@@ -953,5 +963,4 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       ),
     );
   }
-
 }

@@ -14,8 +14,10 @@ class EditProfileSheet extends StatefulWidget {
     required String firstName,
     required String lastName,
     required String preferredUsername,
-  }) onSave;
-  final Future<UsernameAvailabilityResult> Function(String username) onCheckUsername;
+  })
+  onSave;
+  final Future<UsernameAvailabilityResult> Function(String username)
+  onCheckUsername;
   final VoidCallback onSaved;
 
   const EditProfileSheet({
@@ -44,7 +46,8 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   Timer? _usernameDebounce;
   int _usernameCheckRequestId = 0;
   late final String _initialNormalizedUsername;
-  _UsernameAvailabilityStatus _usernameStatus = _UsernameAvailabilityStatus.idle;
+  _UsernameAvailabilityStatus _usernameStatus =
+      _UsernameAvailabilityStatus.idle;
   String? _usernameAvailabilityMessage;
 
   @override
@@ -118,7 +121,9 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       _usernameAvailabilityMessage = 'Đang kiểm tra username...';
     });
 
-    if (username.isEmpty || !_isValidUsername(username) || username == _initialNormalizedUsername) {
+    if (username.isEmpty ||
+        !_isValidUsername(username) ||
+        username == _initialNormalizedUsername) {
       return;
     }
 
@@ -141,14 +146,16 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       setState(() {
         if (!result.success) {
           _usernameStatus = _UsernameAvailabilityStatus.error;
-          _usernameAvailabilityMessage = result.errorMessage ??
+          _usernameAvailabilityMessage =
+              result.errorMessage ??
               'Không kiểm tra được username. Vui lòng thử lại.';
         } else if (result.available) {
           _usernameStatus = _UsernameAvailabilityStatus.available;
           _usernameAvailabilityMessage = 'Username có thể sử dụng';
         } else {
           _usernameStatus = _UsernameAvailabilityStatus.taken;
-          _usernameAvailabilityMessage = result.errorMessage ?? 'Username đã được sử dụng';
+          _usernameAvailabilityMessage =
+              result.errorMessage ?? 'Username đã được sử dụng';
         }
       });
     });
@@ -403,13 +410,13 @@ class _UsernameAvailabilityMessage extends StatelessWidget {
     final color = isAvailable
         ? const Color(0xFF1F8A4C)
         : isChecking
-            ? const Color(0xFF6E7E91)
-            : const Color(0xFFEF4050);
+        ? const Color(0xFF6E7E91)
+        : const Color(0xFFEF4050);
     final icon = isAvailable
         ? Icons.check_circle_outline_rounded
         : isChecking
-            ? Icons.hourglass_empty_rounded
-            : Icons.error_outline_rounded;
+        ? Icons.hourglass_empty_rounded
+        : Icons.error_outline_rounded;
 
     return Row(
       children: [

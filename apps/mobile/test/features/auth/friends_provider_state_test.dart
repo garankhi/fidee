@@ -39,23 +39,32 @@ void main() {
     expect(const FriendsState(isLoading: true).isInitialLoading, isTrue);
   });
 
-  test('refreshFromRealtimeEvent reloads without setting loading state', () async {
-    final service = _FakeFriendService()
-      ..friends = const [FriendProfile(id: 'friend-1', name: 'Minh', handle: 'minh')]
-      ..requests = const [FriendProfile(id: 'request-1', name: 'Lan', handle: 'lan')]
-      ..sentRequests = const [FriendProfile(id: 'sent-1', name: 'Bao', handle: 'bao')];
-    final container = ProviderContainer(
-      overrides: [friendServiceProvider.overrideWithValue(service)],
-    );
-    addTearDown(container.dispose);
+  test(
+    'refreshFromRealtimeEvent reloads without setting loading state',
+    () async {
+      final service = _FakeFriendService()
+        ..friends = const [
+          FriendProfile(id: 'friend-1', name: 'Minh', handle: 'minh'),
+        ]
+        ..requests = const [
+          FriendProfile(id: 'request-1', name: 'Lan', handle: 'lan'),
+        ]
+        ..sentRequests = const [
+          FriendProfile(id: 'sent-1', name: 'Bao', handle: 'bao'),
+        ];
+      final container = ProviderContainer(
+        overrides: [friendServiceProvider.overrideWithValue(service)],
+      );
+      addTearDown(container.dispose);
 
-    final controller = container.read(friendsControllerProvider.notifier);
-    await controller.refreshFromRealtimeEvent();
+      final controller = container.read(friendsControllerProvider.notifier);
+      await controller.refreshFromRealtimeEvent();
 
-    final state = container.read(friendsControllerProvider);
-    expect(state.isLoading, isFalse);
-    expect(state.friends.single.id, 'friend-1');
-    expect(state.requests.single.id, 'request-1');
-    expect(state.sentRequests.single.id, 'sent-1');
-  });
+      final state = container.read(friendsControllerProvider);
+      expect(state.isLoading, isFalse);
+      expect(state.friends.single.id, 'friend-1');
+      expect(state.requests.single.id, 'request-1');
+      expect(state.sentRequests.single.id, 'sent-1');
+    },
+  );
 }

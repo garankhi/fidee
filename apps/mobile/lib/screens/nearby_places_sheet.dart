@@ -50,11 +50,12 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
 
   Future<void> _loadPlaces() async {
     try {
-      final response = await NearbyService(ref.read(authServiceProvider)).fetchNearby(
-        lat: widget.lat,
-        lng: widget.lng,
-        mediaId: 'photo_mock_${DateTime.now().millisecondsSinceEpoch}',
-      );
+      final response = await NearbyService(ref.read(authServiceProvider))
+          .fetchNearby(
+            lat: widget.lat,
+            lng: widget.lng,
+            mediaId: 'photo_mock_${DateTime.now().millisecondsSinceEpoch}',
+          );
       if (!mounted) return;
       setState(() {
         _response = response;
@@ -505,7 +506,3 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
     }
   }
 }
-
-
-
-

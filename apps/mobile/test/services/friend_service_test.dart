@@ -78,43 +78,61 @@ void main() {
       expect(await service.sendFriendRequest('user-2'), isTrue);
     });
 
-    test('fetchSentFriendRequests gets profiles from /friends/requests/sent', () async {
-      final client = MockClient((request) async {
-        expect(request.method, 'GET');
-        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/requests/sent');
-        expect(request.headers['Authorization'], 'token-123');
-        return http.Response(
-          jsonEncode({
-            'requests': [
-              {'id': 'user-2', 'name': 'Minh Tran', 'username': 'minh'},
-            ],
-          }),
-          200,
+    test(
+      'fetchSentFriendRequests gets profiles from /friends/requests/sent',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(
+            request.url.toString(),
+            '${Config.apiBaseUrl}/friends/requests/sent',
+          );
+          expect(request.headers['Authorization'], 'token-123');
+          return http.Response(
+            jsonEncode({
+              'requests': [
+                {'id': 'user-2', 'name': 'Minh Tran', 'username': 'minh'},
+              ],
+            }),
+            200,
+          );
+        });
+
+        final service = FriendService(
+          FakeAuthService('token-123'),
+          client: client,
         );
-      });
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
+        final requests = await service.fetchSentFriendRequests();
 
-      final requests = await service.fetchSentFriendRequests();
+        expect(requests.single.id, 'user-2');
+        expect(requests.single.handle, 'minh');
+      },
+    );
 
-      expect(requests.single.id, 'user-2');
-      expect(requests.single.handle, 'minh');
-    });
+    test(
+      'cancelFriendRequest deletes targetUserId from /friends/request',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.method, 'DELETE');
+          expect(
+            request.url.toString(),
+            '${Config.apiBaseUrl}/friends/request',
+          );
+          expect(request.headers['Authorization'], 'token-123');
+          expect(request.headers['Content-Type'], 'application/json');
+          expect(jsonDecode(request.body), {'targetUserId': 'user-2'});
+          return http.Response(jsonEncode({'success': true}), 200);
+        });
 
-    test('cancelFriendRequest deletes targetUserId from /friends/request', () async {
-      final client = MockClient((request) async {
-        expect(request.method, 'DELETE');
-        expect(request.url.toString(), '${Config.apiBaseUrl}/friends/request');
-        expect(request.headers['Authorization'], 'token-123');
-        expect(request.headers['Content-Type'], 'application/json');
-        expect(jsonDecode(request.body), {'targetUserId': 'user-2'});
-        return http.Response(jsonEncode({'success': true}), 200);
-      });
+        final service = FriendService(
+          FakeAuthService('token-123'),
+          client: client,
+        );
 
-      final service = FriendService(FakeAuthService('token-123'), client: client);
-
-      expect(await service.cancelFriendRequest('user-2'), isTrue);
-    });
+        expect(await service.cancelFriendRequest('user-2'), isTrue);
+      },
+    );
 
     test('acceptFriend posts targetUserId to /friends/accept', () async {
       final client = MockClient((request) async {

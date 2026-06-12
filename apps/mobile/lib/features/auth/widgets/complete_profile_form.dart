@@ -3,11 +3,8 @@ import 'package:flutter/material.dart';
 import '../login_design.dart';
 import 'auth_text_field.dart';
 
-typedef CompleteProfileSubmit = Future<void> Function(
-  String firstName,
-  String lastName,
-  String username,
-);
+typedef CompleteProfileSubmit =
+    Future<void> Function(String firstName, String lastName, String username);
 
 class CompleteProfileForm extends StatefulWidget {
   final String? initialFirstName;

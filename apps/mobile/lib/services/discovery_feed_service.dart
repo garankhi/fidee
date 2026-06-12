@@ -56,7 +56,8 @@ class DiscoveryPlace {
       distanceMeters: (json['distanceMeters'] as num?)?.toInt() ?? 0,
       isCandidate: json['isCandidate'] as bool? ?? false,
       friendCheckinCount: (json['friendCheckinCount'] as num?)?.toInt(),
-      friendAvatars: (json['friendAvatars'] as List<dynamic>?)
+      friendAvatars:
+          (json['friendAvatars'] as List<dynamic>?)
               ?.whereType<String>()
               .toList() ??
           const [],
@@ -105,10 +106,10 @@ class DiscoveryFeedData {
   });
 
   factory DiscoveryFeedData.empty() => const DiscoveryFeedData(
-        hotPlaces: [],
-        recommendedPlaces: [],
-        friendsActivity: [],
-      );
+    hotPlaces: [],
+    recommendedPlaces: [],
+    friendsActivity: [],
+  );
 }
 
 class DiscoveryFeedService {
@@ -159,4 +160,3 @@ class DiscoveryFeedService {
     }
   }
 }
-

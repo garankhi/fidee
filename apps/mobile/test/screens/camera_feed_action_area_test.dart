@@ -62,6 +62,9 @@ void main() {
 
     expect(find.text('Capture controls'), findsNothing);
     expect(find.text('Message composer'), findsNothing);
-    expect(find.byKey(const ValueKey('camera-feed-empty-action-area')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-feed-empty-action-area')),
+      findsOneWidget,
+    );
   });
 }

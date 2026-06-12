@@ -147,44 +147,54 @@ class UploadService {
 
   Future<void> _uploadToS3(
     _PresignedPost presigned,
-    File file, {void Function(double progress)? onProgress,}) async {
-      final formData = FormData();
+    File file, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final formData = FormData();
 
-      for (final entry in presigned.fields.entries) {
-        formData.fields.add(MapEntry(entry.key, entry.value));
-      }
+    for (final entry in presigned.fields.entries) {
+      formData.fields.add(MapEntry(entry.key, entry.value));
+    }
 
-      formData.files.add(MapEntry(
-        'file', 
+    formData.files.add(
+      MapEntry(
+        'file',
         await MultipartFile.fromFile(
           file.path,
-          contentType: DioMediaType.parse(presigned.fields['Content-Type'] ?? 'image/jpeg'),
+          contentType: DioMediaType.parse(
+            presigned.fields['Content-Type'] ?? 'image/jpeg',
+          ),
         ),
-      ));
-      try {
-        final uploadDio = Dio(BaseOptions(
+      ),
+    );
+    try {
+      final uploadDio = Dio(
+        BaseOptions(
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 60),
           sendTimeout: const Duration(seconds: 60),
-        ));
+        ),
+      );
 
-        final response = await uploadDio.post<void>(
-          presigned.url,
-          data: formData,
-          onSendProgress: (sent, total) {
-            if (total > 0 && onProgress != null) {
-              onProgress(sent / total);
-            }
+      final response = await uploadDio.post<void>(
+        presigned.url,
+        data: formData,
+        onSendProgress: (sent, total) {
+          if (total > 0 && onProgress != null) {
+            onProgress(sent / total);
           }
-        );
+        },
+      );
 
-        if (response.statusCode != 204) {
-          throw UploadException('Upload thất bại với mã HTTP ${response.statusCode}');
-        }
-      } on DioException catch (e) {
-        _throwFromDioError(e);
+      if (response.statusCode != 204) {
+        throw UploadException(
+          'Upload thất bại với mã HTTP ${response.statusCode}',
+        );
       }
+    } on DioException catch (e) {
+      _throwFromDioError(e);
     }
+  }
 
   String _detectContentType(String path) {
     // toLowerCase() để xử lý cả .JPG lẫn .jpg
@@ -210,7 +220,9 @@ class UploadService {
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
         final responseData = e.response?.data;
-        debugPrint('DEBUG [UploadService]: HTTP Bad Response Status: $status, Data: $responseData');
+        debugPrint(
+          'DEBUG [UploadService]: HTTP Bad Response Status: $status, Data: $responseData',
+        );
         if (status == 401) throw UploadException('Phiên đăng nhập đã hết hạn');
         if (status == 403) {
           final errorData = e.response?.data?.toString() ?? 'Lỗi 403 ẩn';

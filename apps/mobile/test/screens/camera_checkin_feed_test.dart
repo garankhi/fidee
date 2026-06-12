@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows inline skeleton without fullscreen spinner', (tester) async {
+  testWidgets('shows inline skeleton without fullscreen spinner', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -21,11 +23,16 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('camera-checkin-feed-skeleton')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-checkin-feed-skeleton')),
+      findsOneWidget,
+    );
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('renders image card with caption and relative time', (tester) async {
+  testWidgets('renders image card with caption and relative time', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -54,7 +61,10 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('camera-checkin-card-checkin-1')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-checkin-card-checkin-1')),
+      findsOneWidget,
+    );
     expect(find.text('t bi ghiền r'), findsOneWidget);
     expect(find.text('13g'), findsOneWidget);
   });

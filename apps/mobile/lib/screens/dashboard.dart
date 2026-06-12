@@ -39,9 +39,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
-      } catch (e) {
-        debugPrint('Failed to load nearby spots: $e');
-      }
+    } catch (e) {
+      debugPrint('Failed to load nearby spots: $e');
+    }
   }
 
   void _onAddSpot() {
@@ -77,7 +77,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -105,29 +104,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               // const SizedBox(height: 25),
               const Text(
                 '“Vibe” hôm nay là gì?',
-                style: TextStyle(color: Colors.black, fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               _buildVibeGrid(dashboardState.selectedVibe),
               const SizedBox(height: 28),
               const Text(
                 'Đang “hot” 🔥',
-                style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 15),
               _buildHotPlacesRow(places),
               const SizedBox(height: 28),
-              _buildSubSectionHeader(
-                'Dành riêng cho bạn',
-              ),
+              _buildSubSectionHeader('Dành riêng cho bạn'),
               const SizedBox(height: 15),
-              _buildHotPlacesRow(
-                dashboardState.recommendedPlaces,
-              ),
+              _buildHotPlacesRow(dashboardState.recommendedPlaces),
               const SizedBox(height: 28),
-              _buildSubSectionHeader(
-                'Dựa trên hoạt động của bạn bè',
-              ),
+              _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
               const SizedBox(height: 15),
               _buildFriendsActivityList(friendPlaces),
             ],
@@ -143,7 +145,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       children: [
         Text(
           'Hôm nay ăn gì cho hợp “vibe”?',
-            style: TextStyle(color: Colors.black.withValues(alpha: 0.85), fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.black.withValues(alpha: 0.85),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 12),
         Row(
@@ -158,40 +164,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const AiChatScreen(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF484F),
-                            borderRadius: BorderRadius.circular(15),
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AiChatScreen(),
                           ),
-                          child: const Text(
-                            'Hỏi AI',
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF484F),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Text(
+                          'Hỏi AI',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Tìm nhà hàng, quán ăn..',
-                            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                            border: InputBorder.none,
-                            isDense: true,
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Tìm nhà hàng, quán ăn..',
+                          hintStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
                           ),
+                          border: InputBorder.none,
+                          isDense: true,
                         ),
                       ),
-                    ]
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -199,9 +215,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Container(
               height: 36,
               width: 46,
-              decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle, border: Border.all(color: Colors.grey[300]!)),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey[300]!),
+              ),
               child: const Icon(Icons.tune, color: Color(0xFFEF484F), size: 20),
-            )
+            ),
           ],
         ),
       ],
@@ -213,7 +233,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFF7C6C7), Color(0xFFEAE9E8)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF7C6C7), Color(0xFFEAE9E8)],
+        ),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -221,21 +243,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           const Text(
             'CHƯA TÌM ĐƯỢC QUÁN YÊU THÍCH?',
-            style: TextStyle(color: Color(0xFFC52128), fontSize: 22, fontFamily: 'Anton', fontWeight: FontWeight.w400),
+            style: TextStyle(
+              color: Color(0xFFC52128),
+              fontSize: 22,
+              fontFamily: 'Anton',
+              fontWeight: FontWeight.w400,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
-            style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Color(0xFFEF484F),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 18),
           GestureDetector(
             onTap: _onAddSpot,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color(0xFFEF4050),
                 borderRadius: BorderRadius.circular(999),
@@ -316,26 +344,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         final isSelected = selectedVibe == title;
 
         return GestureDetector(
-          onTap: () => ref.read(dashboardControllerProvider.notifier).selectVibe(title),
+          onTap: () =>
+              ref.read(dashboardControllerProvider.notifier).selectVibe(title),
           child: Container(
             width: (MediaQuery.of(context).size.width - 64) / 3,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               gradient: isSelected
-                  ? const LinearGradient(colors: [Color(0xFFEF484F), Color(0xCCFF1D27)])
-                  : const LinearGradient(colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)]),
+                  ? const LinearGradient(
+                      colors: [Color(0xFFEF484F), Color(0xCCFF1D27)],
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)],
+                    ),
               borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isSelected ? const Color(0xFFEF484F) : const Color(0xFFF7C6C7).withValues(alpha: 0.5)),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFFEF484F)
+                    : const Color(0xFFF7C6C7).withValues(alpha: 0.5),
+              ),
             ),
             child: Column(
               children: [
-                Icon(vibe['icon'] as IconData, color: isSelected ? Colors.white : const Color(0xFFEF484F), size: 26),
+                Icon(
+                  vibe['icon'] as IconData,
+                  color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                  size: 26,
+                ),
                 const SizedBox(height: 6),
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
-                )
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -348,7 +393,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (places.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
-        child: Text('Chưa có địa điểm nổi bật hôm nay.', style: TextStyle(color: Colors.grey)),
+        child: Text(
+          'Chưa có địa điểm nổi bật hôm nay.',
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 
@@ -374,7 +422,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               margin: const EdgeInsets.only(right: 15),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                image: DecorationImage(image: NetworkImage(place.imageUrl), fit: BoxFit.cover),
+                image: DecorationImage(
+                  image: NetworkImage(place.imageUrl),
+                  fit: BoxFit.cover,
+                ),
               ),
               child: Container(
                 padding: const EdgeInsets.all(12),
@@ -383,7 +434,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                      colors: [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.85)],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.1),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
                   ),
                 ),
                 child: Column(
@@ -394,43 +448,97 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.star, color: Colors.amber, size: 12),
+                              const Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 12,
+                              ),
                               const SizedBox(width: 3),
-                              Text('${place.rating}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                              Text(
+                                '${place.rating}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         CircleAvatar(
-                            backgroundColor: Colors.black.withValues(alpha: 0.5),
+                          backgroundColor: Colors.black.withValues(alpha: 0.5),
                           radius: 15,
-                          child: const Icon(Icons.favorite_border, color: Colors.white, size: 14),
-                        )
+                          child: const Icon(
+                            Icons.favorite_border,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(place.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          place.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text('${place.category} · ${place.distanceKm} km', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        Text(
+                          '${place.category} · ${place.distanceKm} km',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('${place.friendsCount} bạn đã check-in', style: const TextStyle(color: Colors.white70, fontSize: 11, fontStyle: FontStyle.italic)),
+                            Text(
+                              '${place.friendsCount} bạn đã check-in',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFFEF484F), borderRadius: BorderRadius.circular(12)),
-                              child: const Text('Check-in', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            )
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF484F),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Check-in',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ],
-                        )
+                        ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -445,7 +553,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (places.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 10),
-        child: Text('Chưa có hoạt động nào từ bạn bè.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+        child: Text(
+          'Chưa có hoạt động nào từ bạn bè.',
+          style: TextStyle(color: Colors.grey, fontSize: 13),
+        ),
       );
     }
 
@@ -458,7 +569,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(place.imageUrl, width: 75, height: 75, fit: BoxFit.cover),
+                child: Image.network(
+                  place.imageUrl,
+                  width: 75,
+                  height: 75,
+                  fit: BoxFit.cover,
+                ),
               ),
               const SizedBox(width: 15),
 
@@ -468,16 +584,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   children: [
                     Text(
                       place.name,
-                      style: const TextStyle(color: Color(0xFF1E1E1E), fontSize: 15, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Color(0xFF1E1E1E),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text('${place.category} · ${place.distanceKm}km', style: const TextStyle(color: Color(0xFF8B8B8B), fontSize: 12)),
+                    Text(
+                      '${place.category} · ${place.distanceKm}km',
+                      style: const TextStyle(
+                        color: Color(0xFF8B8B8B),
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       'Minh và ${place.friendsCount} người khác đã ở đây',
-                      style: const TextStyle(color: Color(0xFFEF484F), fontSize: 12, fontWeight: FontWeight.w600, fontStyle: FontStyle.italic),
+                      style: const TextStyle(
+                        color: Color(0xFFEF484F),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -488,15 +619,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(width: 10),
               Column(
                 children: [
-                  const Text('5-7 phút', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w600)),
+                  const Text(
+                    '5-7 phút',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFEF484F), borderRadius: BorderRadius.circular(8)),
-                    child: const Text('Đến quán', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  )
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF484F),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Đến quán',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
         );
@@ -508,8 +659,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-        TextButton(onPressed: () {}, child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.w600)))
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        TextButton(
+          onPressed: () {},
+          child: const Text(
+            'Xem tất cả',
+            style: TextStyle(
+              color: Color(0xFFEF484F),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }

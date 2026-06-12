@@ -104,7 +104,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           color: Colors.grey.shade100,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.black),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -121,43 +124,49 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 const SizedBox(height: 16),
 
                 // === Search Bar ===
-              Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, color: Color(0xFFEF4050)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Tìm kiếm, quán ăn...',
-                          hintStyle: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 14,
+                Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: Color(0xFFEF4050)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Tìm kiếm, quán ăn...',
+                            hintStyle: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    GestureDetector(
-                      onTap: _onFilterTap,
-                      child: Icon(Icons.filter_list, color: Colors.grey.shade600),
-                    ),
-                  ],
+                      GestureDetector(
+                        onTap: _onFilterTap,
+                        child: Icon(
+                          Icons.filter_list,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
                 const SizedBox(height: 24),
 
                 // === "Chưa tìm được quán?" Banner ===
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 20,
+                    horizontal: 18,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -203,7 +212,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             borderRadius: BorderRadius.circular(999),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFEF4050).withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFFEF4050,
+                                ).withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -237,7 +248,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
                 // === Weather Card ===
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(16),
@@ -340,13 +354,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     scrollDirection: Axis.horizontal,
                     children: const [
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
                         name: 'B2Q Saigon',
                         tags: ['Đang mở', 'Cafe', 'Nhạc chill', 'Quán quen'],
                       ),
                       SizedBox(width: 14),
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1521017431713-00b87e4c16b3?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1521017431713-00b87e4c16b3?w=400',
                         name: 'Kyoto Zen',
                         tags: ['Đang mở', 'Nhật Bản', 'Yêu thích', 'Ngọt ngào'],
                       ),
@@ -384,13 +400,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     scrollDirection: Axis.horizontal,
                     children: const [
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1554679665-f5537f187268?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1554679665-f5537f187268?w=400',
                         name: 'Moonlight Ramen',
                         tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
                       ),
                       SizedBox(width: 14),
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38e71?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1551288049-bebda4e38e71?w=400',
                         name: 'The Garden',
                         tags: ['Đang mở', 'Thoải mái', 'Ăn vặt', 'Nhóm bạn'],
                       ),
@@ -428,21 +446,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     scrollDirection: Axis.horizontal,
                     children: const [
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=400',
                         name: 'Moonlight Ramen',
                         tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
                         friendAvatars: ['AA', 'BB', 'CC'],
                       ),
                       SizedBox(width: 14),
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=400',
                         name: 'Moonlight Ramen',
                         tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
                         friendAvatars: ['DD', 'EE'],
                       ),
                       SizedBox(width: 14),
                       _PlaceCard(
-                        imageUrl: 'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=400',
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=400',
                         name: 'Moonlight Ramen',
                         tags: ['Đang mở', 'Nhật Bản', 'Hẹn hò', 'Cơm gạo'],
                         friendAvatars: ['FF'],
@@ -473,7 +494,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFEF4050).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFFEF4050,
+                            ).withValues(alpha: 0.4),
                             blurRadius: 16,
                             offset: const Offset(0, 8),
                           ),
@@ -550,118 +573,121 @@ class _PlaceCard extends StatelessWidget {
         );
       },
       child: Container(
-      width: 200,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Place Image
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: Image.network(
-              imageUrl,
-              width: double.infinity,
-              height: 130,
-              fit: BoxFit.cover,
+        width: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
-          ),
-          const SizedBox(height: 12),
-          // Place Name
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              name,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Place Image
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              child: Image.network(
+                imageUrl,
+                width: double.infinity,
+                height: 130,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          // Tags
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: tags
-                  .map(
-                    (tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        tag,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-          // Friend Avatars
-          if (friendAvatars != null && friendAvatars!.isNotEmpty) ...[
             const SizedBox(height: 12),
+            // Place Name
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  ...friendAvatars!.asMap().entries.map(
-                        (entry) => Transform.translate(
-                          offset: Offset(-entry.key * 12.0, 0),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF5A8DEE),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: Center(
-                              child: Text(
-                                entry.value,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Tags
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: tags
+                    .map(
+                      (tag) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            // Friend Avatars
+            if (friendAvatars != null && friendAvatars!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    ...friendAvatars!.asMap().entries.map(
+                      (entry) => Transform.translate(
+                        offset: Offset(-entry.key * 12.0, 0),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5A8DEE),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: Center(
+                            child: Text(
+                              entry.value,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
                       ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
     );
   }
 }
+
 class _ExploreFilterSheet extends StatelessWidget {
   const _ExploreFilterSheet();
 
@@ -719,4 +745,3 @@ class _ExploreFilterSheet extends StatelessWidget {
     );
   }
 }
-

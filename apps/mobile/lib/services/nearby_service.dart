@@ -13,7 +13,7 @@ class NearbyService {
   final http.Client _client;
 
   NearbyService(this._authService, {http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   /// Fetch nearby places based on coordinates.
   Future<NearbyResponse> fetchNearby({

@@ -31,7 +31,11 @@ class CameraBottomSection extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: Colors.grey[700],
                   ),
-                  child: const Icon(Icons.person, size: 16, color: Colors.white),
+                  child: const Icon(
+                    Icons.person,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const Text(

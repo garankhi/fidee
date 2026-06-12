@@ -64,72 +64,81 @@ class _FakeCheckinService extends CheckinService {
     this.gpsLng = gpsLng;
     this.caption = caption;
     this.audience = audience;
-    return const CheckinResult(checkinId: 'checkin-1', createdAt: '2026-06-12T01:00:00.000Z');
+    return const CheckinResult(
+      checkinId: 'checkin-1',
+      createdAt: '2026-06-12T01:00:00.000Z',
+    );
   }
 }
 
 void main() {
-  test('uploads media then creates a check-in with selected audience', () async {
-    final uploadService = _FakeUploadService();
-    final checkinService = _FakeCheckinService();
-    final publisher = SendImagePublisher(
-      uploadService: uploadService,
-      checkinService: checkinService,
-    );
-    final audience = CameraShareAudience.allFriends();
+  test(
+    'uploads media then creates a check-in with selected audience',
+    () async {
+      final uploadService = _FakeUploadService();
+      final checkinService = _FakeCheckinService();
+      final publisher = SendImagePublisher(
+        uploadService: uploadService,
+        checkinService: checkinService,
+      );
+      final audience = CameraShareAudience.allFriends();
 
-    final result = await publisher.publish(
-      imagePath: 'image.jpg',
-      source: 'IN_APP_CAMERA',
-      selectedPlace: const SelectedPlaceTag(
-        id: 'place-1',
-        placeId: 'place-1',
-        displayName: 'Cafe',
-        address: '123 Street',
-        lat: 10.7738,
-        lng: 106.7035,
-        source: 'internal',
-      ),
-      audience: audience,
-      caption: 'Hello',
-    );
+      final result = await publisher.publish(
+        imagePath: 'image.jpg',
+        source: 'IN_APP_CAMERA',
+        selectedPlace: const SelectedPlaceTag(
+          id: 'place-1',
+          placeId: 'place-1',
+          displayName: 'Cafe',
+          address: '123 Street',
+          lat: 10.7738,
+          lng: 106.7035,
+          source: 'internal',
+        ),
+        audience: audience,
+        caption: 'Hello',
+      );
 
-    expect(result.checkinId, 'checkin-1');
-    expect(uploadService.uploadedImagePath, 'image.jpg');
-    expect(uploadService.uploadedLatitude, 10.7738);
-    expect(uploadService.uploadedLongitude, 106.7035);
-    expect(uploadService.uploadedSource, 'IN_APP_CAMERA');
-    expect(checkinService.placeId, 'place-1');
-    expect(checkinService.candidateId, isNull);
-    expect(checkinService.mediaId, 'media-1');
-    expect(checkinService.gpsLat, 10.7738);
-    expect(checkinService.gpsLng, 106.7035);
-    expect(checkinService.caption, 'Hello');
-    expect(checkinService.audience, same(audience));
-  });
+      expect(result.checkinId, 'checkin-1');
+      expect(uploadService.uploadedImagePath, 'image.jpg');
+      expect(uploadService.uploadedLatitude, 10.7738);
+      expect(uploadService.uploadedLongitude, 106.7035);
+      expect(uploadService.uploadedSource, 'IN_APP_CAMERA');
+      expect(checkinService.placeId, 'place-1');
+      expect(checkinService.candidateId, isNull);
+      expect(checkinService.mediaId, 'media-1');
+      expect(checkinService.gpsLat, 10.7738);
+      expect(checkinService.gpsLng, 106.7035);
+      expect(checkinService.caption, 'Hello');
+      expect(checkinService.audience, same(audience));
+    },
+  );
 
-  test('uses candidate id when selected place has no canonical place id', () async {
-    final checkinService = _FakeCheckinService();
-    final publisher = SendImagePublisher(
-      uploadService: _FakeUploadService(),
-      checkinService: checkinService,
-    );
+  test(
+    'uses candidate id when selected place has no canonical place id',
+    () async {
+      final checkinService = _FakeCheckinService();
+      final publisher = SendImagePublisher(
+        uploadService: _FakeUploadService(),
+        checkinService: checkinService,
+      );
 
-    await publisher.publish(
-      imagePath: 'image.jpg',
-      source: 'EXIF_GALLERY',
-      selectedPlace: const SelectedPlaceTag(
-        id: 'candidate-1',
-        displayName: 'New Cafe',
-        address: '123 Street',
-        lat: 10.7738,
-        lng: 106.7035,
-        source: 'custom',
-      ),
-      audience: CameraShareAudience.allFriends(),
-    );
+      await publisher.publish(
+        imagePath: 'image.jpg',
+        source: 'EXIF_GALLERY',
+        selectedPlace: const SelectedPlaceTag(
+          id: 'candidate-1',
+          displayName: 'New Cafe',
+          address: '123 Street',
+          lat: 10.7738,
+          lng: 106.7035,
+          source: 'custom',
+        ),
+        audience: CameraShareAudience.allFriends(),
+      );
 
-    expect(checkinService.placeId, isNull);
-    expect(checkinService.candidateId, 'candidate-1');
-  });
+      expect(checkinService.placeId, isNull);
+      expect(checkinService.candidateId, 'candidate-1');
+    },
+  );
 }

@@ -22,20 +22,30 @@ void main() {
     );
 
     expect(find.text('Trò chuyện'), findsOneWidget);
-    expect(find.byKey(const ValueKey('camera-chat-thread-friend-1')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-chat-thread-friend-1')),
+      findsOneWidget,
+    );
     expect(find.text('Tạ'), findsOneWidget);
     expect(find.text('vừa xong'), findsOneWidget);
     expect(find.text('Hay quá'), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-bottom-section')), findsOneWidget);
-    expect(find.byKey(const ValueKey('camera-bottom-chat-button')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-bottom-chat-button')),
+      findsOneWidget,
+    );
     expect(find.text('Lịch sử'), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-chat-bottom-tab')), findsNothing);
   });
 
-  testWidgets('shows an empty chat state when no comments exist', (tester) async {
+  testWidgets('shows an empty chat state when no comments exist', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: CameraChatInboxScreen(threads: <CameraChatThread>[])),
+      const MaterialApp(
+        home: CameraChatInboxScreen(threads: <CameraChatThread>[]),
+      ),
     );
 
     expect(find.text('Chưa có tin nhắn'), findsOneWidget);

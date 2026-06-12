@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_providers.dart';
+import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../features/friends/widgets/friend_search_result_action_row.dart';
 import '../services/friend_service.dart';
+import 'chat_thread_screen.dart';
 
 class FriendsDetailScreen extends ConsumerStatefulWidget {
   const FriendsDetailScreen({super.key});
@@ -141,6 +143,33 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
           success ? successMessage : 'Không thực hiện được. Vui lòng thử lại.',
         ),
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _openChat(FriendProfile friend) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final conversationId = await ref
+        .read(chatInboxControllerProvider.notifier)
+        .openDirectConversation(friend.id);
+    if (!mounted) return;
+    if (conversationId == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Không mở được cuộc trò chuyện. Vui lòng thử lại.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (context) => ChatThreadScreen(
+          conversationId: conversationId,
+          friendName: friend.name,
+          avatarUrl: friend.avatarUrl,
+        ),
       ),
     );
   }
@@ -666,6 +695,37 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                                             ),
                                           ),
                                         ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          unawaited(_openChat(friend)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFFEF4050,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Nhắn tin',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
