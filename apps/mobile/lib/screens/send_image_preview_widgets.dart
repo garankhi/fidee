@@ -27,7 +27,11 @@ class SendImagePlaceTagPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.location_on_rounded, color: Colors.white, size: 18),
+            const Icon(
+              Icons.location_on_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -85,7 +89,8 @@ class SendImageShareAudienceSelector extends StatelessWidget {
               _ShareAudienceChip(
                 key: const ValueKey('send-image-audience-all'),
                 label: 'Tất cả',
-                isSelected: selectedAudience.type == CameraShareAudienceType.allFriends,
+                isSelected:
+                    selectedAudience.type == CameraShareAudienceType.allFriends,
                 icon: Icons.people_alt,
                 onTap: () => onSelected(CameraShareAudience.allFriends()),
               ),
@@ -95,7 +100,8 @@ class SendImageShareAudienceSelector extends StatelessWidget {
                   label: friend.handle.isNotEmpty ? friend.handle : friend.name,
                   initials: friend.initials,
                   avatarUrl: friend.avatarUrl,
-                  isSelected: selectedAudience.type == CameraShareAudienceType.direct &&
+                  isSelected:
+                      selectedAudience.type == CameraShareAudienceType.direct &&
                       selectedAudience.friendIds.contains(friend.id),
                   onTap: () => onSelected(
                     selectedAudience.toggleFriend(friend, friends),

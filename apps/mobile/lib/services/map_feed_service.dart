@@ -13,18 +13,19 @@ class MapFeedService {
 
   MapFeedService(this._authService);
 
-  Future<List<MapFeedItem>> getMapFeed(double lat, double lng, {int radius = 5000}) async {
+  Future<List<MapFeedItem>> getMapFeed(
+    double lat,
+    double lng, {
+    int radius = 5000,
+  }) async {
     final token = await _authService.getToken();
     if (token == null) throw Exception('Not authenticated');
 
     try {
-      final uri = Uri.parse('$_baseUrl/map/feed?lat=$lat&lng=$lng&radius=$radius');
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': token,
-        },
+      final uri = Uri.parse(
+        '$_baseUrl/map/feed?lat=$lat&lng=$lng&radius=$radius',
       );
+      final response = await http.get(uri, headers: {'Authorization': token});
 
       if (response.statusCode != 200) {
         return const <MapFeedItem>[];
@@ -32,7 +33,9 @@ class MapFeedService {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final List<dynamic> items = (data['data'] as List<dynamic>?) ?? [];
-      return items.map((e) => MapFeedItem.fromJson(e as Map<String, dynamic>)).toList();
+      return items
+          .map((e) => MapFeedItem.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (error) {
       debugPrint('Error fetching map feed: $error');
       return const <MapFeedItem>[];

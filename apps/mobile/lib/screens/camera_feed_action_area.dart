@@ -20,9 +20,9 @@ class CameraFeedActionArea extends StatelessWidget {
       (false, _) => captureControls,
       (true, true) => messageComposer,
       (true, false) => const SizedBox(
-          key: ValueKey('camera-feed-empty-action-area'),
-          height: 112,
-        ),
+        key: ValueKey('camera-feed-empty-action-area'),
+        height: 112,
+      ),
     };
 
     return AnimatedSwitcher(

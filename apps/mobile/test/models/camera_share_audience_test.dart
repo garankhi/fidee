@@ -4,12 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('all friends maps to ALL_FRIENDS API payload', () {
-    expect(CameraShareAudience.allFriends().toApiJson(), {'type': 'ALL_FRIENDS'});
+    expect(CameraShareAudience.allFriends().toApiJson(), {
+      'type': 'ALL_FRIENDS',
+    });
   });
 
   test('multiple selected friends map to DIRECT API payload', () {
     final audience = CameraShareAudience.friends(const <FriendProfile>[
-      FriendProfile(id: 'friend-1', name: 'Test Api', handle: 'testapi@fidee.com'),
+      FriendProfile(
+        id: 'friend-1',
+        name: 'Test Api',
+        handle: 'testapi@fidee.com',
+      ),
       FriendProfile(id: 'friend-2', name: 'Minh Nguyen', handle: 'minh'),
     ]);
 
@@ -20,20 +26,30 @@ void main() {
     });
   });
 
-  test('toggling friends supports multi-select and falls back to all friends', () {
-    const friends = <FriendProfile>[
-      FriendProfile(id: 'friend-1', name: 'Test Api', handle: 'testapi@fidee.com'),
-      FriendProfile(id: 'friend-2', name: 'Minh Nguyen', handle: 'minh'),
-    ];
+  test(
+    'toggling friends supports multi-select and falls back to all friends',
+    () {
+      const friends = <FriendProfile>[
+        FriendProfile(
+          id: 'friend-1',
+          name: 'Test Api',
+          handle: 'testapi@fidee.com',
+        ),
+        FriendProfile(id: 'friend-2', name: 'Minh Nguyen', handle: 'minh'),
+      ];
 
-    final firstSelected = CameraShareAudience.allFriends().toggleFriend(friends[0], friends);
-    final twoSelected = firstSelected.toggleFriend(friends[1], friends);
-    final oneRemaining = twoSelected.toggleFriend(friends[0], friends);
-    final allFriends = oneRemaining.toggleFriend(friends[1], friends);
+      final firstSelected = CameraShareAudience.allFriends().toggleFriend(
+        friends[0],
+        friends,
+      );
+      final twoSelected = firstSelected.toggleFriend(friends[1], friends);
+      final oneRemaining = twoSelected.toggleFriend(friends[0], friends);
+      final allFriends = oneRemaining.toggleFriend(friends[1], friends);
 
-    expect(firstSelected.friendIds, ['friend-1']);
-    expect(twoSelected.friendIds, ['friend-1', 'friend-2']);
-    expect(oneRemaining.friendIds, ['friend-2']);
-    expect(allFriends.type, CameraShareAudienceType.allFriends);
-  });
+      expect(firstSelected.friendIds, ['friend-1']);
+      expect(twoSelected.friendIds, ['friend-1', 'friend-2']);
+      expect(oneRemaining.friendIds, ['friend-2']);
+      expect(allFriends.type, CameraShareAudienceType.allFriends);
+    },
+  );
 }

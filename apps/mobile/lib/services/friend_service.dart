@@ -290,7 +290,10 @@ class FriendService {
 
     try {
       final uri = Uri.parse('${Config.apiBaseUrl}$path');
-      final headers = {'Authorization': token, 'Content-Type': 'application/json'};
+      final headers = {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      };
       final body = jsonEncode({'targetUserId': userId});
       final response = method == 'DELETE'
           ? await _client.delete(uri, headers: headers, body: body)

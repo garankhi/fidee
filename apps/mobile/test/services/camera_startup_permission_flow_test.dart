@@ -35,7 +35,10 @@ void main() {
       final result = await flow.resolve();
 
       expect(result.cameraGranted, isTrue);
-      expect(result.galleryPreview.permissionStatus, GalleryPermissionStatus.full);
+      expect(
+        result.galleryPreview.permissionStatus,
+        GalleryPermissionStatus.full,
+      );
       expect(result.galleryPreview.thumbnails, same(thumbnails));
       expect(calls, <String>[
         'camera-status',
@@ -71,7 +74,10 @@ void main() {
 
         expect(result.cameraGranted, isFalse);
         expect(result.cameraStatus, PermissionStatus.denied);
-        expect(result.galleryPreview.permissionStatus, GalleryPermissionStatus.denied);
+        expect(
+          result.galleryPreview.permissionStatus,
+          GalleryPermissionStatus.denied,
+        );
         expect(result.galleryPreview.thumbnails, isEmpty);
         expect(calls, <String>['camera-status', 'camera-request']);
       },
@@ -94,21 +100,24 @@ void main() {
             calls.add('camera-request');
             return PermissionStatus.granted;
           },
-        loadGalleryPreview: () async {
-          calls.add('gallery-preview');
-          return GalleryPreviewResult(
-            permissionStatus: GalleryPermissionStatus.limited,
-            thumbnails: thumbnails,
-          );
-        },
-      );
+          loadGalleryPreview: () async {
+            calls.add('gallery-preview');
+            return GalleryPreviewResult(
+              permissionStatus: GalleryPermissionStatus.limited,
+              thumbnails: thumbnails,
+            );
+          },
+        );
 
-      final result = await flow.resolve();
+        final result = await flow.resolve();
 
-      expect(result.cameraGranted, isTrue);
-      expect(result.galleryPreview.permissionStatus, GalleryPermissionStatus.limited);
-      expect(result.galleryPreview.thumbnails, same(thumbnails));
-      expect(calls, <String>['camera-status', 'gallery-preview']);
+        expect(result.cameraGranted, isTrue);
+        expect(
+          result.galleryPreview.permissionStatus,
+          GalleryPermissionStatus.limited,
+        );
+        expect(result.galleryPreview.thumbnails, same(thumbnails));
+        expect(calls, <String>['camera-status', 'gallery-preview']);
       },
     );
   });

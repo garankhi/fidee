@@ -26,32 +26,41 @@ void main() {
     expect(find.textContaining('Online'), findsNothing);
   });
 
-  testWidgets('sending a message shows Vietnamese acknowledgement and clears input', (
-    tester,
-  ) async {
-    await tester.pumpWidget(buildScreen());
+  testWidgets(
+    'sending a message shows Vietnamese acknowledgement and clears input',
+    (tester) async {
+      await tester.pumpWidget(buildScreen());
 
-    await tester.enterText(find.byType(TextField), 'Tìm quán bún chả yên tĩnh');
-    await tester.tap(find.byIcon(Icons.send_rounded));
-    await tester.pump();
+      await tester.enterText(
+        find.byType(TextField),
+        'Tìm quán bún chả yên tĩnh',
+      );
+      await tester.tap(find.byIcon(Icons.send_rounded));
+      await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Tìm quán bún chả yên tĩnh'),
-      120,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Tìm quán bún chả yên tĩnh'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.textContaining('Fidee đã nhận vibe của bạn'),
-      120,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, isEmpty);
-  });
+      await tester.scrollUntilVisible(
+        find.text('Tìm quán bún chả yên tĩnh'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Tìm quán bún chả yên tĩnh'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.textContaining('Fidee đã nhận vibe của bạn'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller?.text,
+        isEmpty,
+      );
+    },
+  );
 
   testWidgets('initial message starts the chat automatically', (tester) async {
-    await tester.pumpWidget(buildScreen(initialMessage: 'Tìm cafe yên tĩnh gần tôi'));
+    await tester.pumpWidget(
+      buildScreen(initialMessage: 'Tìm cafe yên tĩnh gần tôi'),
+    );
 
     await tester.pump();
 
@@ -67,6 +76,9 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, isEmpty);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      isEmpty,
+    );
   });
 }

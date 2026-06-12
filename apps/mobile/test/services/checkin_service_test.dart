@@ -49,7 +49,11 @@ void main() {
       gpsLat: 10.7738,
       gpsLng: 106.7035,
       audience: CameraShareAudience.friends(const <FriendProfile>[
-        FriendProfile(id: 'friend-1', name: 'Test Api', handle: 'testapi@fidee.com'),
+        FriendProfile(
+          id: 'friend-1',
+          name: 'Test Api',
+          handle: 'testapi@fidee.com',
+        ),
         FriendProfile(id: 'friend-2', name: 'Minh Nguyen', handle: 'minh'),
       ]),
     );

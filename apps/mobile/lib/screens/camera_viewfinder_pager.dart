@@ -51,8 +51,9 @@ class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
     }
 
     final feedIndex = index - 1;
-    final item =
-        feedIndex < widget.feedItems.length ? widget.feedItems[feedIndex] : null;
+    final item = feedIndex < widget.feedItems.length
+        ? widget.feedItems[feedIndex]
+        : null;
     widget.onFeedItemChanged(item);
 
     if (widget.hasMore &&
@@ -67,8 +68,8 @@ class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
     final feedPageCount = widget.isFeedLoading && widget.feedItems.isEmpty
         ? 1
         : widget.feedItems.isEmpty
-            ? 1
-            : widget.feedItems.length;
+        ? 1
+        : widget.feedItems.length;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),

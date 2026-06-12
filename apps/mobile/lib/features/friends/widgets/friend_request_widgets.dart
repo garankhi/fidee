@@ -59,11 +59,17 @@ class FriendRequestSummaryBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFFFECEF),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEF4050).withValues(alpha: 0.16)),
+          border: Border.all(
+            color: const Color(0xFFEF4050).withValues(alpha: 0.16),
+          ),
         ),
         child: Row(
           children: [
-            const Icon(LucideIcons.userRoundCheck, color: Color(0xFFEF4050), size: 22),
+            const Icon(
+              LucideIcons.userRoundCheck,
+              color: Color(0xFFEF4050),
+              size: 22,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -112,8 +118,12 @@ class FriendRequestActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = tone == FriendRequestTone.dark;
     final primaryText = isDark ? Colors.white : const Color(0xFF151515);
-    final secondaryText = isDark ? Colors.white.withValues(alpha: 0.56) : const Color(0xFF8D8D8D);
-    final declineBackground = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFFFECEF);
+    final secondaryText = isDark
+        ? Colors.white.withValues(alpha: 0.56)
+        : const Color(0xFF8D8D8D);
+    final declineBackground = isDark
+        ? const Color(0xFF3A3A3A)
+        : const Color(0xFFFFECEF);
     final declineForeground = isDark ? Colors.white : const Color(0xFFEF4050);
 
     return Row(
@@ -152,7 +162,9 @@ class FriendRequestActionRow extends StatelessWidget {
           key: ValueKey('friend-request-accept-${request.id}'),
           onPressed: isBusy ? null : onAccept,
           style: IconButton.styleFrom(
-            backgroundColor: isDark ? const Color(0xFFFFC400) : const Color(0xFFEF4050),
+            backgroundColor: isDark
+                ? const Color(0xFFFFC400)
+                : const Color(0xFFEF4050),
             foregroundColor: isDark ? Colors.black : Colors.white,
             disabledBackgroundColor: Colors.grey.shade300,
           ),
@@ -190,7 +202,10 @@ class _RequestAvatar extends StatelessWidget {
         shape: BoxShape.circle,
         color: const Color(0xFFFFD4DA),
         image: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
-            ? DecorationImage(image: NetworkImage(profile.avatarUrl!), fit: BoxFit.cover)
+            ? DecorationImage(
+                image: NetworkImage(profile.avatarUrl!),
+                fit: BoxFit.cover,
+              )
             : null,
       ),
       child: profile.avatarUrl == null || profile.avatarUrl!.isEmpty

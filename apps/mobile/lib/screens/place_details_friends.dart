@@ -166,7 +166,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         image: const DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600'),
+          image: NetworkImage(
+            'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600',
+          ),
           fit: BoxFit.cover,
         ),
       ),
@@ -277,7 +279,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                           color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 10,
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ],
@@ -366,7 +368,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       return Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: place.vibes.map((vibe) => _buildTag('✨ ${vibe.toUpperCase()}')).toList(),
+        children: place.vibes
+            .map((vibe) => _buildTag('✨ ${vibe.toUpperCase()}'))
+            .toList(),
       );
     }
 
@@ -374,14 +378,19 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTag(place.category != null ? '✨ ${place.category!.toUpperCase()}' : '✨ CAFE'),
+        _buildTag(
+          place.category != null
+              ? '✨ ${place.category!.toUpperCase()}'
+              : '✨ CAFE',
+        ),
         _buildTag('🛡️ Đã xác minh'),
         _buildTag('💵 Tầm Giá Tốt'),
       ],
     );
   }
 
-  Widget _buildAmenities(Place place) { // Thêm tham số place vào đây
+  Widget _buildAmenities(Place place) {
+    // Thêm tham số place vào đây
     // Nếu API không trả về hoặc mảng rỗng, hiển thị thông báo hoặc ẩn đi
     if (place.services.isEmpty) {
       return const SizedBox.shrink(); // Hoặc hiển thị Text('Chưa cập nhật tiện nghi')
@@ -403,7 +412,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           spacing: 8,
           runSpacing: 8,
           // Sử dụng dữ liệu thực tế từ place.services thay vì mảng hardcode ban đầu
-          children: place.services.map((service) => _buildTag(service.toString())).toList(),
+          children: place.services
+              .map((service) => _buildTag(service.toString()))
+              .toList(),
         ),
       ],
     );
@@ -472,52 +483,52 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   item['mediaId']?.toString() ??
                   'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
 
-                return Container(
-                  width: 130,
-                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+              return Container(
+                width: 130,
+                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['name']?.toString() ?? '',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['name']?.toString() ?? '',
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          checkinPhoto,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        item['createdAt']?.toString() ?? '',
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          color: Colors.grey,
+                          fontSize: 10,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            checkinPhoto,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Text(
-                          item['createdAt']?.toString() ?? '',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ),
@@ -584,7 +595,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             children: [
               const CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'),
+                backgroundImage: NetworkImage(
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+                ),
               ),
 
               const SizedBox(width: 10),
@@ -851,7 +864,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                             // TODO: Submit rating
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cảm ơn đánh giá của bạn!')),
+                              const SnackBar(
+                                content: Text('Cảm ơn đánh giá của bạn!'),
+                              ),
                             );
                           }
                         },
@@ -882,5 +897,3 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 }
-
-

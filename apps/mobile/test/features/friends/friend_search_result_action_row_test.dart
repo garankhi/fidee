@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows cancel action for outgoing pending search result', (tester) async {
+  testWidgets('shows cancel action for outgoing pending search result', (
+    tester,
+  ) async {
     var canceled = false;
     const result = FriendSearchResult(
       profile: FriendProfile(id: 'user-2', name: 'Minh Tran', handle: 'minh'),

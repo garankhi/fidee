@@ -22,7 +22,8 @@ class _RegisterStep3State extends State<RegisterStep3NamePage> {
   }
 
   void _submit() {
-    if (_firstNameCtrl.text.trim().isEmpty || _lastNameCtrl.text.trim().isEmpty) {
+    if (_firstNameCtrl.text.trim().isEmpty ||
+        _lastNameCtrl.text.trim().isEmpty) {
       return;
     }
 

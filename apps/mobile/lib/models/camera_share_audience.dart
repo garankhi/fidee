@@ -31,10 +31,12 @@ class CameraShareAudience {
       type: CameraShareAudienceType.direct,
       label: uniqueFriends.length == 1
           ? (uniqueFriends.first.handle.isNotEmpty
-              ? uniqueFriends.first.handle
-              : uniqueFriends.first.name)
+                ? uniqueFriends.first.handle
+                : uniqueFriends.first.name)
           : '${uniqueFriends.length} bạn bè',
-      friendIds: uniqueFriends.map((friend) => friend.id).toList(growable: false),
+      friendIds: uniqueFriends
+          .map((friend) => friend.id)
+          .toList(growable: false),
     );
   }
 
@@ -57,11 +59,13 @@ class CameraShareAudience {
 
   Map<String, dynamic> toApiJson() {
     return switch (type) {
-      CameraShareAudienceType.allFriends => <String, dynamic>{'type': 'ALL_FRIENDS'},
+      CameraShareAudienceType.allFriends => <String, dynamic>{
+        'type': 'ALL_FRIENDS',
+      },
       CameraShareAudienceType.direct => <String, dynamic>{
-          'type': 'DIRECT',
-          'friendIds': friendIds,
-        },
+        'type': 'DIRECT',
+        'friendIds': friendIds,
+      },
     };
   }
 }

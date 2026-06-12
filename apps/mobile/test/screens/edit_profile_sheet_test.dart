@@ -9,8 +9,10 @@ void main() {
       required String firstName,
       required String lastName,
       required String preferredUsername,
-    }) onSave,
-    Future<UsernameAvailabilityResult> Function(String username)? onCheckUsername,
+    })
+    onSave,
+    Future<UsernameAvailabilityResult> Function(String username)?
+    onCheckUsername,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -19,30 +21,34 @@ void main() {
           lastName: 'Minh',
           preferredUsername: 'minh',
           onSave: onSave,
-          onCheckUsername: onCheckUsername ??
+          onCheckUsername:
+              onCheckUsername ??
               (_) async => const UsernameAvailabilityResult(
-                    success: true,
-                    available: true,
-                  ),
+                success: true,
+                available: true,
+              ),
           onSaved: () {},
         ),
       ),
     );
   }
 
-  testWidgets('shows save failures inside the edit profile sheet', (tester) async {
+  testWidgets('shows save failures inside the edit profile sheet', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       buildSheet(
-        onSave: ({
-          required firstName,
-          required lastName,
-          required preferredUsername,
-        }) async {
-          return const AuthResult(
-            success: false,
-            errorMessage: 'Server rejected profile update',
-          );
-        },
+        onSave:
+            ({
+              required firstName,
+              required lastName,
+              required preferredUsername,
+            }) async {
+              return const AuthResult(
+                success: false,
+                errorMessage: 'Server rejected profile update',
+              );
+            },
       ),
     );
 
@@ -62,13 +68,14 @@ void main() {
   testWidgets('disables save when username is already taken', (tester) async {
     await tester.pumpWidget(
       buildSheet(
-        onSave: ({
-          required firstName,
-          required lastName,
-          required preferredUsername,
-        }) async {
-          return const AuthResult(success: true);
-        },
+        onSave:
+            ({
+              required firstName,
+              required lastName,
+              required preferredUsername,
+            }) async {
+              return const AuthResult(success: true);
+            },
         onCheckUsername: (_) async => const UsernameAvailabilityResult(
           success: true,
           available: false,
@@ -90,16 +97,19 @@ void main() {
     expect(saveButton.onPressed, isNull);
   });
 
-  testWidgets('enables save when initial username is available', (tester) async {
+  testWidgets('enables save when initial username is available', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       buildSheet(
-        onSave: ({
-          required firstName,
-          required lastName,
-          required preferredUsername,
-        }) async {
-          return const AuthResult(success: true);
-        },
+        onSave:
+            ({
+              required firstName,
+              required lastName,
+              required preferredUsername,
+            }) async {
+              return const AuthResult(success: true);
+            },
       ),
     );
 
@@ -113,14 +123,15 @@ void main() {
 
     await tester.pumpWidget(
       buildSheet(
-        onSave: ({
-          required firstName,
-          required lastName,
-          required preferredUsername,
-        }) async {
-          savedUsername = preferredUsername;
-          return const AuthResult(success: true);
-        },
+        onSave:
+            ({
+              required firstName,
+              required lastName,
+              required preferredUsername,
+            }) async {
+              savedUsername = preferredUsername;
+              return const AuthResult(success: true);
+            },
         onCheckUsername: (username) async => UsernameAvailabilityResult(
           success: true,
           available: true,

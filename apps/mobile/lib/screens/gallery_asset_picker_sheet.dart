@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../services/gallery_asset_picker_service.dart';
 
-typedef GalleryAssetSheetLoader = Future<List<GalleryAssetPickerItem>> Function();
+typedef GalleryAssetSheetLoader =
+    Future<List<GalleryAssetPickerItem>> Function();
 
 class GalleryAssetPickerSheet extends StatefulWidget {
-  GalleryAssetPickerSheet({
-    super.key,
-    GalleryAssetSheetLoader? loadAssets,
-  }) : loadAssets = loadAssets ?? const GalleryAssetPickerService().loadRecentImages;
+  GalleryAssetPickerSheet({super.key, GalleryAssetSheetLoader? loadAssets})
+    : loadAssets =
+          loadAssets ?? const GalleryAssetPickerService().loadRecentImages;
 
   final GalleryAssetSheetLoader loadAssets;
 
   @override
-  State<GalleryAssetPickerSheet> createState() => _GalleryAssetPickerSheetState();
+  State<GalleryAssetPickerSheet> createState() =>
+      _GalleryAssetPickerSheetState();
 }
 
 class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
@@ -39,7 +40,9 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
         _busyAssetId = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không mở được ảnh này. Vui lòng chọn ảnh khác.')),
+        const SnackBar(
+          content: Text('Không mở được ảnh này. Vui lòng chọn ảnh khác.'),
+        ),
       );
       return;
     }
@@ -91,7 +94,8 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
                         );
                       }
 
-                      final assets = snapshot.data ?? const <GalleryAssetPickerItem>[];
+                      final assets =
+                          snapshot.data ?? const <GalleryAssetPickerItem>[];
                       if (assets.isEmpty) {
                         return Center(
                           child: Text(
@@ -107,11 +111,12 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
 
                       return GridView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                            ),
                         itemCount: assets.length,
                         itemBuilder: (context, index) {
                           final asset = assets[index];

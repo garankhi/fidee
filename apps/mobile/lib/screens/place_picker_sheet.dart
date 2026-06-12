@@ -20,7 +20,8 @@ class PlacePickerSheetContent extends StatefulWidget {
   });
 
   @override
-  State<PlacePickerSheetContent> createState() => _PlacePickerSheetContentState();
+  State<PlacePickerSheetContent> createState() =>
+      _PlacePickerSheetContentState();
 }
 
 class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
@@ -176,10 +177,8 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
 
     return ListView.separated(
       itemCount: places.length + 1,
-      separatorBuilder: (_, _) => Divider(
-        height: 1,
-        color: Colors.white.withValues(alpha: 0.08),
-      ),
+      separatorBuilder: (_, _) =>
+          Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
       itemBuilder: (context, index) {
         if (index == places.length) {
           return Padding(
@@ -189,44 +188,44 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
         }
 
         final place = places[index];
-      return Material(
-        color: Colors.transparent,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          leading: _buildCategoryIcon(),
-          title: Text(
-            place.displayName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
+        return Material(
+          color: Colors.transparent,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            leading: _buildCategoryIcon(),
+            title: Text(
+              place.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          subtitle: Text(
-            place.address,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _mutedText,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+            subtitle: Text(
+              place.address,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _mutedText,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
+            trailing: place.distanceMeters > 0
+                ? Text(
+                    '${place.distanceMeters}m',
+                    style: const TextStyle(
+                      color: _mutedText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : null,
+            onTap: () => widget.onSelected(SelectedPlaceTag.fromNearby(place)),
           ),
-          trailing: place.distanceMeters > 0
-              ? Text(
-                  '${place.distanceMeters}m',
-                  style: const TextStyle(
-                    color: _mutedText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                )
-              : null,
-          onTap: () => widget.onSelected(SelectedPlaceTag.fromNearby(place)),
-        ),
-      );
+        );
       },
     );
   }
@@ -272,7 +271,9 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
         ),
         child: const Text(
           'Thêm địa điểm tùy chỉnh',
@@ -309,7 +310,10 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
                     width: 1,
                   ),
                 ),
-                child: const Icon(Icons.storefront_rounded, color: Colors.black),
+                child: const Icon(
+                  Icons.storefront_rounded,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -375,7 +379,9 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
               disabledBackgroundColor: _accent.withValues(alpha: 0.45),
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: _isSavingCustom
                 ? const SizedBox(
@@ -401,10 +407,11 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
       width: 40,
       height: 40,
       decoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
-      child: const Icon(Icons.restaurant_rounded, color: Colors.white, size: 22),
+      child: const Icon(
+        Icons.restaurant_rounded,
+        color: Colors.white,
+        size: 22,
+      ),
     );
   }
 }
-
-
-

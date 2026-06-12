@@ -58,7 +58,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       GalleryPermissionStatus.notDetermined;
   CameraCheckinFeedItem? _activeFeedItem;
   bool _isViewingFeed = false;
-  List<CameraChatThread> _chatThreads = const <CameraChatThread>[];
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -103,37 +102,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   void _recordFeedMessage(String message) {
     final item = _activeFeedItem;
     if (item == null) return;
-    _upsertChatThread(item, message);
+    debugPrint('Feed reply recorded for ${item.userName}: $message');
   }
 
   void _recordFeedReaction(String reaction) {
     final item = _activeFeedItem;
     if (item == null) return;
-    _upsertChatThread(item, 'đã phản ứng $reaction với ảnh của ${item.userName}');
-  }
-
-  void _upsertChatThread(CameraCheckinFeedItem item, String message) {
-    final nextThread = CameraChatThread(
-      id: item.userId,
-      name: item.userName,
-      lastMessage: message,
-      updatedAtLabel: 'vừa xong',
-      avatarUrl: item.userAvatar,
-    );
-
-    setState(() {
-      _chatThreads = <CameraChatThread>[
-        nextThread,
-        ..._chatThreads.where((thread) => thread.id != nextThread.id),
-      ];
-    });
+    debugPrint('Feed reaction recorded for ${item.userName}: $reaction');
   }
 
   void _openChatInbox() {
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (context) => CameraChatInboxScreen(threads: _chatThreads),
+        builder: (context) => const CameraChatInboxScreen(),
       ),
     );
   }
@@ -208,9 +190,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     if (!hideNotice) {
       if (!mounted) return;
       final shouldContinue = await showDialog<bool>(
-          context: context,
-          builder: (context) => const GalleryGpsNoticeDialog(),
-        );
+        context: context,
+        builder: (context) => const GalleryGpsNoticeDialog(),
+      );
       if (shouldContinue != true) return;
     }
 
@@ -391,7 +373,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     final friendsState = ref.watch(friendsControllerProvider);
     final feedState = ref.watch(cameraCheckinFeedControllerProvider);
-    final feedController = ref.read(cameraCheckinFeedControllerProvider.notifier);
+    final feedController = ref.read(
+      cameraCheckinFeedControllerProvider.notifier,
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -547,11 +531,7 @@ class _CameraTopBar extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                LucideIcons.map,
-                color: Colors.white,
-                size: 24,
-              ),
+              child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
             ),
           ),
           _FriendsCountPill(
@@ -627,7 +607,10 @@ class _CameraPreviewControls extends StatelessWidget {
             ),
             child: const Text(
               '1x',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -764,7 +747,7 @@ class _FriendsCountPill extends StatelessWidget {
       ),
     );
   }
-  }
+}
 
 class GalleryGpsNoticeDialog extends StatefulWidget {
   const GalleryGpsNoticeDialog({super.key});

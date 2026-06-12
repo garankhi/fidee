@@ -56,10 +56,9 @@ class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
 
     if (!mounted) return;
     setState(() => _isRequesting = false);
-    
+
     _navigateHome();
   }
-
 
   void _navigateHome() {
     ref.invalidate(locationControllerProvider);
@@ -120,7 +119,9 @@ class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
                             color: Theme.of(context).colorScheme.primary,
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
-                            decorationColor: _isRequesting ? Colors.grey : const Color(0xFFEF4050),
+                            decorationColor: _isRequesting
+                                ? Colors.grey
+                                : const Color(0xFFEF4050),
                           ),
                         ),
 
@@ -130,7 +131,7 @@ class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
                           LucideIcons.arrowRight,
                           color: Color(0xFFEF4050),
                           size: 18,
-                        )
+                        ),
                       ],
                     ),
                   ),

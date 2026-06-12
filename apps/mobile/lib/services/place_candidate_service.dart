@@ -146,10 +146,7 @@ class PlaceCandidateService {
 
     final response = await http.post(
       Uri.parse('${Config.apiBaseUrl}/place-candidates'),
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
+      headers: {'Authorization': token, 'Content-Type': 'application/json'},
       body: jsonEncode(payload),
     );
 
@@ -157,14 +154,18 @@ class PlaceCandidateService {
     if (response.statusCode == 201) {
       return PlaceCandidateResponse(
         status: decoded['status'] as String? ?? 'created',
-        data: PlaceCandidateData.fromJson(decoded['data'] as Map<String, dynamic>),
+        data: PlaceCandidateData.fromJson(
+          decoded['data'] as Map<String, dynamic>,
+        ),
       );
     }
 
     if (response.statusCode == 409) {
       return PlaceCandidateResponse(
         status: decoded['status'] as String? ?? 'conflict',
-        error: PlaceCandidateError.fromJson(decoded['error'] as Map<String, dynamic>),
+        error: PlaceCandidateError.fromJson(
+          decoded['error'] as Map<String, dynamic>,
+        ),
         candidates: (decoded['candidates'] as List<dynamic>?)
             ?.whereType<Map<String, dynamic>>()
             .map(ConflictCandidate.fromJson)
@@ -174,7 +175,9 @@ class PlaceCandidateService {
 
     return PlaceCandidateResponse(
       status: decoded['status'] as String? ?? 'error',
-      error: PlaceCandidateError.fromJson(decoded['error'] as Map<String, dynamic>),
+      error: PlaceCandidateError.fromJson(
+        decoded['error'] as Map<String, dynamic>,
+      ),
     );
   }
 
@@ -183,9 +186,3 @@ class PlaceCandidateService {
     // no-op after real API wiring
   }
 }
-
-
-
-
-
-

@@ -28,9 +28,12 @@ class DashboardPlace {
       name: json['name'] as String? ?? 'Chưa cập nhật tên',
       category: json['category'] as String? ?? 'Restaurant',
       rating: double.tryParse(metadata['rating']?.toString() ?? '4.9') ?? 4.9,
-      distanceKm: double.tryParse(json['distance_meters']?.toString() ?? '300') ?? 0.3,
-      imageUrl: metadata['image_url'] as String? ?? 'https://placehold.co/265x220',
-      friendsCount: int.tryParse(json['checkin_count']?.toString() ?? '10') ?? 10,
+      distanceKm:
+          double.tryParse(json['distance_meters']?.toString() ?? '300') ?? 0.3,
+      imageUrl:
+          metadata['image_url'] as String? ?? 'https://placehold.co/265x220',
+      friendsCount:
+          int.tryParse(json['checkin_count']?.toString() ?? '10') ?? 10,
     );
   }
 }

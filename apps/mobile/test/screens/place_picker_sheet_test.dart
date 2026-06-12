@@ -92,7 +92,10 @@ void main() {
 
     await tester.tap(find.text('Thêm địa điểm tùy chỉnh'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('custom-place-name-field')), 'Há Há Há');
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-place-name-field')),
+      'Há Há Há',
+    );
     await tester.tap(find.text('Lưu'));
     await tester.pump();
     await tester.pump();

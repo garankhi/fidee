@@ -104,26 +104,34 @@ void main() {
         FakeAuthService('token-123'),
         client: client,
       );
-      final result = await service.fetchCheckins(audience: CameraFeedAudience.me());
-
-      expect(result.items, isEmpty);
-    });
-
-    test('returns empty page without calling HTTP when token is missing', () async {
-      var called = false;
-      final client = MockClient((request) async {
-        called = true;
-        return http.Response('{}', 200);
-      });
-
-      final service = CameraCheckinFeedService(FakeAuthService(null), client: client);
       final result = await service.fetchCheckins(
-        audience: CameraFeedAudience.everyone(),
+        audience: CameraFeedAudience.me(),
       );
 
       expect(result.items, isEmpty);
-      expect(result.hasMore, isFalse);
-      expect(called, isFalse);
     });
+
+    test(
+      'returns empty page without calling HTTP when token is missing',
+      () async {
+        var called = false;
+        final client = MockClient((request) async {
+          called = true;
+          return http.Response('{}', 200);
+        });
+
+        final service = CameraCheckinFeedService(
+          FakeAuthService(null),
+          client: client,
+        );
+        final result = await service.fetchCheckins(
+          audience: CameraFeedAudience.everyone(),
+        );
+
+        expect(result.items, isEmpty);
+        expect(result.hasMore, isFalse);
+        expect(called, isFalse);
+      },
+    );
   });
 }

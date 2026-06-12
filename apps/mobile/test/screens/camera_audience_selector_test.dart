@@ -29,11 +29,16 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('camera-audience-pill')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('camera-audience-dropdown')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-audience-dropdown')),
+      findsOneWidget,
+    );
     expect(find.text('Bạn'), findsOneWidget);
     expect(find.text('ahn'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('camera-audience-friend-friend-1')));
+    await tester.tap(
+      find.byKey(const ValueKey('camera-audience-friend-friend-1')),
+    );
     await tester.pumpAndSettle();
 
     expect(selected?.type, CameraFeedAudienceType.friend);

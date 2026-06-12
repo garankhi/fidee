@@ -26,7 +26,9 @@ class FriendSearchResultActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = tone == FriendRequestTone.dark;
     final primaryText = isDark ? Colors.white : const Color(0xFF151515);
-    final secondaryText = isDark ? Colors.white.withValues(alpha: 0.56) : const Color(0xFF8D8D8D);
+    final secondaryText = isDark
+        ? Colors.white.withValues(alpha: 0.56)
+        : const Color(0xFF8D8D8D);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -106,13 +108,19 @@ class _SearchResultActionButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: config.background,
         foregroundColor: config.foreground,
-        disabledBackgroundColor: isDark ? const Color(0xFF575757) : const Color(0xFFE5E7EB),
-        disabledForegroundColor: isDark ? Colors.white70 : const Color(0xFF6B7280),
+        disabledBackgroundColor: isDark
+            ? const Color(0xFF575757)
+            : const Color(0xFFE5E7EB),
+        disabledForegroundColor: isDark
+            ? Colors.white70
+            : const Color(0xFF6B7280),
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         minimumSize: const Size(0, 36),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isDark ? 18 : 10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isDark ? 18 : 10),
+        ),
         textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
       ),
     );
@@ -212,7 +220,9 @@ class _SearchAvatar extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       child: CircleAvatar(
-        backgroundColor: isDark ? const Color(0xFF393939) : const Color(0xFFFFD4DA),
+        backgroundColor: isDark
+            ? const Color(0xFF393939)
+            : const Color(0xFFFFD4DA),
         backgroundImage: profile.avatarUrl == null || profile.avatarUrl!.isEmpty
             ? null
             : NetworkImage(profile.avatarUrl!),

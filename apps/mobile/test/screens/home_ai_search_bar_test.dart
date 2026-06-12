@@ -24,7 +24,10 @@ void main() {
     await tester.pump(const Duration(seconds: 7));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Phân vân không biết lựa thì cứ hỏi Fidee'), findsOneWidget);
+    expect(
+      find.text('Phân vân không biết lựa thì cứ hỏi Fidee'),
+      findsOneWidget,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -32,16 +35,24 @@ void main() {
   testWidgets('submits trimmed query when user presses enter', (tester) async {
     String? submitted;
 
-    await tester.pumpWidget(buildSearchBar(onSubmitted: (value) => submitted = value));
+    await tester.pumpWidget(
+      buildSearchBar(onSubmitted: (value) => submitted = value),
+    );
 
     await tester.tap(find.byKey(const ValueKey('home-ai-search-field')));
-    await tester.enterText(find.byKey(const ValueKey('home-ai-search-field')), '  tìm cafe yên tĩnh  ');
+    await tester.enterText(
+      find.byKey(const ValueKey('home-ai-search-field')),
+      '  tìm cafe yên tĩnh  ',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pump();
 
     expect(submitted, 'tìm cafe yên tĩnh');
     expect(
-      tester.widget<TextField>(find.byKey(const ValueKey('home-ai-search-field'))).controller?.text,
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('home-ai-search-field')))
+          .controller
+          ?.text,
       isEmpty,
     );
 
@@ -53,7 +64,10 @@ void main() {
 
     await tester.pumpWidget(buildSearchBar(onSubmitted: (_) => submitCount++));
 
-    await tester.enterText(find.byKey(const ValueKey('home-ai-search-field')), '   ');
+    await tester.enterText(
+      find.byKey(const ValueKey('home-ai-search-field')),
+      '   ',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pump();
 

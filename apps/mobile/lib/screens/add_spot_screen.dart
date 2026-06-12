@@ -60,8 +60,6 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
   XFile? _checkInImage;
   Future<List<FriendProfile>>? _friendsFuture;
 
-
-
   @override
   void dispose() {
     _pageController.dispose();
@@ -165,7 +163,8 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
                     nameController: _nameController,
                     spotSuggestions: widget.spotSuggestions,
                     selectedSpotName: _selectedSpotName,
-                    onSpotNameChanged: (v) => setState(() => _selectedSpotName = v),
+                    onSpotNameChanged: (v) =>
+                        setState(() => _selectedSpotName = v),
                     openController: _openController,
                     closeController: _closeController,
                     priceFromController: _priceFromController,
@@ -363,7 +362,8 @@ class _StepOneState extends State<_StepOne> {
     String? addressError;
     String? serviceError;
 
-    if (widget.selectedSpotName == null || widget.selectedSpotName!.trim().isEmpty) {
+    if (widget.selectedSpotName == null ||
+        widget.selectedSpotName!.trim().isEmpty) {
       nameError = 'Vui lòng chọn tên địa điểm';
     }
     if (widget.selectedVibes.isEmpty) {
@@ -633,7 +633,9 @@ class _StepTwoState extends State<_StepTwo> {
   String? _menuError;
 
   bool _validate() {
-    final error = widget.menuImage == null ? 'Vui lòng thêm ảnh thực đơn' : null;
+    final error = widget.menuImage == null
+        ? 'Vui lòng thêm ảnh thực đơn'
+        : null;
     setState(() => _menuError = error);
     return error == null;
   }
@@ -643,7 +645,9 @@ class _StepTwoState extends State<_StepTwo> {
     return _StepScaffold(
       action: _PrimaryButton(
         label: 'Tiếp theo',
-        onTap: () { if (_validate()) widget.onNext(); },
+        onTap: () {
+          if (_validate()) widget.onNext();
+        },
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -709,7 +713,9 @@ class _StepThreeState extends State<_StepThree> {
   String? _checkInError;
 
   bool _validate() {
-    final error = widget.checkInImage == null ? 'Vui lòng thêm ảnh check-in' : null;
+    final error = widget.checkInImage == null
+        ? 'Vui lòng thêm ảnh check-in'
+        : null;
     setState(() => _checkInError = error);
     return error == null;
   }
@@ -719,7 +725,9 @@ class _StepThreeState extends State<_StepThree> {
     return _StepScaffold(
       action: _PrimaryButton(
         label: 'Tiếp theo',
-        onTap: () { if (_validate()) widget.onNext(); },
+        onTap: () {
+          if (_validate()) widget.onNext();
+        },
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,8 +876,6 @@ class _FriendPickerSheet extends StatefulWidget {
 
 class _FriendPickerSheetState extends State<_FriendPickerSheet> {
   final TextEditingController _searchController = TextEditingController();
-
-
 
   @override
   void dispose() {
@@ -1030,7 +1036,11 @@ class _FriendEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.people_rounded, color: _AddSpotScreenState._accent, size: 34),
+          Icon(
+            Icons.people_rounded,
+            color: _AddSpotScreenState._accent,
+            size: 34,
+          ),
           SizedBox(height: 12),
           Text(
             'Chưa có bạn bè',
@@ -1179,8 +1189,6 @@ class _SpotNameDropdown extends StatefulWidget {
 class _SpotNameDropdownState extends State<_SpotNameDropdown> {
   final TextEditingController _customController = TextEditingController();
   bool _isCustom = false;
-
-
 
   @override
   void dispose() {
@@ -1419,7 +1427,9 @@ class _SoftTextField extends StatelessWidget {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: hasError ? _AddSpotScreenState._accent : _AddSpotScreenState._border,
+            color: hasError
+                ? _AddSpotScreenState._accent
+                : _AddSpotScreenState._border,
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -1456,7 +1466,9 @@ class _ChipWrap extends StatelessWidget {
                 if (isAddButton) {
                   // TODO: Show add custom option dialog
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chức năng thêm tùy chỉnh đang phát triển')),
+                    const SnackBar(
+                      content: Text('Chức năng thêm tùy chỉnh đang phát triển'),
+                    ),
                   );
                 } else {
                   onToggle(option);
@@ -1528,7 +1540,11 @@ class _ImageDropBox extends StatelessWidget {
   final VoidCallback onTap;
   final bool hasError;
 
-  const _ImageDropBox({required this.image, required this.onTap, this.hasError = false});
+  const _ImageDropBox({
+    required this.image,
+    required this.onTap,
+    this.hasError = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1541,7 +1557,9 @@ class _ImageDropBox extends StatelessWidget {
           color: _AddSpotScreenState._field,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: hasError ? _AddSpotScreenState._accent : _AddSpotScreenState._border,
+            color: hasError
+                ? _AddSpotScreenState._accent
+                : _AddSpotScreenState._border,
             width: hasError ? 1.5 : 1,
           ),
         ),

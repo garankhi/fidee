@@ -39,7 +39,9 @@ void main() {
         ),
         loadThumbnails: (limit) async {
           thumbnailLoads += 1;
-          return <Uint8List>[Uint8List.fromList(<int>[1])];
+          return <Uint8List>[
+            Uint8List.fromList(<int>[1]),
+          ];
         },
       );
 
@@ -50,28 +52,31 @@ void main() {
       expect(thumbnailLoads, 0);
     });
 
-    test('requests access before loading thumbnails when not determined', () async {
-      var requests = 0;
-      final expectedThumbnail = Uint8List.fromList(<int>[7]);
-      final service = GalleryPreviewService(
-        permissionService: GalleryPermissionService(
-          getPermissionState: () async => PermissionState.notDetermined,
-          requestPermission: () async {
-            requests += 1;
-            return PermissionState.limited;
-          },
-          presentLimited: () async {},
-          openSettings: () async {},
-        ),
-        loadThumbnails: (limit) async => <Uint8List>[expectedThumbnail],
-      );
+    test(
+      'requests access before loading thumbnails when not determined',
+      () async {
+        var requests = 0;
+        final expectedThumbnail = Uint8List.fromList(<int>[7]);
+        final service = GalleryPreviewService(
+          permissionService: GalleryPermissionService(
+            getPermissionState: () async => PermissionState.notDetermined,
+            requestPermission: () async {
+              requests += 1;
+              return PermissionState.limited;
+            },
+            presentLimited: () async {},
+            openSettings: () async {},
+          ),
+          loadThumbnails: (limit) async => <Uint8List>[expectedThumbnail],
+        );
 
-      final result = await service.loadRecentThumbnails();
+        final result = await service.loadRecentThumbnails();
 
-      expect(requests, 1);
-      expect(result.permissionStatus, GalleryPermissionStatus.limited);
-      expect(result.thumbnails, <Uint8List>[expectedThumbnail]);
-    });
+        expect(requests, 1);
+        expect(result.permissionStatus, GalleryPermissionStatus.limited);
+        expect(result.thumbnails, <Uint8List>[expectedThumbnail]);
+      },
+    );
 
     test('returns permission status when limit is zero', () async {
       final service = GalleryPreviewService(
@@ -81,7 +86,9 @@ void main() {
           presentLimited: () async {},
           openSettings: () async {},
         ),
-        loadThumbnails: (limit) async => <Uint8List>[Uint8List.fromList(<int>[1])],
+        loadThumbnails: (limit) async => <Uint8List>[
+          Uint8List.fromList(<int>[1]),
+        ],
       );
 
       final result = await service.loadRecentThumbnails(limit: 0);

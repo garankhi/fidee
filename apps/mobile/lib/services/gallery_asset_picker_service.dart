@@ -3,9 +3,8 @@ import 'package:photo_manager/photo_manager.dart';
 
 import 'gallery_permission_service.dart';
 
-typedef GalleryAssetLoader = Future<List<GalleryAssetPickerItem>> Function(
-  int limit,
-);
+typedef GalleryAssetLoader =
+    Future<List<GalleryAssetPickerItem>> Function(int limit);
 typedef GalleryAssetPathLoader = Future<String?> Function();
 
 class GalleryAssetPickerItem {
@@ -31,7 +30,9 @@ class GalleryAssetPickerService {
   final GalleryPermissionService permissionService;
   final GalleryAssetLoader _loadAssets;
 
-  Future<List<GalleryAssetPickerItem>> loadRecentImages({int limit = 60}) async {
+  Future<List<GalleryAssetPickerItem>> loadRecentImages({
+    int limit = 60,
+  }) async {
     if (limit <= 0) return const <GalleryAssetPickerItem>[];
 
     try {
@@ -50,9 +51,7 @@ class GalleryAssetPickerService {
     int limit,
   ) async {
     final recentImagesFilter = FilterOptionGroup(
-      orders: const [
-        OrderOption(type: OrderOptionType.createDate, asc: false),
-      ],
+      orders: const [OrderOption(type: OrderOptionType.createDate, asc: false)],
     );
 
     final paths = await PhotoManager.getAssetPathList(

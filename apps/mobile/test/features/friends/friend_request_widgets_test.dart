@@ -25,10 +25,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: FriendRequestSummaryBanner(
-            count: 2,
-            onOpen: () => opens += 1,
-          ),
+          body: FriendRequestSummaryBanner(count: 2, onOpen: () => opens += 1),
         ),
       ),
     );
@@ -41,10 +38,16 @@ void main() {
     expect(opens, 2);
   });
 
-  testWidgets('action row invokes accept and decline callbacks', (tester) async {
+  testWidgets('action row invokes accept and decline callbacks', (
+    tester,
+  ) async {
     var accepted = false;
     var declined = false;
-    const request = FriendProfile(id: 'request-1', name: 'Lan Tran', handle: 'lan');
+    const request = FriendProfile(
+      id: 'request-1',
+      name: 'Lan Tran',
+      handle: 'lan',
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -60,8 +63,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('friend-request-accept-request-1')));
-    await tester.tap(find.byKey(const ValueKey('friend-request-decline-request-1')));
+    await tester.tap(
+      find.byKey(const ValueKey('friend-request-accept-request-1')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('friend-request-decline-request-1')),
+    );
 
     expect(accepted, isTrue);
     expect(declined, isTrue);

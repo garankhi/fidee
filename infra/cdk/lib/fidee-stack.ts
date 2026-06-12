@@ -299,6 +299,15 @@ export class FideeStack extends cdk.Stack {
       responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
     });
 
+    friendRealtimeNoneDataSource.createResolver('PublishChatRealtimeEventResolver', {
+      typeName: 'Mutation',
+      fieldName: 'publishChatRealtimeEvent',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(
+        '{"version":"2018-05-29","payload":$util.toJson($ctx.args.input)}',
+      ),
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.result)'),
+    });
+
     friendRealtimeNoneDataSource.createResolver('OnFriendRealtimeEventResolver', {
       typeName: 'Subscription',
       fieldName: 'onFriendRealtimeEvent',
@@ -326,6 +335,18 @@ export class FideeStack extends cdk.Stack {
     friendRealtimeNoneDataSource.createResolver('OnFriendRequestCanceledResolver', {
       typeName: 'Subscription',
       fieldName: 'onFriendRequestCanceled',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+#if($ctx.identity.sub != $ctx.args.targetUserId)
+  $util.unauthorized()
+#end
+{"version":"2018-05-29","payload":null}
+`),
+      responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson(null)'),
+    });
+
+    friendRealtimeNoneDataSource.createResolver('OnChatRealtimeEventResolver', {
+      typeName: 'Subscription',
+      fieldName: 'onChatRealtimeEvent',
       requestMappingTemplate: appsync.MappingTemplate.fromString(`
 #if($ctx.identity.sub != $ctx.args.targetUserId)
   $util.unauthorized()
@@ -371,6 +392,23 @@ export class FideeStack extends cdk.Stack {
         removalPolicy,
       },
     );
+
+    const chatRealtimeEventsTable = new dynamodb.Table(this, 'ChatRealtimeEventsTable', {
+      tableName: resourceName(stage, 'chat-realtime-events'),
+      partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
+      timeToLiveAttribute: 'expiresAt',
+      removalPolicy,
+    });
+
+    const chatPresenceTable = new dynamodb.Table(this, 'ChatPresenceTable', {
+      tableName: resourceName(stage, 'chat-presence'),
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'expiresAt',
+      removalPolicy,
+    });
 
     placesTable.addGlobalSecondaryIndex({
       indexName: 'GSI1',
@@ -778,6 +816,113 @@ export class FideeStack extends cdk.Stack {
     );
     friendRealtimeApi.grantMutation(publishFriendRealtimeEventFn);
 
+    const chatLambdaProps = {
+      ...friendsLambdaProps,
+      environment: {
+        ...friendsLambdaProps.environment,
+        CHAT_REALTIME_EVENTS_TABLE: chatRealtimeEventsTable.tableName,
+        CHAT_PRESENCE_TABLE: chatPresenceTable.tableName,
+      },
+    };
+
+    const createDirectConversationFn = new nodejs.NodejsFunction(
+      this,
+      'CreateDirectConversationFunction',
+      {
+        ...chatLambdaProps,
+        functionName: resourceName(stage, 'create-direct-conversation'),
+        entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+        handler: 'createDirectConversation',
+      },
+    );
+    dbCluster.secret!.grantRead(createDirectConversationFn);
+
+    const listConversationsFn = new nodejs.NodejsFunction(this, 'ListConversationsFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'list-conversations'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'listConversations',
+    });
+    dbCluster.secret!.grantRead(listConversationsFn);
+
+    const listMessagesFn = new nodejs.NodejsFunction(this, 'ListMessagesFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'list-chat-messages'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'listMessages',
+    });
+    dbCluster.secret!.grantRead(listMessagesFn);
+
+    const sendMessageFn = new nodejs.NodejsFunction(this, 'SendChatMessageFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'send-chat-message'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'sendMessage',
+    });
+    dbCluster.secret!.grantRead(sendMessageFn);
+    chatRealtimeEventsTable.grantWriteData(sendMessageFn);
+
+    const markChatReadFn = new nodejs.NodejsFunction(this, 'MarkChatReadFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'mark-chat-read'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'markRead',
+    });
+    dbCluster.secret!.grantRead(markChatReadFn);
+    chatRealtimeEventsTable.grantWriteData(markChatReadFn);
+
+    const markChatDeliveredFn = new nodejs.NodejsFunction(this, 'MarkChatDeliveredFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'mark-chat-delivered'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'markDelivered',
+    });
+    dbCluster.secret!.grantRead(markChatDeliveredFn);
+    chatRealtimeEventsTable.grantWriteData(markChatDeliveredFn);
+
+    const sendChatTypingFn = new nodejs.NodejsFunction(this, 'SendChatTypingFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'send-chat-typing'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'sendTyping',
+    });
+    dbCluster.secret!.grantRead(sendChatTypingFn);
+    chatRealtimeEventsTable.grantWriteData(sendChatTypingFn);
+
+    const chatHeartbeatFn = new nodejs.NodejsFunction(this, 'ChatHeartbeatFunction', {
+      ...chatLambdaProps,
+      functionName: resourceName(stage, 'chat-heartbeat'),
+      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
+      handler: 'heartbeat',
+    });
+    dbCluster.secret!.grantRead(chatHeartbeatFn);
+    chatRealtimeEventsTable.grantWriteData(chatHeartbeatFn);
+    chatPresenceTable.grantReadWriteData(chatHeartbeatFn);
+
+    const publishChatRealtimeEventFn = new nodejs.NodejsFunction(
+      this,
+      'PublishChatRealtimeEventFunction',
+      {
+        functionName: resourceName(stage, 'publish-chat-realtime-event'),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: '../../services/api/src/handlers/publish-chat-realtime-event.ts',
+        handler: 'handler',
+        memorySize: 256,
+        timeout: cdk.Duration.seconds(10),
+        environment: {
+          FRIEND_REALTIME_GRAPHQL_URL: friendRealtimeApi.graphqlUrl,
+        },
+      },
+    );
+    publishChatRealtimeEventFn.addEventSource(
+      new lambdaEventSources.DynamoEventSource(chatRealtimeEventsTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+      }),
+    );
+    friendRealtimeApi.grantMutation(publishChatRealtimeEventFn);
+
     const mediaUploadEventsDlq = new sqs.Queue(this, 'MediaUploadEventsDlq', {
       queueName: resourceName(stage, 'media-upload-events-dlq'),
       retentionPeriod: cdk.Duration.days(14),
@@ -1068,6 +1213,110 @@ export class FideeStack extends cdk.Stack {
 
     const blockFriendActionResource = friendsResource.addResource('block');
     blockFriendActionResource.addMethod('POST', new apigateway.LambdaIntegration(blockFriendFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // === /conversations API Routes ===
+    const conversationsResource = api.root.addResource('conversations');
+    conversationsResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    conversationsResource.addMethod('GET', new apigateway.LambdaIntegration(listConversationsFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const directConversationResource = conversationsResource.addResource('direct');
+    directConversationResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    directConversationResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(createDirectConversationFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
+    const conversationResource = conversationsResource.addResource('{conversationId}');
+    const conversationMessagesResource = conversationResource.addResource('messages');
+    conversationMessagesResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    conversationMessagesResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(listMessagesFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+    conversationMessagesResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(sendMessageFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
+    const conversationReadResource = conversationResource.addResource('read');
+    conversationReadResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    conversationReadResource.addMethod('POST', new apigateway.LambdaIntegration(markChatReadFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const conversationDeliveredResource = conversationResource.addResource('delivered');
+    conversationDeliveredResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    conversationDeliveredResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(markChatDeliveredFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
+    const conversationTypingResource = conversationResource.addResource('typing');
+    conversationTypingResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    conversationTypingResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(sendChatTypingFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
+    const presenceResource = api.root.addResource('presence');
+    const heartbeatResource = presenceResource.addResource('heartbeat');
+    heartbeatResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    heartbeatResource.addMethod('POST', new apigateway.LambdaIntegration(chatHeartbeatFn), {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });

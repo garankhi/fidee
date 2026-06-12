@@ -7,13 +7,48 @@ import '../services/place_candidate_service.dart';
 
 /// Categories with icons and labels for the category picker.
 const _categories = <Map<String, dynamic>>[
-  {'key': 'cafe', 'icon': Icons.coffee_rounded, 'label': 'Cafe', 'color': Color(0xFFF59E0B)},
-  {'key': 'restaurant', 'icon': Icons.restaurant_rounded, 'label': 'Nhà hàng', 'color': Color(0xFFEF4444)},
-  {'key': 'hotel', 'icon': Icons.hotel_rounded, 'label': 'Khách sạn', 'color': Color(0xFF3B82F6)},
-  {'key': 'tourist_attraction', 'icon': Icons.camera_alt_rounded, 'label': 'Du lịch', 'color': Color(0xFF8B5CF6)},
-  {'key': 'office', 'icon': Icons.business_rounded, 'label': 'Văn phòng', 'color': Color(0xFF6B7280)},
-  {'key': 'shopping', 'icon': Icons.shopping_bag_rounded, 'label': 'Mua sắm', 'color': Color(0xFFEC4899)},
-  {'key': 'other', 'icon': Icons.place_rounded, 'label': 'Khác', 'color': Color(0xFF10B981)},
+  {
+    'key': 'cafe',
+    'icon': Icons.coffee_rounded,
+    'label': 'Cafe',
+    'color': Color(0xFFF59E0B),
+  },
+  {
+    'key': 'restaurant',
+    'icon': Icons.restaurant_rounded,
+    'label': 'Nhà hàng',
+    'color': Color(0xFFEF4444),
+  },
+  {
+    'key': 'hotel',
+    'icon': Icons.hotel_rounded,
+    'label': 'Khách sạn',
+    'color': Color(0xFF3B82F6),
+  },
+  {
+    'key': 'tourist_attraction',
+    'icon': Icons.camera_alt_rounded,
+    'label': 'Du lịch',
+    'color': Color(0xFF8B5CF6),
+  },
+  {
+    'key': 'office',
+    'icon': Icons.business_rounded,
+    'label': 'Văn phòng',
+    'color': Color(0xFF6B7280),
+  },
+  {
+    'key': 'shopping',
+    'icon': Icons.shopping_bag_rounded,
+    'label': 'Mua sắm',
+    'color': Color(0xFFEC4899),
+  },
+  {
+    'key': 'other',
+    'icon': Icons.place_rounded,
+    'label': 'Khác',
+    'color': Color(0xFF10B981),
+  },
 ];
 
 class CreatePlaceScreen extends StatefulWidget {
@@ -65,14 +100,15 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
     setState(() => _state = _ScreenState.loading);
 
     try {
-      final response = await PlaceCandidateService(widget.authService).createCandidate(
-        name: name,
-        category: _selectedCategory,
-        mediaId: widget.mediaId,
-        lat: widget.lat,
-        lng: widget.lng,
-        force: force,
-      );
+      final response = await PlaceCandidateService(widget.authService)
+          .createCandidate(
+            name: name,
+            category: _selectedCategory,
+            mediaId: widget.mediaId,
+            lat: widget.lat,
+            lng: widget.lng,
+            force: force,
+          );
 
       _response = response;
 
@@ -171,9 +207,15 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+                borderSide: const BorderSide(
+                  color: Color(0xFF3B82F6),
+                  width: 2,
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -249,7 +291,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF3B82F6)),
+                    const Icon(
+                      Icons.location_on_rounded,
+                      size: 16,
+                      color: Color(0xFF3B82F6),
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -320,7 +366,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(cat['icon'] as IconData, size: 18, color: isSelected ? color : const Color(0xFF9CA3AF)),
+                Icon(
+                  cat['icon'] as IconData,
+                  size: 18,
+                  color: isSelected ? color : const Color(0xFF9CA3AF),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   cat['label'] as String,
@@ -372,12 +422,20 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                 color: const Color(0xFF10B981).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded, size: 48, color: Color(0xFF10B981)),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                size: 48,
+                color: Color(0xFF10B981),
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
               'Tạo địa điểm thành công!',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -389,7 +447,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.pending_rounded, size: 16, color: Color(0xFFF59E0B)),
+                  Icon(
+                    Icons.pending_rounded,
+                    size: 16,
+                    color: Color(0xFFF59E0B),
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'PENDING REVIEW',
@@ -406,7 +468,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
             const Text(
               'Địa điểm sẽ hiển thị với bạn bè.\nAdmin sẽ duyệt để công khai.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.5),
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF6B7280),
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -418,9 +484,14 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Quay lại bản đồ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Quay lại bản đồ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -447,7 +518,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
             ),
             child: const Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 24),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 24,
+                ),
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -465,37 +540,62 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
           const SizedBox(height: 20),
           const Text(
             'Địa điểm tương tự:',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
           ),
           const SizedBox(height: 8),
-          ...candidates.map((c) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.place_rounded, color: Color(0xFF3B82F6), size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      Text('Cách ${c.distanceMeters}m', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                    ],
+          ...candidates.map(
+            (c) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.place_rounded,
+                    color: Color(0xFF3B82F6),
+                    size: 20,
                   ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Dùng', style: TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          'Cách ${c.distanceMeters}m',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text(
+                      'Dùng',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          )),
+          ),
           const Spacer(),
           Row(
             children: [
@@ -504,7 +604,9 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                   onPressed: () => setState(() => _state = _ScreenState.input),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text('Quay lại'),
                 ),
@@ -518,9 +620,14 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Vẫn tạo mới', style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Vẫn tạo mới',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],
@@ -547,12 +654,20 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                 color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.block_rounded, size: 48, color: Color(0xFFEF4444)),
+              child: const Icon(
+                Icons.block_rounded,
+                size: 48,
+                color: Color(0xFFEF4444),
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
               'Đã đạt giới hạn',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -563,7 +678,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
             const SizedBox(height: 8),
             const Text(
               'Nâng cấp Pro để tạo nhiều hơn!',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF3B82F6)),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF3B82F6),
+              ),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -575,9 +694,14 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Đã hiểu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Đã hiểu',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -595,7 +719,11 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 64, color: Color(0xFFEF4444)),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: Color(0xFFEF4444),
+            ),
             const SizedBox(height: 16),
             Text(
               _errorMessage,
@@ -609,7 +737,9 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                 backgroundColor: const Color(0xFF3B82F6),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Thử lại'),
             ),
@@ -619,5 +749,3 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
     );
   }
 }
-
-
