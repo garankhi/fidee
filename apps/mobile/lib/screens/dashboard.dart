@@ -1,5 +1,5 @@
 import 'package:fidee_mobile/screens/place_details_friends.dart';
-import 'package:fidee_mobile/screens/place_feed_screen.dart';
+import 'package:fidee_mobile/screens/candidate_feed_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,7 +81,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         index: _currentNavIndex,
         children: [
           _buildDashboardBody(context, dashboardState, userAvatarUrl),
-          const PlaceFeedScreen(),
+          const CandidateFeedScreen(),
           const CameraChatInboxScreen(),
           const ProfileScreen(),
         ],

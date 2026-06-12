@@ -23,7 +23,7 @@ final placeControllerProvider =
 
 typedef _$PlaceController = AutoDisposeNotifier<Place>;
 String _$placeFeedControllerHash() =>
-    r'd8f3d42daf86e4048d9e4cc16b8714c1cb616951';
+    r'675e89a6bfc286619dfc6d859529852202f42e9e';
 
 /// See also [PlaceFeedController].
 @ProviderFor(PlaceFeedController)
