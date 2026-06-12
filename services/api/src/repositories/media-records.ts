@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { GpsProof, PhotoSource } from '../media/validation';
 
 export interface MediaRecord {
@@ -59,4 +59,42 @@ export async function putMediaRecord(
     }
     throw error;
   }
+}
+
+function mediaRecordFromItem(item: Record<string, unknown>): MediaRecord {
+  return {
+    mediaId: item.mediaId as string,
+    ownerUserId: item.ownerUserId as string,
+    status: item.status as MediaRecord['status'],
+    s3Bucket: item.s3Bucket as string,
+    s3Key: item.s3Key as string,
+    contentType: item.contentType as string,
+    contentLength: item.contentLength as number,
+    source: item.source as PhotoSource,
+    gpsProof: item.gpsProof as GpsProof,
+    createdAt: item.createdAt as string,
+    updatedAt: item.updatedAt as string,
+  };
+}
+
+export async function getMediaRecord(
+  tableName: string,
+  mediaId: string,
+  client: DynamoDBDocumentClient = dynamoClient,
+): Promise<MediaRecord | null> {
+  const result = await client.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: {
+        PK: `MEDIA#${mediaId}`,
+        SK: 'METADATA',
+      },
+    }),
+  );
+
+  if (!result.Item) {
+    return null;
+  }
+
+  return mediaRecordFromItem(result.Item);
 }

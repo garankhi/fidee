@@ -595,6 +595,21 @@ export class FideeStack extends cdk.Stack {
     });
     mediaBucket.grantPut(createAvatarUploadFn, 'avatars/*');
 
+    const getMediaFn = new nodejs.NodejsFunction(this, 'GetMediaFunction', {
+      functionName: resourceName(stage, 'get-media'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-media.ts',
+      handler: 'handler',
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        STAGE: stage,
+        PLACES_TABLE: placesTable.tableName,
+        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
+      },
+    });
+    placesTable.grantReadData(getMediaFn);
+
     // === Friends Lambda Handlers ===
     const friendsLambdaProps = {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -976,6 +991,14 @@ export class FideeStack extends cdk.Stack {
       authorizer: cognitoAuthorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+
+    const mediaItemResource = mediaResource.addResource('{mediaId}');
+    mediaItemResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    mediaItemResource.addMethod('GET', new apigateway.LambdaIntegration(getMediaFn));
 
     // === /friends API Routes ===
     const friendsResource = api.root.addResource('friends');

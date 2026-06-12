@@ -194,6 +194,31 @@ Validation cần check:
 - Không được gửi cả `place_id` và `candidate_id` cùng lúc.
 - Bắt buộc có `media_id`, `gps_lat`, `gps_lng`.
 
+### Audience payload cho Camera preview share
+
+`Tất cả` gửi:
+
+```json
+{
+  "visibility": "FRIENDS",
+  "audience": { "type": "ALL_FRIENDS" }
+}
+```
+
+Một hoặc nhiều bạn bè cụ thể gửi:
+
+```json
+{
+  "visibility": "FRIENDS",
+  "audience": {
+    "type": "DIRECT",
+    "friendIds": ["friend-user-id-1", "friend-user-id-2"]
+  }
+}
+```
+
+Direct share chỉ hiển thị với những recipient user được chọn trong lúc quan hệ bạn bè vẫn là `ACCEPTED`. Upload raw media lên S3 chưa đủ để ảnh xuất hiện trong Camera feed; mobile phải gọi `POST /check-ins` sau khi upload S3 thành công.
+
 ### Bước 5 — Kiểm tra feed bản đồ
 
 API: `GET /map/feed?lat={lat}&lng={lng}&radius={meters}`

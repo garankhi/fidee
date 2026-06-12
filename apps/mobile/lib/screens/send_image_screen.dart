@@ -9,12 +9,16 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../features/auth/camera_checkin_feed_provider.dart';
 import '../features/auth/friends_provider.dart';
+import '../models/camera_share_audience.dart';
 import '../models/nearby_place.dart';
 import '../models/selected_place_tag.dart';
+import '../services/checkin_service.dart';
 import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import '../services/place_candidate_service.dart';
+import '../services/send_image_publisher.dart';
 import '../services/upload_service.dart';
 import '../utils/error.dart';
 import 'camera_screen.dart';
@@ -48,6 +52,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   _UploadStatus _uploadStatus = _UploadStatus.idle;
   List<NearbyPlace> _nearbySpots = [];
   SelectedPlaceTag? _selectedPlace;
+  CameraShareAudience _shareAudience = CameraShareAudience.allFriends();
   bool _isLoadingNearbySpots = false;
   String? _nearbySpotsError;
 
@@ -71,9 +76,6 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     _loadNearbySpots();
   }
 
-
-
-
   @override
   void dispose() {
     _clockTimer?.cancel();
@@ -81,6 +83,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     _pageController.dispose();
     super.dispose();
   }
+
   void _startClock() {
     _updateTime();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -94,6 +97,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       _timeString = DateFormat('h:mm a').format(now);
     });
   }
+
   List<double> _placeLookupCoordinates() {
     final gps = widget.gpsCoordinates;
     if (gps != null && gps.length >= 2) {
@@ -229,15 +233,20 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      final uploadService = UploadService(authService: authService);
-      final source = widget.source;
-
-      await uploadService.upload(
-        imagePath: widget.imagePath,
-        latitude: selectedPlace.lat,
-        longitude: selectedPlace.lng,
-        source: source,
+      final publisher = SendImagePublisher(
+        uploadService: UploadService(authService: authService),
+        checkinService: CheckinService(authService),
       );
+
+      await publisher.publish(
+        imagePath: widget.imagePath,
+        source: widget.source,
+        selectedPlace: selectedPlace,
+        audience: _shareAudience,
+        caption: _captionForCheckin(),
+      );
+
+      ref.invalidate(cameraCheckinFeedControllerProvider);
 
       if (mounted) {
         setState(() => _uploadStatus = _UploadStatus.idle);
@@ -255,10 +264,24 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       debugPrint('Upload failed: $e');
       if (mounted) {
         setState(() => _uploadStatus = _UploadStatus.error);
-        final errorMessage = e is UploadException ? e.message : e.toString();
-        ErrorDialogs.showUploadError(context, _handleSend, errorMessage: errorMessage);
+        final errorMessage = switch (e) {
+          UploadException(:final message) => message,
+          CheckinException(:final message) => message,
+          _ => e.toString(),
+        };
+        ErrorDialogs.showUploadError(
+          context,
+          _handleSend,
+          errorMessage: errorMessage,
+        );
       }
     }
+  }
+
+  String? _captionForCheckin() {
+    if (_currentIndex != 0) return null;
+    final caption = _messageController.text.trim();
+    return caption.isEmpty ? null : caption;
   }
 
   void _selectCaption(int index) {
@@ -877,127 +900,16 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // "Cùng với" label
-                const Text(
-                  'Cùng với',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Danh sách người nhận
-                SizedBox(
-                  height: 120,
-                  child: Consumer(
-                    builder: (context, ref, child) {
-                      final friendsState = ref.watch(friendsControllerProvider);
-                      final friends = friendsState.friends;
-
-                      return ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: friends.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == 0) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 16),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 54,
-                                    height: 54,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.amber,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: Container(
-                                      margin: const EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[800],
-                                      ),
-                                      child: const Icon(
-                                        Icons.people_alt,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    'Tất cả',
-                                    style: TextStyle(
-                                      fontFamily: 'SF Pro Text',
-                                      color: Colors.amber,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          final friend = friends[index - 1];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 16),
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 54,
-                                  height: 54,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.grey[900],
-                                  ),
-                                  child: friend.avatarUrl != null
-                                      ? ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(27),
-                                          child: Image.network(
-                                            friend.avatarUrl!,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return const Icon(
-                                                Icons.person,
-                                                color: Colors.white54,
-                                                size: 24,
-                                              );
-                                            },
-                                          ),
-                                        )
-                                      : Center(
-                                          child: Text(
-                                            friend.initials,
-                                            style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  friend.name,
-                                  style: const TextStyle(
-                                    fontFamily: 'SF Pro Text',
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final friendsState = ref.watch(friendsControllerProvider);
+                    return SendImageShareAudienceSelector(
+                      selectedAudience: _shareAudience,
+                      friends: friendsState.friends,
+                      onSelected: (audience) =>
+                          setState(() => _shareAudience = audience),
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
               ],

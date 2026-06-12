@@ -62,7 +62,23 @@ describe('get-checkin-feed handler', () => {
     ]);
   });
 
-  it('filters to a specific accepted friend when friendId is provided', async () => {
+  it('includes direct shares targeted to the viewer in everyone feed', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const result = await handler(event({ filter: 'everyone', limit: '12' }));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('check_in_recipients'), [
+      'user-1',
+      13,
+    ]);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ci.audience_type = 'ALL_FRIENDS'"), [
+      'user-1',
+      13,
+    ]);
+  });
+
+  it('filters to selected friend posts without leaking untargeted direct shares', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const result = await handler(event({ filter: 'everyone', friendId: 'friend-1' }));
@@ -74,6 +90,11 @@ describe('get-checkin-feed handler', () => {
       'friend-1',
     ]);
     expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("status = 'ACCEPTED'"), [
+      'user-1',
+      21,
+      'friend-1',
+    ]);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('check_in_recipients'), [
       'user-1',
       21,
       'friend-1',

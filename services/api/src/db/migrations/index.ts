@@ -690,4 +690,27 @@ CREATE INDEX IF NOT EXISTS idx_friendships_visible_accepted
   ON friendships (user_id, status, is_hidden)
   WHERE status = 'ACCEPTED';
 `,
+  '013_checkin_audience_targets': `-- ============================================================================
+-- 013_checkin_audience_targets
+-- Add audience targeting for camera preview shares
+-- ============================================================================
+
+ALTER TABLE check_ins
+  ADD COLUMN IF NOT EXISTS audience_type TEXT NOT NULL DEFAULT 'ALL_FRIENDS'
+    CHECK (audience_type IN ('ALL_FRIENDS', 'DIRECT', 'PRIVATE'));
+
+CREATE TABLE IF NOT EXISTS check_in_recipients (
+  checkin_id UUID NOT NULL REFERENCES check_ins(id) ON DELETE CASCADE,
+  recipient_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (checkin_id, recipient_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkin_recipients_user
+  ON check_in_recipients (recipient_user_id, checkin_id);
+
+CREATE INDEX IF NOT EXISTS idx_checkins_audience_recent
+  ON check_ins (audience_type, created_at DESC)
+  WHERE visibility IN ('FRIENDS', 'PUBLIC');
+`,
 };

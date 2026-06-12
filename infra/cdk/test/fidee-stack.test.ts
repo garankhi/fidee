@@ -241,6 +241,15 @@ describe('FideeStack', () => {
     });
   });
 
+  it('creates a public GET /media/{mediaId} redirect endpoint', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'fidee-dev-get-media',
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'GET',
+    });
+  });
+
   it('names dev resources with fidee-dev prefix', () => {
     template.hasResourceProperties('AWS::Cognito::UserPool', {
       UserPoolName: 'fidee-dev-users',

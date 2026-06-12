@@ -60,6 +60,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
               SELECT friend_id FROM friendships
               WHERE user_id = $1 AND status = 'ACCEPTED'
             )
+            AND (
+              ci.audience_type = 'ALL_FRIENDS'
+              OR EXISTS (
+                SELECT 1 FROM check_in_recipients cir
+                WHERE cir.checkin_id = ci.id
+                  AND cir.recipient_user_id = $1
+              )
+            )
           )
         )
         AND COALESCE(p.location, pc.location) IS NOT NULL

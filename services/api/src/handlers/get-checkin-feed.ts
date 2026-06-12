@@ -64,6 +64,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
             AND f.friend_id = ${friendParam}
             AND f.status = 'ACCEPTED'
         )
+        AND (
+          ci.audience_type = 'ALL_FRIENDS'
+          OR EXISTS (
+            SELECT 1 FROM check_in_recipients cir
+            WHERE cir.checkin_id = ci.id
+              AND cir.recipient_user_id = $1
+          )
+        )
       `;
     } else if (filter === 'me') {
       visibilityFilter = `ci.user_id = $1`;
@@ -73,6 +81,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         AND ci.user_id IN (
           SELECT friend_id FROM friendships
           WHERE user_id = $1 AND status = 'ACCEPTED'
+        )
+        AND (
+          ci.audience_type = 'ALL_FRIENDS'
+          OR EXISTS (
+            SELECT 1 FROM check_in_recipients cir
+            WHERE cir.checkin_id = ci.id
+              AND cir.recipient_user_id = $1
+          )
         )
       `;
     } else {
@@ -84,6 +100,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           AND ci.user_id IN (
             SELECT friend_id FROM friendships
             WHERE user_id = $1 AND status = 'ACCEPTED'
+          )
+          AND (
+            ci.audience_type = 'ALL_FRIENDS'
+            OR EXISTS (
+              SELECT 1 FROM check_in_recipients cir
+              WHERE cir.checkin_id = ci.id
+                AND cir.recipient_user_id = $1
+            )
           )
         )
       `;
