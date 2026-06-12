@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/place_provider.dart';
 import 'camera_screen.dart';
+import 'package:google_fonts/google_fonts.dart' hide Config;
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
   final String placeId;
@@ -28,132 +30,157 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   @override
   Widget build(BuildContext context) {
     final place = ref.watch(placeControllerProvider);
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: CircleAvatar(
-            backgroundColor: const Color(0x19EF484F),
-            child: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new,
-                size: 16,
-                color: Color(0xFFEF484F),
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ),
-        title: Text(
-          (place.name ?? 'CHI TIẾT ĐỊA ĐIỂM').toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFFEF484F),
-            fontSize: 20,
-            fontFamily: 'Erica One',
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: CircleAvatar(
-              backgroundColor: const Color(0x19EF484F),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.share,
-                  size: 18,
-                  color: Color(0xFFEF484F),
+        // FIX 1: Dùng SafeArea bao bọc Stack để tránh tai thỏ/camera đè lên Header
+        body: SafeArea(
+          child: Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    toolbarHeight: 100,
+                    pinned: true,
+                    backgroundColor: Colors.white,
+
+                    leading: Padding(
+                      padding: const EdgeInsets.only(left: 8, top: 10),
+                      child: Center(
+                        child: CircleAvatar(
+                          backgroundColor: const Color(0x19EF484F),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new,
+                              size: 16,
+                              color: Color(0xFFEF484F),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Padding(
+                      padding: const EdgeInsets.only(top: 18),
+                      child: Text(
+                        (place.name ?? 'CHI TIẾT ĐỊA ĐIỂM').toUpperCase(),
+                        style: GoogleFonts.ericaOne(
+                          color: const Color(0xFFEF4050),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    centerTitle: true,
+                    actions: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          right: 8,
+                          top: 10,
+                        ),
+                        child: Center(
+                          child: CircleAvatar(
+                            backgroundColor: const Color(0x19EF484F),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.share,
+                                size: 18,
+                                color: Color(0xFFEF484F),
+                              ),
+                              onPressed: () {},
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Phần nội dung chuyển thành SliverPadding
+                  SliverPadding(
+                    padding: const EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 10, // Tăng nhẹ top padding để cách đều Banner với Header mới gọn hơn
+                      bottom: 120, // Chừa khoảng trống cho bottom buttons
+                    ),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // 1. Banner Image & Info Card công khai dữ liệu thật
+                    _buildBannerCard(place),
+                    const SizedBox(height: 20),
+
+                    // 2. Thông tin quán
+                    _buildInfoSpot(place),
+                    const SizedBox(height: 20),
+
+                    // 3. Category Tags phân loại động
+                    _buildCategoryTags(place),
+                    const SizedBox(height: 20),
+
+                    // 4. Tiện nghi đi kèm
+                    _buildAmenities(place),
+                    const SizedBox(height: 25),
+
+                    // 5. Nút chỉ đường
+                    _buildLargeButton(Icons.near_me, 'Chỉ đường'),
+                    const SizedBox(height: 25),
+
+                    // 6. Khu vực Check-in của bạn bè
+                    _buildFriendCheckins(place),
+                    const SizedBox(height: 25),
+
+                    // 7. Khu vực đánh giá
+                    _buildFriendReviews(place),
+                    const SizedBox(height: 25),
+
+                    // 8. Thư viện Ảnh
+                    _buildPhotoGallery(place),
+                  ]),
                 ),
-                onPressed: () {},
               ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 10,
-              bottom: 100,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. Banner Image & Info Card công khai dữ liệu thật
-                _buildBannerCard(place),
-                const SizedBox(height: 20),
-
-                // 2. Thông tin quán (ĐÃ KHỬ MOCK: Dùng mô tả và khung giờ thật từ API)
-                _buildInfoSpot(place),
-                const SizedBox(height: 20),
-
-                // 3. Category Tags phân loại động
-                _buildCategoryTags(place),
-                const SizedBox(height: 20),
-
-                // 4. Tiện nghi đi kèm
-                _buildAmenities(place),
-                const SizedBox(height: 25),
-
-                // 5. Nút chỉ đường tích hợp tọa độ lat, lng động từ API thật
-                _buildLargeButton(Icons.near_me, 'Chỉ đường'),
-                const SizedBox(height: 25),
-
-                // 6. Khu vực Check-in của bạn bè (ĐÃ KHỬ MOCK: Tiêu đề ăn theo số lượng thật)
-                _buildFriendCheckins(place),
-                const SizedBox(height: 25),
-
-                // 7. Khu vực đánh giá
-                _buildFriendReviews(place),
-                const SizedBox(height: 25),
-
-                // 8. Thư viện Ảnh
-                _buildPhotoGallery(place),
-              ],
-            ),
+            ],
           ),
 
+          // Cụm Bottom Buttons giữ nguyên
           Positioned(
             left: 20,
             right: 20,
-            bottom: 20,
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => const CameraScreen(),
-                        ),
-                      );
-                    },
-                    child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
-                  ),
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 15),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const CameraScreen(),
+                            ),
+                          );
+                        },
+                        child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _showRatingBottomSheet(),
+                        child: _buildBottomButton(Icons.edit, 'Đánh giá'),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      _showRatingBottomSheet();
-                    },
-                    child: _buildBottomButton(Icons.edit, 'Đánh giá'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
       ),
+        ),
     );
   }
 
@@ -390,10 +417,8 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   }
 
   Widget _buildAmenities(Place place) {
-    // Thêm tham số place vào đây
-    // Nếu API không trả về hoặc mảng rỗng, hiển thị thông báo hoặc ẩn đi
     if (place.services.isEmpty) {
-      return const SizedBox.shrink(); // Hoặc hiển thị Text('Chưa cập nhật tiện nghi')
+      return const SizedBox.shrink();
     }
 
     return Column(
@@ -411,7 +436,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          // Sử dụng dữ liệu thực tế từ place.services thay vì mảng hardcode ban đầu
           children: place.services
               .map((service) => _buildTag(service.toString()))
               .toList(),
@@ -471,7 +495,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       children: [
         _buildSectionHeader('Check-in của bạn bè (${place.checkinCount})'),
         const SizedBox(height: 12),
-        const SizedBox(height: 12),
         SizedBox(
           height: 165,
           child: ListView.builder(
@@ -481,7 +504,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               final item = checkins[index] as Map<String, dynamic>;
               final String checkinPhoto =
                   item['mediaId']?.toString() ??
-                  'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
+                      'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300';
 
               return Container(
                 width: 130,
@@ -617,7 +640,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     Row(
                       children: List.generate(
                         (review['rating'] ?? 0) as int,
-                        (index) => const Icon(
+                            (index) => const Icon(
                           Icons.star,
                           color: Colors.amber,
                           size: 12,
@@ -694,49 +717,49 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 child: photos.isEmpty
                     ? const Center(child: Text('Chưa có ảnh'))
                     : ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: photos.length,
-                        itemBuilder: (context, index) {
-                          final photo = photos[index] as Map<String, dynamic>;
+                  scrollDirection: Axis.horizontal,
+                  itemCount: photos.length,
+                  itemBuilder: (context, index) {
+                    final photo = photos[index] as Map<String, dynamic>;
 
-                          return Container(
-                            width: 100,
-                            margin: const EdgeInsets.only(right: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              image: const DecorationImage(
-                                image: NetworkImage(
-                                  'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200',
-                                ),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.only(
-                                    bottomLeft: Radius.circular(15),
-                                    bottomRight: Radius.circular(15),
-                                  ),
-                                ),
-                                child: Text(
-                                  photo['userName']?.toString() ?? '',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                    return Container(
+                      width: 100,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        image: const DecorationImage(
+                          image: NetworkImage(
+                            'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=200',
+                          ),
+                          fit: BoxFit.cover,
+                        ),
                       ),
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(15),
+                              bottomRight: Radius.circular(15),
+                            ),
+                          ),
+                          child: Text(
+                            photo['userName']?.toString() ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -834,7 +857,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
                         5,
-                        (index) => GestureDetector(
+                            (index) => GestureDetector(
                           onTap: () => setState(() => rating = index + 1),
                           child: Icon(
                             index < rating ? Icons.star : Icons.star_border,
@@ -861,7 +884,6 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       child: ElevatedButton(
                         onPressed: () {
                           if (rating > 0) {
-                            // TODO: Submit rating
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
