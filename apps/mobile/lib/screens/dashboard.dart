@@ -13,8 +13,7 @@ import '../models/nearby_place.dart';
 import '../services/nearby_service.dart';
 import '../widgets/bottom_nav.dart';
 import 'add_spot_screen.dart';
-import 'camera_chat_inbox.dart'; // Đảm bảo file này chứa class CameraChatInbox
-
+import 'camera_chat_inbox.dart';
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -46,7 +45,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
     } catch (e) {
-      // Hạn chế để block catch trống hoàn toàn khi debug
     }
   }
 
@@ -79,25 +77,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       backgroundColor: Colors.white,
       extendBody: true,
 
-      // ĐIỀU HƯỚNG BẰNG INDEXEDSTACK
       body: IndexedStack(
         index: _currentNavIndex,
         children: [
-          // Index 0: Dashboard Body
           _buildDashboardBody(context, dashboardState, userAvatarUrl),
-
-          // Index 1: Màn hình Feed địa điểm / Bản đồ
           const PlaceFeedScreen(),
-
-          // Index 2: Màn hình Camera / Chat / Inbox (Đã fix tên class chuẩn)
           const CameraChatInboxScreen(),
-
-          // Index 3: Màn hình Profile cá nhân
           const ProfileScreen(),
         ],
       ),
 
-      // THANH NAV NHẬN EVENT CHUYỂN TAB
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _currentNavIndex,
         userAvatarUrl: userAvatarUrl,
@@ -138,7 +127,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: const Icon(Icons.arrow_back, color: Colors.black),
                 ),
               ),
-              const SizedBox(width: 10), // Thêm chút khoảng cách giữa nút back và chữ
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Hôm nay ăn gì cho hợp “vibe”?',
@@ -186,7 +175,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _buildFriendsActivityList(friendPlaces as List<DashboardPlace>),
         ],
       ),
-    ); // <-- ĐÃ FIX: Thêm dấu chấm phẩy kết thúc lệnh return ở đây
+    );
   }
 
   Widget _buildHeaderSearchBar() {

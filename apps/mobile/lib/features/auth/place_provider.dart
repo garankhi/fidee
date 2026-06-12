@@ -32,6 +32,8 @@ class Place {
   final List<String> vibes;
   final List<String> services;
 
+  final String? coverMediaId;
+
   const Place({
     this.id,
     this.name,
@@ -53,6 +55,7 @@ class Place {
     this.photos = const [],
     this.vibes = const [],
     this.services = const [],
+    this.coverMediaId,
   });
 
   Place copyWith({
@@ -76,6 +79,7 @@ class Place {
     List<dynamic>? photos,
     List<String>? vibes,
     List<String>? services,
+    String? coverMediaId,
   }) {
     return Place(
       id: id ?? this.id,
@@ -98,6 +102,7 @@ class Place {
       photos: photos ?? this.photos,
       vibes: vibes ?? this.vibes,
       services: services ?? this.services,
+      coverMediaId: coverMediaId ?? this.coverMediaId,
     );
   }
 }
@@ -202,7 +207,6 @@ class PlaceFeedController extends _$PlaceFeedController {
   final authService = ref.read(authServiceProvider);
   final token = await authService.getToken();
 
-  // API Endpoint lấy danh sách Feed của MapVibe
   const url = 'https://api.fidee.site/places';
 
   try {
@@ -219,44 +223,48 @@ class PlaceFeedController extends _$PlaceFeedController {
   }
 
   final jsonResult = jsonDecode(response.body) as Map<String, dynamic>;
-  final dataList = jsonResult['data'] as List<dynamic>? ?? [];
+  final data = jsonResult['data'] as Map<String, dynamic>? ?? {};
+  final dataList = data['hotPlaces'] as List<dynamic>? ?? [];
 
-  // Map trực tiếp sang Object Place dựa trên cấu trúc dữ liệu cũ của bạn
   return dataList.map((json) {
-  final data = json as Map<String, dynamic>;
-  final coordinates = data['coordinates'] as Map<String, dynamic>? ?? {};
+    final item = json as Map<String, dynamic>;
 
-  return Place(
-    id: data['id']?.toString(),
-    name: data['name']?.toString(),
-    category: data['category']?.toString(),
-    address: data['address']?.toString(),
-    lat: double.tryParse(coordinates['lat']?.toString() ?? '') ?? 0,
-    lng: double.tryParse(coordinates['lng']?.toString() ?? '') ?? 0,
-    openTime: data['openTime']?.toString(),
-    closeTime: data['closeTime']?.toString(),
-    priceMin: int.tryParse(data['priceMin']?.toString() ?? ''),
-    priceMax: int.tryParse(data['priceMax']?.toString() ?? ''),
-    description: data['description']?.toString(),
-    avgRating: double.tryParse(data['avgRating']?.toString() ?? '') ?? 0,
-    ratingCount: int.tryParse(data['ratingCount']?.toString() ?? '') ?? 0,
-    checkinCount: int.tryParse(data['checkinCount']?.toString() ?? '') ?? 0,
-    vibes: List<String>.from(data['vibes'] as Iterable? ?? []),
-    services: List<String>.from(data['services'] as Iterable? ?? []),
-    friendCheckins: List<dynamic>.from(data['friendCheckins'] as Iterable? ?? []),
-    friendReviews: List<dynamic>.from(data['friendReviews'] as Iterable? ?? []),
-    otherReviews: List<dynamic>.from(data['otherReviews'] as Iterable? ?? []),
-    photos: List<dynamic>.from(data['photos'] as Iterable? ?? []),
+    return Place(
+      id: item['placeId']?.toString(),
+      name: item['name']?.toString(),
+      category: item['category']?.toString(),
+      address: item['address']?.toString(),
+
+      lat: double.tryParse(item['lat']?.toString() ?? '') ?? 0,
+      lng: double.tryParse(item['lng']?.toString() ?? '') ?? 0,
+
+      openTime: item['openTime']?.toString(),
+      closeTime: item['closeTime']?.toString(),
+      priceMin: int.tryParse(item['priceMin']?.toString() ?? ''),
+      priceMax: int.tryParse(item['priceMax']?.toString() ?? ''),
+      description: item['description']?.toString(),
+
+      avgRating: double.tryParse(item['avgRating']?.toString() ?? '') ?? 0,
+      ratingCount: int.tryParse(item['ratingCount']?.toString() ?? '') ?? 0,
+      checkinCount: int.tryParse(item['checkinCount']?.toString() ?? '') ?? 0,
+
+      vibes: List<String>.from(item['vibes'] as Iterable? ?? []),
+      services: List<String>.from(item['services'] as Iterable? ?? []),
+      friendCheckins: List<dynamic>.from(item['friendCheckins'] as Iterable? ?? []),
+      friendReviews: List<dynamic>.from(item['friendReviews'] as Iterable? ?? []),
+      otherReviews: List<dynamic>.from(item['otherReviews'] as Iterable? ?? []),
+      photos: List<dynamic>.from(item['photos'] as Iterable? ?? []),
+
+      coverMediaId: item['coverMediaId']?.toString(),
     );
-    }).toList();
+  }).toList();
 
-    } catch (e, stackTrace) {
+  } catch (e, stackTrace) {
     debugPrint('Error fetching places feed: $e\n$stackTrace');
     rethrow;
-    }
+  }
   }
 
-  // Hàm hỗ trợ kéo thả làm mới (Pull-to-refresh)
   Future<void> refreshFeed() async {
   state = const AsyncValue.loading();
   state = await AsyncValue.guard(() => _fetchPlacesFeed());

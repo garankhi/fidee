@@ -131,15 +131,6 @@ class _CameraChatInboxScaffold extends StatelessWidget {
                 ),
               ],
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 10,
-              child: CameraBottomSection(
-                onHomeTap: () => Navigator.pop(context),
-                onChatTap: () {},
-              ),
-            ),
           ],
         ),
       ),
@@ -214,7 +205,7 @@ class _CameraChatThreadRow extends StatelessWidget {
         key: ValueKey('camera-chat-thread-${thread.id}'),
         children: [
           _ThreadAvatar(thread: thread),
-          const SizedBox(width: 18),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,7 +219,7 @@ class _CameraChatThreadRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 24,
+                          fontSize: 20,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -238,7 +229,7 @@ class _CameraChatThreadRow extends StatelessWidget {
                       thread.updatedAtLabel,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.44),
-                        fontSize: 22,
+                        fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -251,7 +242,7 @@ class _CameraChatThreadRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.68),
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -282,8 +273,8 @@ class _ThreadAvatar extends StatelessWidget {
         : thread.name.trim().characters.first.toUpperCase();
 
     return Container(
-      width: 72,
-      height: 72,
+      width: 60,
+      height: 60,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFF243135),
@@ -303,7 +294,7 @@ class _ThreadAvatar extends StatelessWidget {
                 initial,
                 style: const TextStyle(
                   color: Colors.white70,
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               )
@@ -323,8 +314,8 @@ class _CameraChatInboxSkeleton extends StatelessWidget {
       itemBuilder: (context, index) => Row(
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 60,
+            height: 60,
             decoration: const BoxDecoration(
               color: Color(0xFF243135),
               shape: BoxShape.circle,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'place_details_friends.dart'; // Import màn hình chi tiết cũ của bạn
+import 'place_details_friends.dart';
 import '../features/auth/place_provider.dart';
 
 class PlaceFeedScreen extends ConsumerWidget {
@@ -8,7 +8,6 @@ class PlaceFeedScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Lắng nghe danh sách địa điểm từ feed provider mới
     final feedAsync = ref.watch(placeFeedControllerProvider);
 
     return Scaffold(
@@ -36,7 +35,6 @@ class PlaceFeedScreen extends ConsumerWidget {
                 final place = places[index];
                 return GestureDetector(
                   onTap: () {
-                    // Chuyển hướng sang màn hình của bạn mà KHÔNG LÀM THAY ĐỔI CONSTRUCTOR
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
@@ -54,7 +52,6 @@ class PlaceFeedScreen extends ConsumerWidget {
     );
   }
 
-  // Card UI hiển thị tóm tắt ngoài bảng tin Feed
   Widget _buildFeedCard(Place place) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -67,7 +64,6 @@ class PlaceFeedScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tên quán & Rating
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -91,7 +87,6 @@ class PlaceFeedScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 6),
-          // Địa chỉ
           Text(
             '📍 ${place.address ?? "Chưa cập nhật địa chỉ"}',
             style: const TextStyle(color: Colors.grey, fontSize: 13),
@@ -99,7 +94,6 @@ class PlaceFeedScreen extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 10),
-          // Mấy tag Vibes của quán (nếu có)
           if (place.vibes.isNotEmpty)
             Wrap(
               spacing: 6,
