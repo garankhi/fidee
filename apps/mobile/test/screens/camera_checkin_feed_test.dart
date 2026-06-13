@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fidee_mobile/models/camera_checkin_feed_item.dart';
 import 'package:fidee_mobile/screens/camera_checkin_feed.dart';
+import 'package:fidee_mobile/services/camera_feed_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -119,6 +121,38 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Nó vẫn chưa tha'), findsOneWidget);
+  });
+
+  testWidgets('camera feed photo frame uses shared image cache manager', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: CameraFeedPhotoFrame(
+              item: CameraCheckinFeedItem(
+                id: 'checkin-1',
+                caption: 'Nó vẫn chưa tha',
+                createdAt: '2026-06-09T14:48:00.000Z',
+                mediaId: 'media-1',
+                userId: 'friend-1',
+                userName: 'Tạ',
+                placeId: 'place-1',
+                placeName: 'Sân cầu lông',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.cacheManager, same(CameraFeedImageCacheManager.instance));
+    expect(image.cacheKey, 'media-1');
   });
 
   testWidgets('camera feed author meta shows user and relative time', (

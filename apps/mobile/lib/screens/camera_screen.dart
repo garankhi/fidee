@@ -22,8 +22,6 @@ import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
 import 'camera_bottom_section.dart';
 import 'camera_chat_inbox.dart';
-import 'camera_checkin_feed.dart';
-import 'camera_feed_action_area.dart';
 import 'camera_feed_message_composer.dart';
 import 'camera_friends_sheet.dart';
 import 'camera_viewfinder_pager.dart';
@@ -57,7 +55,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   GalleryPermissionStatus _galleryPermissionStatus =
       GalleryPermissionStatus.notDetermined;
   CameraCheckinFeedItem? _activeFeedItem;
-  bool _isViewingFeed = false;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -89,13 +86,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     if (!mounted || item?.id == _activeFeedItem?.id) return;
     setState(() {
       _activeFeedItem = item;
-    });
-  }
-
-  void _handleFeedModeChanged(bool value) {
-    if (!mounted || value == _isViewingFeed) return;
-    setState(() {
-      _isViewingFeed = value;
     });
   }
 
@@ -384,13 +374,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isViewingFeed = _isViewingFeed;
-                final reservedFeedHeight = isViewingFeed ? 58.0 : 0.0;
-                final maxFrameSize = math.min(
-                  MediaQuery.sizeOf(context).width - 40,
-                  constraints.maxHeight - 312 - reservedFeedHeight,
+                final deckWidth = math.min(
+                  MediaQuery.sizeOf(context).width,
+                  460.0,
                 );
-                final frameSize = math.max(260.0, maxFrameSize);
 
                 return Column(
                   children: [
@@ -400,60 +387,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       onMapTap: () => Navigator.pop(context),
                       onFriendsTap: () => showCameraFriendsSheet(context),
                     ),
-                    const Spacer(flex: 1),
-                    SizedBox(
-                      width: frameSize,
-                      height: frameSize,
-                      child: CameraViewfinderPager(
-                        cameraPreview: CameraPreview(_controller!),
-                        cameraOverlay: _CameraPreviewControls(
-                          isFlashOn: _isFlashOn,
-                          onToggleFlash: _toggleFlash,
-                        ),
-                        feedItems: feedState.items,
-                        isFeedLoading: feedState.isLoading,
-                        isFeedLoadingMore: feedState.isLoadingMore,
-                        hasMore: feedState.hasMore,
-                        onLoadMore: feedController.loadMore,
-                        onFeedItemChanged: _handleFeedItemChanged,
-                        onFeedModeChanged: _handleFeedModeChanged,
-                      ),
-                    ),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      child: _activeFeedItem != null
-                          ? Column(
-                              key: const ValueKey('camera-feed-reply-area'),
-                              children: [
-                                const SizedBox(height: 18),
-                                CameraFeedAuthorMeta(item: _activeFeedItem!),
-                              ],
-                            )
-                          : const SizedBox(
-                              key: ValueKey('camera-capture-gap'),
-                              height: 12,
-                            ),
-                    ),
-                    const Spacer(flex: 1),
-                    CameraFeedActionArea(
-                      isViewingFeed: isViewingFeed,
-                      hasFeedItem: _activeFeedItem != null,
-                      captureControls: _CameraCaptureControls(
-                        thumbnails: _galleryThumbnails,
-                        animationController: _animationController,
-                        shrinkAnimation: _shrinkAnimation,
-                        onGalleryTap: _pickFromGallery,
-                        onCapture: _handleCapture,
-                        onSwitchCamera: _switchCamera,
-                      ),
-                      messageComposer: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 28,
-                        ),
-                        child: CameraFeedMessageComposer(
-                          onSend: _recordFeedMessage,
-                          onReaction: _recordFeedReaction,
+                    Expanded(
+                      child: SizedBox(
+                        width: deckWidth,
+                        child: CameraViewfinderPager(
+                          cameraPreview: CameraPreview(_controller!),
+                          cameraOverlay: _CameraPreviewControls(
+                            isFlashOn: _isFlashOn,
+                            onToggleFlash: _toggleFlash,
+                          ),
+                          cameraControls: _CameraCaptureControls(
+                            thumbnails: _galleryThumbnails,
+                            animationController: _animationController,
+                            shrinkAnimation: _shrinkAnimation,
+                            onGalleryTap: _pickFromGallery,
+                            onCapture: _handleCapture,
+                            onSwitchCamera: _switchCamera,
+                          ),
+                          feedItems: feedState.items,
+                          isFeedLoading: feedState.isLoading,
+                          isFeedLoadingMore: feedState.isLoadingMore,
+                          hasMore: feedState.hasMore,
+                          onLoadMore: feedController.loadMore,
+                          onFeedItemChanged: _handleFeedItemChanged,
+                          feedMessageComposerBuilder: (item) =>
+                              CameraFeedMessageComposer(
+                                onSend: _recordFeedMessage,
+                                onReaction: _recordFeedReaction,
+                              ),
                         ),
                       ),
                     ),

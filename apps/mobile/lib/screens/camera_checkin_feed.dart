@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/camera_checkin_feed_provider.dart';
 import '../models/camera_checkin_feed_item.dart';
+import '../services/camera_feed_image_cache.dart';
 
 class CameraCheckinFeed extends ConsumerWidget {
   const CameraCheckinFeed({super.key});
@@ -226,10 +228,15 @@ class CameraFeedPhotoFrame extends StatelessWidget {
           key: ValueKey('camera-feed-photo-frame-${item.id}'),
           fit: StackFit.expand,
           children: [
-            Image.network(
-              item.imageUrl,
+            CachedNetworkImage(
+              imageUrl: item.imageUrl,
+              cacheManager: CameraFeedImageCacheManager.instance,
+              cacheKey: cameraFeedImageCacheKey(item),
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
+              placeholder: (context, url) {
+                return const ColoredBox(color: Color(0xFF171717));
+              },
+              errorWidget: (context, url, error) {
                 return const ColoredBox(
                   color: Color(0xFF2A2A2A),
                   child: Center(

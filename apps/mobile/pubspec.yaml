@@ -57,6 +57,8 @@ dependencies:
   photo_manager: ^3.9.0
   flutter_native_splash: ^2.4.8
   web_socket_channel: ^3.0.3
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
 
 dev_dependencies:
   flutter_test:

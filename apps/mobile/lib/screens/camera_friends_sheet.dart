@@ -123,8 +123,9 @@ class _CameraFriendsSheetContentState extends State<CameraFriendsSheetContent> {
 
     _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
       final results = await widget.onSearchUsers(query);
-      if (!mounted || _searchController.text.trim().toLowerCase() != query)
+      if (!mounted || _searchController.text.trim().toLowerCase() != query) {
         return;
+      }
       setState(() {
         _searchResults = results;
         _isSearching = false;
