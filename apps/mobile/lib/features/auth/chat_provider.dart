@@ -14,19 +14,23 @@ part 'chat_provider.g.dart';
 class ChatInboxState {
   final List<UserChatConversation> conversations;
   final bool isLoading;
+  final String? currentUserId;
 
   const ChatInboxState({
     this.conversations = const <UserChatConversation>[],
     this.isLoading = false,
+    this.currentUserId,
   });
 
   ChatInboxState copyWith({
     List<UserChatConversation>? conversations,
     bool? isLoading,
+    String? currentUserId,
   }) {
     return ChatInboxState(
       conversations: conversations ?? this.conversations,
       isLoading: isLoading ?? this.isLoading,
+      currentUserId: currentUserId ?? this.currentUserId,
     );
   }
 }
@@ -73,9 +77,23 @@ class ChatInboxController extends _$ChatInboxController {
   }
 
   Future<void> load({bool silent = false}) async {
-    if (!silent) state = state.copyWith(isLoading: true);
+    final authService = ref.read(authServiceProvider);
+    final userId = await authService.getCurrentUserSub();
+    if (userId == null || userId.isEmpty) {
+      state = const ChatInboxState();
+      return;
+    }
+    final userChanged =
+        state.currentUserId != null && state.currentUserId != userId;
+    if (userChanged || !silent) {
+      state = ChatInboxState(isLoading: true, currentUserId: userId);
+    }
     final conversations = await _service.fetchConversations();
-    state = ChatInboxState(conversations: conversations, isLoading: false);
+    state = ChatInboxState(
+      conversations: conversations,
+      isLoading: false,
+      currentUserId: userId,
+    );
   }
 
   Future<String?> openDirectConversation(String targetUserId) async {

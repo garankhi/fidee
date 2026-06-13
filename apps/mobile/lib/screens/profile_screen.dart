@@ -193,6 +193,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final since = authState?.since ?? '2026';
     final avatarUrl = authState?.avatarUrl;
     final initials = _getInitials(firstName, lastName);
+    final visibleFriends = friendsState.friends
+        .where((friend) => friend.id != friendsState.currentUserId)
+        .toList(growable: false);
 
     // Apply Light Mode Theme manually to keep screen look clean & consistent with Figma light theme
     return Theme(
@@ -444,7 +447,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Friends (${friendsState.friends.length})',
+                    'Friends (${visibleFriends.length})',
                     style: const TextStyle(
                       color: Color(0xFF151515),
                       fontSize: 18,
@@ -507,7 +510,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 height: 110,
                 child: friendsState.isInitialLoading
                     ? const _ProfileFriendsSkeleton()
-                    : friendsState.friends.isEmpty
+                    : visibleFriends.isEmpty
                     ? Center(
                         child: Text(
                           'Chưa có bạn bè. Hãy kết nối thêm!',
@@ -520,9 +523,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: friendsState.friends.length,
+                        itemCount: visibleFriends.length,
                         itemBuilder: (context, index) {
-                          final friend = friendsState.friends[index];
+                          final friend = visibleFriends[index];
                           final friendInitials = friend.initials;
 
                           return Padding(

@@ -12,6 +12,7 @@ class FriendsState {
   final List<FriendProfile> sentRequests;
   final bool isLoading;
   final int revision;
+  final String? currentUserId;
 
   const FriendsState({
     this.friends = const [],
@@ -19,6 +20,7 @@ class FriendsState {
     this.sentRequests = const [],
     this.isLoading = false,
     this.revision = 0,
+    this.currentUserId,
   });
 
   FriendsState copyWith({
@@ -27,6 +29,7 @@ class FriendsState {
     List<FriendProfile>? sentRequests,
     bool? isLoading,
     int? revision,
+    String? currentUserId,
   }) {
     return FriendsState(
       friends: friends ?? this.friends,
@@ -34,6 +37,7 @@ class FriendsState {
       sentRequests: sentRequests ?? this.sentRequests,
       isLoading: isLoading ?? this.isLoading,
       revision: revision ?? this.revision,
+      currentUserId: currentUserId ?? this.currentUserId,
     );
   }
 
@@ -77,8 +81,20 @@ class FriendsController extends _$FriendsController {
       _shouldReloadAfterCurrentLoad = false;
       _isLoadingNow = true;
       try {
-        if (!nextLoadIsSilent) {
-          state = state.copyWith(isLoading: true);
+        final authService = ref.read(authServiceProvider);
+        final userId = await authService.getCurrentUserSub();
+        if (userId == null || userId.isEmpty) {
+          state = FriendsState(revision: state.revision + 1);
+          return;
+        }
+        final userChanged =
+            state.currentUserId != null && state.currentUserId != userId;
+        if (userChanged || !nextLoadIsSilent) {
+          state = FriendsState(
+            isLoading: true,
+            revision: state.revision,
+            currentUserId: userId,
+          );
         }
         final results = await Future.wait<List<FriendProfile>>([
           _service.fetchFriends(),
@@ -92,6 +108,7 @@ class FriendsController extends _$FriendsController {
           sentRequests: results[2],
           isLoading: false,
           revision: state.revision + 1,
+          currentUserId: userId,
         );
       } finally {
         _isLoadingNow = false;
