@@ -7,7 +7,7 @@ part of 'candidate_provider.dart';
 // **************************************************************************
 
 String _$candidateControllerHash() =>
-    r'a83f1452de1f3dbdc6f6fe94e6011ac95bf8fec3';
+    r'267e1eb017f2cce33fc362c1dc4ffa98177a49eb';
 
 /// See also [CandidateController].
 @ProviderFor(CandidateController)

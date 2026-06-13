@@ -114,10 +114,6 @@ class CandidateController extends _$CandidateController {
         },
       );
 
-      debugPrint(uri.toString());
-      debugPrint('TOKEN = $token');
-
-
       final response = await http.get(
         uri,
         headers: {
@@ -125,9 +121,6 @@ class CandidateController extends _$CandidateController {
           'Authorization': 'Bearer $token',
         },
       );
-
-      debugPrint('STATUS = ${response.statusCode}');
-      debugPrint('BODY = ${response.body}');
 
       if (response.statusCode != 200) {
         debugPrint(response.body);

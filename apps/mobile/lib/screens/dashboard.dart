@@ -365,11 +365,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           return GestureDetector(
             onTap: () {
-              showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => PlaceDetailsFriends(placeId: place.id),
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => PlaceDetailsFriends(placeId: place.id),
+                ),
               );
             },
             child: Container(

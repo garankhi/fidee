@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/auth_providers.dart';
 import '../features/auth/place_provider.dart';
 import 'camera_screen.dart';
 
@@ -18,10 +20,27 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   static const String _serverBaseUrl = 'https://api.fidee.site';
 
-  String _getFullImageUrl(String? path) {
-    if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    return '$_serverBaseUrl/$path';
+  String _getFullImageUrl(dynamic mediaId) {
+    if (mediaId == null || mediaId.toString().isEmpty) {
+      return 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500';
+    }
+
+    final value = mediaId.toString();
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
+    return '$_serverBaseUrl/media/$value';
+  }
+
+  String _formatDisplayTime(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return 'Chưa rõ';
+    final parts = timeStr.split(':');
+    if (parts.length >= 2) {
+      return '${parts[0]}:${parts[1]}';
+    }
+    return timeStr;
   }
 
   @override
@@ -70,7 +89,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     padding: const EdgeInsets.only(top: 18),
                     child: Text(
                       (place.name ?? 'CHI TIẾT ĐỊA ĐIỂM').toUpperCase(),
-                      style: TextStyle(color: Color(0xFFC52128), fontSize: 22, fontFamily: 'Anton', fontWeight: FontWeight.w400),
+                      style: const TextStyle(
+                        color: Color(0xFFC52128),
+                        fontSize: 22,
+                        fontFamily: 'Anton',
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                   centerTitle: true,
@@ -176,133 +200,133 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       height: 220,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        image: bannerUrl.isNotEmpty
-            ? DecorationImage(
-          image: NetworkImage(bannerUrl),
-          fit: BoxFit.cover,
-        )
-            : null,
-        color: bannerUrl.isEmpty ? const Color(0xFF303E42) : null,
+        color: const Color(0xFF303E42),
       ),
-      child: Stack(
-        children: [
-          if (bannerUrl.isEmpty)
-            const Center(
-              child: Icon(Icons.image, size: 50, color: Colors.white24),
-            ),
-          Positioned(
-            top: 15,
-            left: 15,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            if (bannerUrl.isNotEmpty)
+              Positioned.fill(
+                child: Image.network(
+                  bannerUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, error, __) {
+                    return const Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 40,
+                        color: Colors.white30,
+                      ),
+                    );
+                  },
+                ),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    place.avgRating.toStringAsFixed(1),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+
+            if (bannerUrl.isEmpty)
+              const Center(
+                child: Icon(Icons.image, size: 40, color: Colors.white30),
+              ),
+
+            Positioned(
+              top: 15,
+              left: 15,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      place.avgRating.toStringAsFixed(1),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          Positioned(
-            top: 15,
-            right: 15,
-            child: CircleAvatar(
-              backgroundColor: Colors.black.withValues(alpha: 0.5),
-              radius: 18,
-              child: const Icon(
-                Icons.favorite_border,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 12,
-            left: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          place.name ?? 'Chưa cập nhật tên',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+            Positioned(
+              bottom: 12,
+              left: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            place.name ?? 'Chưa cập nhật tên',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 4),
+                          Text(
+                            '📍 ${place.address ?? "Chưa cập nhật địa chỉ"}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF229D00),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Đang mở cửa',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '📍 ${place.address ?? "Chưa cập nhật địa chỉ"}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
+                          'Đóng ${_formatDisplayTime(place.closeTime)}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 10,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF229D00),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Đang mở cửa',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Đóng ${place.closeTime ?? "Chưa có thông tin"}',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -347,7 +371,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           ),
           _buildInfoRow(
             'Khung giờ hoạt động:',
-            ' ${place.openTime ?? "Chưa có thông tin"} - ${place.closeTime ?? "Chưa có thông tin"}',
+            ' ${_formatDisplayTime(place.openTime)} - ${_formatDisplayTime(place.closeTime)}',
           ),
           _buildInfoRow('Tầm giá:', ' $priceRange'),
         ],
@@ -486,14 +510,17 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         const SizedBox(height: 12),
         SizedBox(
           height: 165,
-          child: ListView.builder(
+          child: checkins.isEmpty
+              ? const Center(child: Text('Chưa có check-in nào', style: TextStyle(color: Colors.grey, fontSize: 13)))
+              : ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: checkins.length,
             itemBuilder: (context, index) {
               final item = checkins[index] as Map<String, dynamic>;
 
-              final String rawPath = item['mediaId']?.toString() ?? '';
-              final String checkinPhoto = _getFullImageUrl(rawPath);
+              final String checkinPhoto = _getFullImageUrl(
+                item['mediaId'] ?? item['url'],
+              );
 
               return Container(
                 width: 130,
@@ -510,11 +537,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['name']?.toString() ?? '',
+                      item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Expanded(
@@ -526,12 +554,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                           fit: BoxFit.cover,
                           width: double.infinity,
                           errorBuilder: (_, __, ___) => Container(
-                            color: Colors.grey,
+                            color: Colors.grey[300],
                             child: const Icon(Icons.broken_image, color: Colors.white),
                           ),
                         )
                             : Container(
-                          color: Colors.grey,
+                          color: Colors.grey[300],
                           child: const Icon(Icons.image, color: Colors.white),
                         ),
                       ),
@@ -540,7 +568,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Text(
-                        item['createdAt']?.toString() ?? '',
+                        item['createdAt']?.toString().split('T').first ?? '',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 10,
@@ -568,12 +596,13 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
+            alignment: Alignment.centerLeft,
             child: const Text(
               'Chưa có đánh giá từ bạn bè',
               style: TextStyle(
-                color: Colors.black,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -701,15 +730,15 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               child: SizedBox(
                 height: 100,
                 child: photos.isEmpty
-                    ? const Center(child: Text('Chưa có ảnh'))
+                    ? const Center(child: Text('Chưa có ảnh', style: TextStyle(color: Colors.grey)))
                     : ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: photos.length,
                   itemBuilder: (context, index) {
                     final photoItem = photos[index] as Map<String, dynamic>;
-                    final String rawPath = photoItem['mediaId']?.toString() ?? photoItem['url']?.toString() ?? '';
-                    final String galleryPhotoUrl = _getFullImageUrl(rawPath);
-
+                    final String galleryPhotoUrl = _getFullImageUrl(
+                      photoItem['mediaId'] ?? photoItem['url'],
+                    );
                     return Container(
                       width: 100,
                       margin: const EdgeInsets.only(right: 10),

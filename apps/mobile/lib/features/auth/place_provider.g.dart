@@ -6,7 +6,7 @@ part of 'place_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$placeControllerHash() => r'99c08f29d2c2998560396a43992e963a70af246b';
+String _$placeControllerHash() => r'6410433d60ca8a4cfe02804e8d6dff5891d207ac';
 
 /// See also [PlaceController].
 @ProviderFor(PlaceController)
@@ -23,7 +23,7 @@ final placeControllerProvider =
 
 typedef _$PlaceController = AutoDisposeNotifier<Place>;
 String _$placeFeedControllerHash() =>
-    r'675e89a6bfc286619dfc6d859529852202f42e9e';
+    r'509064243db059b64f42b74b42ced1922f74df01';
 
 /// See also [PlaceFeedController].
 @ProviderFor(PlaceFeedController)
