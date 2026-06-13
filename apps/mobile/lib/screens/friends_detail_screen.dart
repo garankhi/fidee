@@ -140,10 +140,14 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
 
     // Filter friends list dynamically based on search query
     final filteredFriends = friendsState.friends.where((friend) {
+      if (friend.id == friendsState.currentUserId) return false;
       if (_searchQuery.isEmpty) return true;
       return friend.name.toLowerCase().contains(_searchQuery) ||
           friend.handle.toLowerCase().contains(_searchQuery);
     }).toList();
+    final visibleFriendCount = friendsState.friends
+        .where((friend) => friend.id != friendsState.currentUserId)
+        .length;
 
     return Theme(
       data: ThemeData(
@@ -458,7 +462,7 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                           ),
                         ),
                         Text(
-                          '${friendsState.friends.length} người bạn',
+                          '$visibleFriendCount người bạn',
                           style: const TextStyle(
                             color: Color(0xFF8D8D8D),
                             fontSize: 13,

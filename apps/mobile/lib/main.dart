@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/auth_providers.dart';
 import 'features/auth/chat_provider.dart';
 import 'features/auth/friend_realtime_provider.dart';
+import 'features/auth/friends_provider.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/screens/complete_profile_page.dart';
 import 'screens/home_screen.dart';
@@ -37,6 +38,7 @@ class FideeApp extends ConsumerStatefulWidget {
 
 class _FideeAppState extends ConsumerState<FideeApp> {
   bool _nativeSplashRemoved = false;
+  String? _lastUserScopedProviderSub;
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +109,7 @@ class _FideeAppState extends ConsumerState<FideeApp> {
     if (state.authState == AuthState.authenticated) {
       unawaited(ref.read(friendRealtimeControllerProvider).connect());
       unawaited(ref.read(chatRealtimeControllerProvider).connect());
+      unawaited(_refreshUserScopedProviders());
 
       // Location đã resolve (hoặc lỗi được bỏ qua với fallback mặc định)
       final locationService = locationState.valueOrNull ?? LocationService();
@@ -118,6 +121,7 @@ class _FideeAppState extends ConsumerState<FideeApp> {
 
       return HomeScreen(locationService: locationService);
     } else if (state.authState == AuthState.incompleteProfile) {
+      _lastUserScopedProviderSub = null;
       unawaited(ref.read(friendRealtimeControllerProvider).disconnect());
       unawaited(ref.read(chatRealtimeControllerProvider).disconnect());
 
@@ -129,9 +133,21 @@ class _FideeAppState extends ConsumerState<FideeApp> {
         initialUsername: state.preferredUsername,
       );
     } else {
+      _lastUserScopedProviderSub = null;
       unawaited(ref.read(friendRealtimeControllerProvider).disconnect());
       unawaited(ref.read(chatRealtimeControllerProvider).disconnect());
       return const LoginPage();
     }
+  }
+
+  Future<void> _refreshUserScopedProviders() async {
+    final authService = ref.read(authServiceProvider);
+    final userId = await authService.getCurrentUserSub();
+    if (!mounted || userId == null || userId.isEmpty) return;
+    if (_lastUserScopedProviderSub == userId) return;
+
+    _lastUserScopedProviderSub = userId;
+    unawaited(ref.read(friendsControllerProvider.notifier).load());
+    unawaited(ref.read(chatInboxControllerProvider.notifier).load());
   }
 }
