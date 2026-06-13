@@ -1,10 +1,8 @@
-import 'dart:convert';
-import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../features/auth/auth_providers.dart';
 import '../features/auth/place_provider.dart';
+import '../features/auth/review_provider.dart';
 import 'camera_screen.dart';
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
@@ -41,6 +39,36 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       return '${parts[0]}:${parts[1]}';
     }
     return timeStr;
+  }
+
+  void _showSuccessDialog(int rating, String content) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'Thành công!',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Đóng',
+                style: TextStyle(color: Color(0xFFEF484F), fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -842,101 +870,342 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   }
 
   void _showRatingBottomSheet() {
-    int rating = 0;
-    final TextEditingController commentController = TextEditingController();
-
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        return NewRatingBottomSheet(
+          placeId: widget.placeId,
+          onSuccess: (rating, content) {
+            ref
+                .read(placeControllerProvider.notifier)
+                .fetchPlaceDetail(widget.placeId);
+
+            if (context.mounted) {
+              _showSuccessDialog(rating, content);
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+class NewRatingBottomSheet extends ConsumerStatefulWidget {
+  final String placeId;
+  final Function(int rating, String content) onSuccess;
+
+  const NewRatingBottomSheet({
+    super.key,
+    required this.placeId,
+    required this.onSuccess,
+  });
+
+  @override
+  ConsumerState<NewRatingBottomSheet> createState() => _NewRatingBottomSheetState();
+}
+
+class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
+  int _rating = 0;
+  bool _isPrivate = false;
+  final TextEditingController _commentController = TextEditingController();
+
+  final List<String> _tags = ['Vibe chill', 'Phục vụ nhanh', 'Hợp khẩu vị'];
+  final Set<String> _selectedTags = {};
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reviewState = ref.watch(reviewControllerProvider);
+    final bool isLoading = reviewState.isLoading;
+
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(top: 24, left: 20, right: 20, bottom: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // --- HEADER BAR ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 22),
+                ),
+                const Text(
+                  'GỬI ĐÁNH GIÁ',
+                  style: TextStyle(
+                    color: Color(0xFFB92830),
+                    fontSize: 28,
+                    fontFamily: 'Anton',
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0.36,
+                  ),
+                ),
+                const SizedBox(width: 48),
+              ],
+            ),
+            const SizedBox(height: 22),
+
+            // --- UPLOAD ẢNH CHECK-IN (Giữ UI, chưa đính kèm payload API) ---
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text.rich(
+                TextSpan(
                   children: [
-                    const Text(
-                      'Đánh giá quán',
+                    const TextSpan(
+                      text: 'Thả ảnh check-in của bạn ',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E1E1E),
+                        fontSize: 16,
+                        fontFamily: 'SF Pro',
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        5,
-                            (index) => GestureDetector(
-                          onTap: () => setState(() => rating = index + 1),
-                          child: Icon(
-                            index < rating ? Icons.star : Icons.star_border,
-                            color: Colors.amber,
-                            size: 40,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: commentController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Chia sẻ trải nghiệm của bạn...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (rating > 0) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Cảm ơn đánh giá của bạn!'),
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFEF484F),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Gửi đánh giá',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    const TextSpan(
+                      text: '*',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6E6E6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.add_a_photo_outlined,
+                  color: Color(0xFFA6A6A6),
+                  size: 32,
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            // --- CHỌN SỐ SAO (RATING) ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  onPressed: isLoading ? null : () {
+                    setState(() {
+                      _rating = index + 1;
+                    });
+                  },
+                  icon: Icon(
+                    index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: index < _rating ? Colors.amber : const Color(0xFFD9D9D9),
+                    size: 40,
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 22),
+
+            // --- DANH SÁCH TAGS ---
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: _tags.map((tag) {
+                final isSelected = _selectedTags.contains(tag);
+                return InkWell(
+                  onTap: isLoading ? null : () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedTags.remove(tag);
+                      } else {
+                        _selectedTags.add(tag);
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFFEF484F) : const Color(0x19FF9296),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isSelected ? '✓ ' : '+ ',
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          tag,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                            fontSize: 14,
+                            fontFamily: 'SF Pro',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 22),
+
+            // --- Ô NHẬP CẢM NHẬN ---
+            TextField(
+              controller: _commentController,
+              maxLines: 3,
+              maxLength: 500,
+              enabled: !isLoading,
+
+              style: const TextStyle(
+                color: Color(0xFF1E1E1E),
+                fontSize: 16,
+                fontFamily: 'SF Pro',
+              ),
+
+              decoration: InputDecoration(
+                hintText: 'Chia sẻ cảm nhận của bạn...',
+                hintStyle: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 15),
+                fillColor: const Color(0x7FEFEFEF),
+                filled: true,
+                contentPadding: const EdgeInsets.all(16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: Color(0xFFEF484F)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // --- ẨN DANH / RIÊNG TƯ SWITCH ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Hiển thị đánh giá ẩn danh',
+                  style: TextStyle(
+                    color: Color(0xFF1E1E1E),
+                    fontSize: 16,
+                    fontFamily: 'SF Pro',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _isPrivate,
+                  activeColor: const Color(0xFFEF484F),
+                  onChanged: isLoading ? null : (value) {
+                    setState(() {
+                      _isPrivate = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+
+            // --- NÚT XÁC NHẬN ---
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: (_rating == 0 || isLoading)
+                    ? null
+                    : () async {
+                  String finalContent = _commentController.text.trim();
+                  if (_selectedTags.isNotEmpty) {
+                    final String tagsString = _selectedTags.map((e) => '#$e').join(' ');
+                    finalContent = finalContent.isEmpty
+                        ? tagsString
+                        : '$finalContent\n$tagsString';
+                  }
+
+                  final String visibilityParam = _isPrivate ? 'PRIVATE' : 'FRIENDS';
+
+                  final Map<String, dynamic> apiPayload = {
+                    'placeId': widget.placeId,
+                    'candidateId': null,
+                    'rating': _rating,
+                    'content': finalContent.isEmpty ? null : finalContent,
+                    'visibility': visibilityParam,
+                  };
+
+                  final isSuccess = await ref
+                      .read(reviewControllerProvider.notifier)
+                      .submitReview(apiPayload);
+
+                  if (isSuccess && context.mounted) {
+                    Navigator.pop(context);
+                    widget.onSuccess(_rating, finalContent);
+
+                    ref.read(reviewControllerProvider.notifier).resetState();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF484F),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 0,
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+                    : const Text(
+                  'Xác nhận',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
