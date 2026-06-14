@@ -32,6 +32,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   goong.MapLibreMapController? _mapController;
   bool _mapStyleLoaded = false;
   bool _showLocationBanner = false;
+  static const double _feedRefreshDistanceMeters = 50;
+  static const Duration _feedRefreshMinInterval = Duration(seconds: 8);
+  static const Distance _distance = Distance();
+
+  StreamSubscription<LatLng>? _positionSubscription;
+  LatLng? _lastFeedPosition;
+  DateTime? _lastFeedFetchAt;
+  bool _feedFetchInFlight = false;
   List<MapFeedItem> _feedItems = [];
   final Map<String, MapFeedItem> _feedItemsBySymbolId = <String, MapFeedItem>{};
 
@@ -43,6 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _locationService = widget.locationService;
     _showLocationBanner = _locationService.status != LocationStatus.granted;
+    _subscribeToPositionUpdates();
     if (_locationService.hasRealLocation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_fetchFeed());
@@ -50,9 +59,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  void _subscribeToPositionUpdates() {
+    _positionSubscription = _locationService.positionUpdates.listen(
+      _handleRealtimeLocationUpdate,
+    );
+
+    if (_locationService.status == LocationStatus.granted) {
+      unawaited(_locationService.startPositionUpdates());
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_positionSubscription?.cancel());
+    unawaited(_locationService.stopPositionUpdates());
     super.dispose();
   }
 
@@ -60,6 +81,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_refreshLocationStatus());
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_locationService.stopPositionUpdates());
     }
   }
 
@@ -72,7 +97,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (_locationService.hasRealLocation) {
       unawaited(_animateToLocation(_locationService.currentPosition));
       unawaited(_fetchFeed());
+      unawaited(_locationService.startPositionUpdates());
     }
+  }
+
+  void _handleRealtimeLocationUpdate(LatLng position) {
+    if (!mounted) return;
+
+    if (_showLocationBanner || _isLimitedMode) {
+      setState(() {
+        _showLocationBanner = _locationService.status != LocationStatus.granted;
+      });
+    }
+
+    unawaited(_animateToLocation(position));
+
+    if (_shouldFetchFeedForPosition(position)) {
+      unawaited(_fetchFeed(center: position));
+    }
+  }
+
+  bool _shouldFetchFeedForPosition(LatLng position) {
+    if (_feedFetchInFlight) return false;
+
+    final now = DateTime.now();
+    final lastFeedFetchAt = _lastFeedFetchAt;
+    if (lastFeedFetchAt != null &&
+        now.difference(lastFeedFetchAt) < _feedRefreshMinInterval) {
+      return false;
+    }
+
+    final lastFeedPosition = _lastFeedPosition;
+    if (lastFeedPosition == null) return true;
+
+    return _distance(lastFeedPosition, position) >= _feedRefreshDistanceMeters;
   }
 
   Future<void> _handleEnableLocation() async {
@@ -105,12 +163,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Future<void> _fetchFeed() async {
+  Future<void> _fetchFeed({LatLng? center}) async {
     if (_isLimitedMode || !_locationService.hasRealLocation) return;
+    if (_feedFetchInFlight) return;
+
+    final position = center ?? _locationService.currentPosition;
+    _feedFetchInFlight = true;
+    _lastFeedFetchAt = DateTime.now();
+
     try {
       final authService = ref.read(authServiceProvider);
       final mapFeedService = MapFeedService(authService);
-      final position = _locationService.currentPosition;
       final items = await mapFeedService.getMapFeed(
         position.latitude,
         position.longitude,
@@ -118,11 +181,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (mounted) {
         setState(() {
           _feedItems = items;
+          _lastFeedPosition = position;
         });
         unawaited(_syncFeedSymbols());
       }
     } catch (e) {
       debugPrint('Error fetching feed: $e');
+    } finally {
+      _feedFetchInFlight = false;
     }
   }
 

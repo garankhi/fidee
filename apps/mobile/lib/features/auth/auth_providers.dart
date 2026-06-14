@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../services/auth_service.dart';
@@ -100,6 +102,9 @@ AuthService authService(AuthServiceRef ref) {
 @Riverpod(keepAlive: true)
 Future<LocationService> locationController(LocationControllerRef ref) async {
   final service = LocationService();
+  ref.onDispose(() {
+    unawaited(service.dispose());
+  });
   await service.initialize();
   return service;
 }
