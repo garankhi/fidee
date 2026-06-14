@@ -41,7 +41,6 @@ dependencies:
   amazon_cognito_identity_dart_2: ^4.0.0
   flutter_secure_storage: ^10.3.1
   shared_preferences: ^2.5.5
-  flutter_map: ^8.3.0
   latlong2: ^0.9.1
   geolocator: ^14.0.0
   permission_handler: ^12.0.0
@@ -59,6 +58,8 @@ dependencies:
   web_socket_channel: ^3.0.3
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
+  maplibre_gl: ^0.26.1
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -89,6 +90,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    - assets/env/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

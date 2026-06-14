@@ -24,22 +24,91 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
   String _searchQuery = '';
   String? _busyRequestId;
   String? _busySearchResultId;
+  Timer? _searchDebounce;
+  List<FriendSearchResult> _searchResults = const <FriendSearchResult>[];
+  bool _isSearching = false;
+  String? _searchErrorMessage;
+  String _lastSearchQuery = '';
+  int? _lastSearchRevision;
+  int _searchRequestId = 0;
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.addListener(() {
       final nextQuery = _searchCtrl.text.trim().toLowerCase();
+      if (nextQuery == _searchQuery) return;
       setState(() {
         _searchQuery = nextQuery;
+        _searchErrorMessage = null;
+        if (nextQuery.isEmpty) {
+          _searchRequestId += 1;
+          _searchResults = const <FriendSearchResult>[];
+          _isSearching = false;
+          _lastSearchQuery = '';
+          _lastSearchRevision = null;
+        }
       });
+      _scheduleRemoteSearch();
     });
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _scheduleRemoteSearch() {
+    _searchDebounce?.cancel();
+    if (_searchQuery.isEmpty) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      unawaited(_runRemoteSearch());
+    });
+  }
+
+  Future<void> _runRemoteSearch({bool force = false}) async {
+    final query = _searchQuery;
+    if (query.isEmpty) return;
+
+    final friendsRevision = ref.read(friendsControllerProvider).revision;
+    if (!force &&
+        query == _lastSearchQuery &&
+        friendsRevision == _lastSearchRevision) {
+      return;
+    }
+
+    final requestId = ++_searchRequestId;
+    if (!mounted) return;
+    setState(() {
+      _isSearching = true;
+      _searchErrorMessage = null;
+    });
+
+    try {
+      final results = await ref
+          .read(friendsControllerProvider.notifier)
+          .searchUsers(query);
+      if (!mounted || requestId != _searchRequestId || query != _searchQuery) {
+        return;
+      }
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+        _lastSearchQuery = query;
+        _lastSearchRevision = friendsRevision;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _searchRequestId || query != _searchQuery) {
+        return;
+      }
+      setState(() {
+        _searchResults = const <FriendSearchResult>[];
+        _isSearching = false;
+        _searchErrorMessage = 'Không tải được kết quả. Vui lòng thử lại.';
+      });
+    }
   }
 
   void _copyToClipboard(String text, BuildContext context) {
@@ -133,6 +202,17 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
     final authService = ref.watch(authServiceProvider);
     final friendsState = ref.watch(friendsControllerProvider);
     final friendsNotifier = ref.read(friendsControllerProvider.notifier);
+
+    if (_searchQuery.isNotEmpty &&
+        !_isSearching &&
+        _lastSearchRevision != null &&
+        _lastSearchRevision != friendsState.revision) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _searchQuery.isNotEmpty) {
+          unawaited(_runRemoteSearch(force: true));
+        }
+      });
+    }
 
     final preferredUsername = authService.preferredUsername ?? 'user';
     final shareText =
@@ -473,25 +553,45 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    friendsState.isInitialLoading
+                    _searchQuery.isNotEmpty
+                        ? _RemoteFriendSearchSection(
+                            isSearching: _isSearching,
+                            results: _searchResults,
+                            errorMessage: _searchErrorMessage,
+                            busySearchResultId: _busySearchResultId,
+                            onAdd: (result) {
+                              unawaited(
+                                _runSearchResultAction(
+                                  result,
+                                  friendsNotifier.addFriend,
+                                  'Đã gửi lời mời kết bạn',
+                                ),
+                              );
+                            },
+                            onCancel: (result) {
+                              unawaited(
+                                _runSearchResultAction(
+                                  result,
+                                  friendsNotifier.cancelFriendRequest,
+                                  'Đã hủy lời mời kết bạn',
+                                ),
+                              );
+                            },
+                            onAccept: (result) {
+                              unawaited(
+                                _runSearchResultAction(
+                                  result,
+                                  friendsNotifier.accept,
+                                  'Đã chấp nhận lời mời',
+                                ),
+                              );
+                            },
+                          )
+                        : friendsState.isInitialLoading
                         ? const _FriendsDetailListSkeleton()
                         : filteredFriends.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 32.0,
-                              ),
-                              child: Text(
-                                _searchQuery.isEmpty
-                                    ? 'Chưa có bạn bè trong danh sách.'
-                                    : 'Không tìm thấy kết quả phù hợp.',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 13,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
+                        ? const _FriendsDetailEmptyMessage(
+                            message: 'Chưa có bạn bè trong danh sách.',
                           )
                         : ListView.builder(
                             shrinkWrap: true,
@@ -674,6 +774,78 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoteFriendSearchSection extends StatelessWidget {
+  final bool isSearching;
+  final List<FriendSearchResult> results;
+  final String? errorMessage;
+  final String? busySearchResultId;
+  final ValueChanged<FriendSearchResult> onAdd;
+  final ValueChanged<FriendSearchResult> onCancel;
+  final ValueChanged<FriendSearchResult> onAccept;
+
+  const _RemoteFriendSearchSection({
+    required this.isSearching,
+    required this.results,
+    required this.errorMessage,
+    required this.busySearchResultId,
+    required this.onAdd,
+    required this.onCancel,
+    required this.onAccept,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isSearching && results.isEmpty) {
+      return const _FriendsDetailListSkeleton();
+    }
+    if (errorMessage != null) {
+      return _FriendsDetailEmptyMessage(message: errorMessage!);
+    }
+    if (results.isEmpty) {
+      return const _FriendsDetailEmptyMessage(
+        message: 'Không tìm thấy kết quả phù hợp.',
+      );
+    }
+
+    return Column(
+      children: [
+        for (final result in results)
+          FriendSearchResultActionRow(
+            result: result,
+            tone: FriendRequestTone.light,
+            isBusy: busySearchResultId == result.profile.id,
+            onAdd: result.canRequest ? () => onAdd(result) : null,
+            onCancel: result.canCancelRequest ? () => onCancel(result) : null,
+            onAccept: result.canAcceptRequest ? () => onAccept(result) : null,
+          ),
+      ],
+    );
+  }
+}
+
+class _FriendsDetailEmptyMessage extends StatelessWidget {
+  final String message;
+
+  const _FriendsDetailEmptyMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32.0),
+        child: Text(
+          message,
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 13,
+            fontStyle: FontStyle.italic,
+          ),
         ),
       ),
     );
