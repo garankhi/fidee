@@ -35,7 +35,7 @@ class _CameraFeedMessageComposerState extends State<CameraFeedMessageComposer> {
     return GlassSurface(
       key: const ValueKey('camera-feed-message-composer'),
       borderRadius: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 4),
       tint: const Color(0x2EFFFFFF),
       child: Row(
         children: [
@@ -80,7 +80,7 @@ class _CameraFeedMessageComposerState extends State<CameraFeedMessageComposer> {
             icon: const Icon(
               Icons.add_reaction_outlined,
               color: Colors.white,
-              size: 30,
+              size: 26,
             ),
             tooltip: 'Thêm cảm xúc',
           ),
@@ -100,7 +100,7 @@ class _ReactionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-      icon: Text(label, style: const TextStyle(fontSize: 26)),
+      icon: Text(label, style: const TextStyle(fontSize: 22)),
       tooltip: label,
     );
   }

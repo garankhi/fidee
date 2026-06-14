@@ -42,9 +42,17 @@ class CameraViewfinderPager extends StatefulWidget {
 class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
   final PageController _pageController = PageController();
   final Set<String> _prefetchedCacheKeys = <String>{};
+  bool _lastReportedFeedMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(_handlePageScroll);
+  }
 
   @override
   void dispose() {
+    _pageController.removeListener(_handlePageScroll);
     _pageController.dispose();
     super.dispose();
   }
@@ -61,16 +69,28 @@ class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
   CameraCheckinFeedItem? _currentFeedItem() {
     if (!_pageController.hasClients) return null;
 
-    final page = (_pageController.page ??
-            _pageController.initialPage.toDouble())
-        .round();
+    final page =
+        (_pageController.page ?? _pageController.initialPage.toDouble())
+            .round();
     final feedIndex = page - 1;
     if (feedIndex < 0 || feedIndex >= widget.feedItems.length) return null;
     return widget.feedItems[feedIndex];
   }
 
+  void _handlePageScroll() {
+    if (!_pageController.hasClients) return;
+    final page = _pageController.page ?? _pageController.initialPage.toDouble();
+    _emitFeedMode(page > 0.08);
+  }
+
+  void _emitFeedMode(bool value) {
+    if (_lastReportedFeedMode == value) return;
+    _lastReportedFeedMode = value;
+    widget.onFeedModeChanged?.call(value);
+  }
+
   void _onPageChanged(int index) {
-    widget.onFeedModeChanged?.call(index > 0);
+    _emitFeedMode(index > 0);
 
     if (index == 0) {
       widget.onFeedItemChanged(null);
@@ -206,7 +226,11 @@ class _CameraSwipePage extends StatelessWidget {
   final Widget media;
   final Widget footer;
 
-  const _CameraSwipePage({super.key, required this.media, required this.footer});
+  const _CameraSwipePage({
+    super.key,
+    required this.media,
+    required this.footer,
+  });
 
   @override
   Widget build(BuildContext context) {

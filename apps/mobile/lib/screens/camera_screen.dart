@@ -16,10 +16,12 @@ import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
 import '../services/auth_service.dart';
 import '../services/camera_startup_permission_flow.dart';
+import '../services/friend_service.dart';
 import '../services/gallery_asset_picker_service.dart';
 import '../services/gallery_permission_service.dart';
 import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
+import 'camera_audience_selector.dart';
 import 'camera_bottom_section.dart';
 import 'camera_chat_inbox.dart';
 import 'camera_feed_message_composer.dart';
@@ -55,6 +57,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   GalleryPermissionStatus _galleryPermissionStatus =
       GalleryPermissionStatus.notDetermined;
   CameraCheckinFeedItem? _activeFeedItem;
+  bool _showFeedAudienceSelector = false;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -87,6 +90,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     setState(() {
       _activeFeedItem = item;
     });
+  }
+
+  void _handleFeedModeChanged(bool isViewingFeed) {
+    if (!mounted || _showFeedAudienceSelector == isViewingFeed) return;
+    setState(() {
+      _showFeedAudienceSelector = isViewingFeed;
+    });
+  }
+
+  Future<void> _selectFeedAudience(CameraFeedAudience audience) async {
+    setState(() {
+      _activeFeedItem = null;
+    });
+    await ref
+        .read(cameraCheckinFeedControllerProvider.notifier)
+        .selectAudience(audience);
   }
 
   void _recordFeedMessage(String message) {
@@ -366,6 +385,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final feedController = ref.read(
       cameraCheckinFeedControllerProvider.notifier,
     );
+    final authUiState = ref.watch(authControllerProvider).valueOrNull;
+    final currentUserInitials = _initialsForName(
+      authUiState?.firstName,
+      authUiState?.lastName,
+      fallback: authUiState?.preferredUsername ?? 'Bạn',
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -384,8 +409,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     _CameraTopBar(
                       friendsCount: friendsState.friendCount,
                       friendRequestCount: friendsState.requestCount,
+                      showAudienceSelector: _showFeedAudienceSelector,
+                      selectedAudience: feedState.audience,
+                      friends: friendsState.friends,
+                      currentUserAvatarUrl: authUiState?.avatarUrl,
+                      currentUserInitials: currentUserInitials,
                       onMapTap: () => Navigator.pop(context),
                       onFriendsTap: () => showCameraFriendsSheet(context),
+                      onAudienceSelected: (audience) =>
+                          unawaited(_selectFeedAudience(audience)),
                     ),
                     Expanded(
                       child: SizedBox(
@@ -410,6 +442,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                           hasMore: feedState.hasMore,
                           onLoadMore: feedController.loadMore,
                           onFeedItemChanged: _handleFeedItemChanged,
+                          onFeedModeChanged: _handleFeedModeChanged,
                           feedMessageComposerBuilder: (item) =>
                               CameraFeedMessageComposer(
                                 onSend: _recordFeedMessage,
@@ -464,17 +497,49 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 }
 
+String _initialsForName(
+  String? firstName,
+  String? lastName, {
+  required String fallback,
+}) {
+  final first = firstName?.trim();
+  final last = lastName?.trim();
+  if (first != null && first.isNotEmpty) {
+    final firstLetter = first.characters.first.toUpperCase();
+    final lastLetter = last == null || last.isEmpty
+        ? ''
+        : last.characters.first.toUpperCase();
+    return '$firstLetter$lastLetter';
+  }
+
+  final normalizedFallback = fallback.trim();
+  if (normalizedFallback.isEmpty) return 'B';
+  return normalizedFallback.characters.first.toUpperCase();
+}
+
 class _CameraTopBar extends StatelessWidget {
   final int friendsCount;
   final int friendRequestCount;
+  final bool showAudienceSelector;
+  final CameraFeedAudience selectedAudience;
+  final List<FriendProfile> friends;
+  final String? currentUserAvatarUrl;
+  final String currentUserInitials;
   final VoidCallback onMapTap;
   final VoidCallback onFriendsTap;
+  final ValueChanged<CameraFeedAudience> onAudienceSelected;
 
   const _CameraTopBar({
     required this.friendsCount,
     required this.friendRequestCount,
+    required this.showAudienceSelector,
+    required this.selectedAudience,
+    required this.friends,
+    required this.currentUserAvatarUrl,
+    required this.currentUserInitials,
     required this.onMapTap,
     required this.onFriendsTap,
+    required this.onAudienceSelected,
   });
 
   @override
@@ -495,11 +560,19 @@ class _CameraTopBar extends StatelessWidget {
               child: const Icon(LucideIcons.map, color: Colors.white, size: 24),
             ),
           ),
-          _FriendsCountPill(
-            count: friendsCount,
-            requestCount: friendRequestCount,
-            onTap: onFriendsTap,
-          ),
+          showAudienceSelector
+              ? CameraAudienceSelector(
+                  selectedAudience: selectedAudience,
+                  friends: friends,
+                  currentUserAvatarUrl: currentUserAvatarUrl,
+                  currentUserInitials: currentUserInitials,
+                  onSelected: onAudienceSelected,
+                )
+              : _FriendsCountPill(
+                  count: friendsCount,
+                  requestCount: friendRequestCount,
+                  onTap: onFriendsTap,
+                ),
           Container(
             width: 36,
             height: 36,
