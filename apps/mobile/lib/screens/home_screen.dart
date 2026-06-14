@@ -9,6 +9,7 @@ import '../features/auth/auth_providers.dart';
 import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
+import 'camera_chat_inbox.dart';
 import 'camera_screen.dart';
 import 'dashboard.dart';
 import 'profile_screen.dart';
@@ -185,6 +186,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     Navigator.push(
       context,
       MaterialPageRoute<void>(builder: (_) => const DashboardScreen()),
+    );
+  }
+
+  void _onMessages() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const CameraChatInboxScreen()),
     );
   }
 
@@ -460,11 +468,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   const SizedBox(width: 24),
                   _BottomNavIcon(
                     assetPath: 'assets/icons/Chat.png',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Messages clicked')),
-                      );
-                    },
+                    onTap: _onMessages,
                     size: 60,
                     iconSize: 75,
                   ),

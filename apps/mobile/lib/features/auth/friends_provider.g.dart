@@ -23,7 +23,7 @@ final friendServiceProvider = Provider<FriendService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef FriendServiceRef = ProviderRef<FriendService>;
-String _$friendsControllerHash() => r'ded7cf62b6e91dd75a62e2a0e691f3927f71df6c';
+String _$friendsControllerHash() => r'1d08b4d1f6bd286ea4c720805f583b3f8dc98f57';
 
 /// See also [FriendsController].
 @ProviderFor(FriendsController)

@@ -6,7 +6,7 @@ part of 'chat_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$userChatServiceHash() => r'90fd4724a1c44b62b5f6a8f703e8bc7f4bcbde0d';
+String _$userChatServiceHash() => r'f9c79deab93ed8a77f748abc318782e07e8fdb9f';
 
 /// See also [userChatService].
 @ProviderFor(userChatService)
@@ -24,7 +24,7 @@ final userChatServiceProvider = Provider<UserChatService>.internal(
 // ignore: unused_element
 typedef UserChatServiceRef = ProviderRef<UserChatService>;
 String _$chatInboxControllerHash() =>
-    r'4afd53ec585ddfd17f289141f4248f1420e448fb';
+    r'fab791bca0e109d02a00b48ec6e832f42caa9fa8';
 
 /// See also [ChatInboxController].
 @ProviderFor(ChatInboxController)
@@ -40,6 +40,5 @@ final chatInboxControllerProvider =
     );
 
 typedef _$ChatInboxController = Notifier<ChatInboxState>;
-
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
