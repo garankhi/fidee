@@ -2,13 +2,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../features/auth/friends_provider.dart';
 import '../models/nearby_place.dart';
 import '../services/auth_service.dart';
 import '../services/friend_service.dart';
 
-class AddSpotScreen extends StatefulWidget {
+class AddSpotScreen extends ConsumerStatefulWidget {
   final List<NearbyPlace> spotSuggestions;
   final AuthService authService;
 
@@ -19,10 +21,10 @@ class AddSpotScreen extends StatefulWidget {
   });
 
   @override
-  State<AddSpotScreen> createState() => _AddSpotScreenState();
+  ConsumerState<AddSpotScreen> createState() => _AddSpotScreenState();
 }
 
-class _AddSpotScreenState extends State<AddSpotScreen> {
+class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
   static const Color _accent = Color(0xFFEF4050);
   static const Color _softAccent = Color(0xFFFFE9EC);
   static const Color _text = Color(0xFF151515);
@@ -34,7 +36,6 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
 
   final PageController _pageController = PageController();
   final ImagePicker _imagePicker = ImagePicker();
-  late final FriendService _friendService;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _openController = TextEditingController();
   final TextEditingController _closeController = TextEditingController();
@@ -58,7 +59,6 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
   XFile? _vibeImage;
   XFile? _dishImage;
   XFile? _checkInImage;
-  Future<List<FriendProfile>>? _friendsFuture;
 
   @override
   void dispose() {
@@ -128,14 +128,12 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
 
   void _showFriendSheet() {
     setState(() => _visibility = 'friends');
-    _friendsFuture ??= _friendService.fetchFriends();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return _FriendPickerSheet(
-          friendsFuture: _friendsFuture!,
           sentFriendIds: _sentFriendIds,
           onSendFriend: (String id) {
             setState(() => _sentFriendIds.add(id));
@@ -859,23 +857,29 @@ class _StepFour extends StatelessWidget {
   }
 }
 
-class _FriendPickerSheet extends StatefulWidget {
-  final Future<List<FriendProfile>> friendsFuture;
+class _FriendPickerSheet extends ConsumerStatefulWidget {
   final Set<String> sentFriendIds;
   final ValueChanged<String> onSendFriend;
 
   const _FriendPickerSheet({
-    required this.friendsFuture,
     required this.sentFriendIds,
     required this.onSendFriend,
   });
 
   @override
-  State<_FriendPickerSheet> createState() => _FriendPickerSheetState();
+  ConsumerState<_FriendPickerSheet> createState() => _FriendPickerSheetState();
 }
 
-class _FriendPickerSheetState extends State<_FriendPickerSheet> {
+class _FriendPickerSheetState extends ConsumerState<_FriendPickerSheet> {
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+      () => ref.read(friendsControllerProvider.notifier).load(silent: true),
+    );
+  }
 
   @override
   void dispose() {
@@ -927,44 +931,42 @@ class _FriendPickerSheetState extends State<_FriendPickerSheet> {
             ),
             const SizedBox(height: 14),
             Flexible(
-              child: FutureBuilder<List<FriendProfile>>(
-                future: widget.friendsFuture,
-                builder:
-                    (
-                      BuildContext context,
-                      AsyncSnapshot<List<FriendProfile>> snapshot,
-                    ) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const _FriendSheetSkeleton();
-                      }
-
-                      final List<FriendProfile> friends = _filteredFriends(
-                        snapshot.data ?? const <FriendProfile>[],
-                      );
-                      if (friends.isEmpty) {
-                        return const _FriendEmptyState();
-                      }
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: friends.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final FriendProfile friend = friends[index];
-                          return _FriendRow(
-                            friend: friend,
-                            sent: widget.sentFriendIds.contains(friend.id),
-                            onSend: () {
-                              widget.onSendFriend(friend.id);
-                              setState(() {});
-                            },
-                          );
-                        },
-                      );
-                    },
-              ),
+              child: _buildFriendList(ref.watch(friendsControllerProvider)),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFriendList(FriendsState friendsState) {
+    if (friendsState.isInitialLoading) {
+      return const _FriendSheetSkeleton();
+    }
+
+    final List<FriendProfile> friends = _filteredFriends(friendsState.friends);
+    if (friends.isEmpty) {
+      return const _FriendEmptyState();
+    }
+
+    return RefreshIndicator(
+      color: _AddSpotScreenState._accent,
+      onRefresh: () => ref.read(friendsControllerProvider.notifier).load(),
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: friends.length,
+        itemBuilder: (BuildContext context, int index) {
+          final FriendProfile friend = friends[index];
+          return _FriendRow(
+            friend: friend,
+            sent: widget.sentFriendIds.contains(friend.id),
+            onSend: () {
+              widget.onSendFriend(friend.id);
+              setState(() {});
+            },
+          );
+        },
       ),
     );
   }
@@ -1715,20 +1717,28 @@ class _FriendRow extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
-            decoration: const BoxDecoration(
-              color: Color(0xFF5FA66B),
+            decoration: BoxDecoration(
+              color: const Color(0xFF5FA66B),
               shape: BoxShape.circle,
+              image: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(friend.avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: Center(
-              child: Text(
-                friend.initials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+            child: friend.avatarUrl == null || friend.avatarUrl!.isEmpty
+                ? Center(
+                    child: Text(
+                      friend.initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 10),
           Expanded(
