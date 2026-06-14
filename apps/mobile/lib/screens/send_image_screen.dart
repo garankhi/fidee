@@ -741,33 +741,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                   ),
                 ),
                 const Spacer(flex: 1),
-                // "Thêm lời nhắn" button
-                GestureDetector(
-                  onTap: _showCaptionBottomSheet,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Text(
-                      'Thêm lời nhắn',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 // Pagination Dots
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

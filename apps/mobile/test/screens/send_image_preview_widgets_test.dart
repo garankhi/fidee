@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('place tag is a transparent glass surface', (tester) async {
+  testWidgets('place tag uses gray background with white content', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           backgroundColor: Colors.black,
-          body: SendImagePlaceTagPill(label: 'Chọn địa điểm', onTap: () {}),
+          body: SendImagePlaceTagPill(label: 'Marukame Udon', onTap: () {}),
         ),
       ),
     );
@@ -17,7 +19,7 @@ void main() {
       find.byKey(const ValueKey('send-image-place-tag-pill')),
       findsOneWidget,
     );
-    expect(find.text('Chọn địa điểm'), findsOneWidget);
+    expect(find.text('Marukame Udon'), findsOneWidget);
 
     final decorated = tester.widget<DecoratedBox>(
       find.descendant(
@@ -26,6 +28,12 @@ void main() {
       ),
     );
     final decoration = decorated.decoration as BoxDecoration;
-    expect(decoration.color, const Color(0x26FFFFFF));
+    expect(decoration.color, const Color(0xCC4A4A4A));
+
+    final icon = tester.widget<Icon>(find.byIcon(Icons.location_on_rounded));
+    expect(icon.color, Colors.white);
+
+    final text = tester.widget<Text>(find.text('Marukame Udon'));
+    expect(text.style?.color, Colors.white);
   });
 }

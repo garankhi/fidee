@@ -22,8 +22,9 @@ class SendImagePlaceTagPill extends StatelessWidget {
         key: const ValueKey('send-image-place-tag-pill'),
         borderRadius: 24,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        tint: const Color(0x26FFFFFF),
-        borderColor: const Color(0x66FFFFFF),
+        tint: const Color(0xCC4A4A4A),
+        highContrastTint: const Color(0xF22E2E2E),
+        borderColor: const Color(0x59FFFFFF),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
