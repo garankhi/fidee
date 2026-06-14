@@ -77,6 +77,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Fidee cần vị trí của bạn để hiển thị bản đồ và gợi ý địa điểm gần bạn.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Fidee cần truy cập camera để bạn chụp ảnh check-in.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
