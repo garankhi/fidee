@@ -1349,10 +1349,43 @@ export class FideeStack extends cdk.Stack {
     userProfilesTable.grantReadWriteData(createPlaceCandidateFn);
     mediaBucket.grantRead(createPlaceCandidateFn, 'uploads/*');
 
+    // ─── GET /place-candidates (protected) ──────────────────────
+    const getPlaceCandidatesFn = new nodejs.NodejsFunction(this, 'GetPlaceCandidatesFunction', {
+      functionName: resourceName(stage, 'get-place-candidates'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/get-place-candidates.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+    dbCluster.secret!.grantRead(getPlaceCandidatesFn);
+
     const placeCandidatesResource = api.root.addResource('place-candidates');
+    placeCandidatesResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
     placeCandidatesResource.addMethod(
       'POST',
       new apigateway.LambdaIntegration(createPlaceCandidateFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+    placeCandidatesResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getPlaceCandidatesFn),
       {
         authorizer: cognitoAuthorizer,
         authorizationType: apigateway.AuthorizationType.COGNITO,
