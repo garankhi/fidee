@@ -49,7 +49,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _onAddSpot() {
-    Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute<void>(

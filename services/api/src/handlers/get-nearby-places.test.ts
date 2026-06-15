@@ -11,12 +11,13 @@ vi.mock('../db/client', () => ({
 
 import { handler } from './get-nearby-places';
 
-function nearbyEvent(radius = '1000'): APIGatewayProxyEvent {
+function nearbyEvent(radius = '1000', q?: string): APIGatewayProxyEvent {
   return {
     queryStringParameters: {
       lat: '10.7738',
       lng: '106.7035',
       radius,
+      ...(q ? { q } : {}),
     },
     requestContext: {
       authorizer: {
@@ -36,13 +37,39 @@ describe('getNearbyPlaces handler', () => {
     const result = await handler(nearbyEvent('1000'));
 
     expect(result.statusCode).toBe(200);
-    expect(mockQuery).toHaveBeenNthCalledWith(1, expect.any(String), [106.7035, 10.7738, 1000]);
+    expect(mockQuery).toHaveBeenNthCalledWith(1, expect.any(String), [
+      106.7035,
+      10.7738,
+      1000,
+      null,
+    ]);
     expect(mockQuery).toHaveBeenNthCalledWith(2, expect.any(String), [
       106.7035,
       10.7738,
       1000,
       'user-123',
+      null,
     ]);
     expect(JSON.parse(result.body).metadata.radius_meters).toBe(1000);
+  });
+
+  it('filters nearby places by name when q is provided', async () => {
+    const result = await handler(nearbyEvent('1000', 'coffee'));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenNthCalledWith(1, expect.any(String), [
+      106.7035,
+      10.7738,
+      1000,
+      '%coffee%',
+    ]);
+    expect(mockQuery).toHaveBeenNthCalledWith(2, expect.any(String), [
+      106.7035,
+      10.7738,
+      1000,
+      'user-123',
+      '%coffee%',
+    ]);
+    expect(JSON.parse(result.body).metadata.query).toBe('coffee');
   });
 });

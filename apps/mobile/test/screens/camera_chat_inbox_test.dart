@@ -35,6 +35,25 @@ void main() {
       find.byKey(const ValueKey('camera-bottom-chat-button')),
       findsOneWidget,
     );
+    final meAvatar = tester.widget<Container>(
+      find.byKey(const ValueKey('camera-chat-me-avatar')),
+    );
+    expect(meAvatar.constraints?.maxWidth, 40);
+    expect(meAvatar.constraints?.maxHeight, 40);
+    final homeIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('camera-bottom-home-button')),
+        matching: find.byIcon(Icons.home_filled),
+      ),
+    );
+    final chatIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('camera-bottom-chat-button')),
+        matching: find.byIcon(Icons.chat_bubble_rounded),
+      ),
+    );
+    expect(homeIcon.color, Colors.grey);
+    expect(chatIcon.color, Colors.white);
     expect(find.text('Lịch sử'), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-chat-bottom-tab')), findsNothing);
   });

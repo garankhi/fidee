@@ -129,6 +129,11 @@ class _CameraChatInboxScaffold extends StatelessWidget {
                           itemCount: threadRows.length,
                         ),
                 ),
+                CameraBottomSection(
+                  activeTab: CameraBottomTab.chat,
+                  onHomeTap: () => Navigator.pop(context),
+                ),
+                const SizedBox(height: 10),
               ],
             ),
           ],
@@ -167,8 +172,9 @@ class _CameraChatHeader extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Container(
-              width: 56,
-              height: 56,
+              key: const ValueKey('camera-chat-me-avatar'),
+              width: 40,
+              height: 40,
               decoration: const BoxDecoration(
                 color: Colors.blueAccent,
                 shape: BoxShape.circle,
@@ -178,6 +184,7 @@ class _CameraChatHeader extends StatelessWidget {
                   'Me',
                   style: TextStyle(
                     color: Colors.white,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

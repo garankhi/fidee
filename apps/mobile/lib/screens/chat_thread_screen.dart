@@ -7,6 +7,7 @@ import '../features/auth/auth_providers.dart';
 import '../features/auth/chat_provider.dart';
 import '../services/appsync_realtime_service.dart';
 import '../services/user_chat_service.dart';
+import 'camera_bottom_section.dart';
 
 class ChatThreadScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -107,6 +108,17 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               onChanged: _onTypingChanged,
               onSend: () => unawaited(_send()),
             ),
+            if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+              CameraBottomSection(
+                activeTab: CameraBottomTab.chat,
+                onHomeTap: () => Navigator.popUntil(
+                  context,
+                  (route) => route.isFirst,
+                ),
+                onChatTap: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 10),
+            ],
           ],
         ),
       ),
