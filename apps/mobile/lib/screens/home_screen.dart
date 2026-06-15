@@ -11,9 +11,11 @@ import '../features/auth/auth_providers.dart';
 import '../models/map_feed_item.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
+import 'ai_chat_screen.dart';
 import 'camera_chat_inbox.dart';
 import 'camera_screen.dart';
 import 'dashboard.dart';
+import 'home_ai_search_bar.dart';
 import 'profile_screen.dart';
 
 /// Home screen with Goong Map, current location, and check-in CTA.
@@ -190,6 +192,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     } finally {
       _feedFetchInFlight = false;
     }
+  }
+
+  void _openAiChat(String query) {
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AiChatScreen(initialMessage: trimmedQuery),
+      ),
+    );
   }
 
   String _feedMarkerLabel(MapFeedItem item) {
@@ -460,38 +476,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search, color: Color(0xFFFF3B30)),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Want something today?',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.mic, color: Colors.grey.shade600),
-                        ],
-                      ),
-                    ),
+                    child: HomeAiSearchBar(onSubmitted: _openAiChat),
                   ),
                 ],
               ),
