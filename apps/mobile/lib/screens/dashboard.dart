@@ -1,5 +1,6 @@
 import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import 'package:fidee_mobile/screens/candidate_feed_screen.dart';
+import 'package:fidee_mobile/screens/journey_screen.dart';
 import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:fidee_mobile/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import '../models/nearby_place.dart';
 import '../services/nearby_service.dart';
 import '../widgets/bottom_nav.dart';
 import 'add_spot_screen.dart';
-import 'camera_chat_inbox.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -75,19 +75,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBody: true,
+      extendBody: false,
 
       body: IndexedStack(
         index: _currentNavIndex,
         children: [
           _buildDashboardBody(context, dashboardState, userAvatarUrl),
           const CandidateFeedScreen(),
-          const CameraChatInboxScreen(),
+          const JourneyScreen(),
           const ProfileScreen(),
         ],
       ),
 
-      bottomNavigationBar: CustomBottomNav(
+      bottomNavigationBar: BottomNav(
         currentIndex: _currentNavIndex,
         userAvatarUrl: userAvatarUrl,
         onTap: (index) {
