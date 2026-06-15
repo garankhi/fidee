@@ -22,6 +22,11 @@ Thumbs.db
 env
 .env.local
 .env.*.local
+!apps/mobile/assets/env/
+!apps/mobile/assets/env/.gitkeep
+!apps/mobile/assets/env/mobile.env.example
+# Mobile runtime env asset; bundled into local app builds, never commit real keys.
+apps/mobile/assets/env/mobile.env
 
 # Logs
 *.log
