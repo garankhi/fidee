@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fidee_mobile/screens/profile_screen.dart';
 
-class CustomBottomNav extends StatelessWidget {
+class BottomNav extends StatelessWidget {
   final int currentIndex;
   final String? userAvatarUrl;
   final ValueChanged<int> onTap;
 
-  const CustomBottomNav({
+  const BottomNav({
     super.key,
     required this.currentIndex,
     required this.userAvatarUrl,
@@ -15,105 +14,101 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10, left: 15, right: 15),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 350,
-              height: 60,
-              padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8), // Thêm chút padding ngang cho thoáng
-              decoration: ShapeDecoration(
-                color: const Color(0xA8E78B8B),
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(
-                    width: 0.80,
-                    strokeAlign: BorderSide.strokeAlignOutside,
-                    color: Color(0xFFEF484F),
-                  ),
-                  borderRadius: BorderRadius.circular(50),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // 1. Icon Layers (Index 0)
-                  _buildNavItem(Icons.layers, currentIndex == 0, () => onTap(0)),
-
-                  // 2. Icon Compass - Nút chính nổi bật ở giữa (Index 1)
-                  _buildNavItem(Icons.explore, currentIndex == 1, () => onTap(1), isCenterActive: true),
-
-                  // 3. Icon Inbox / Notifications (Index 2)
-                  _buildNavItem(Icons.move_to_inbox, currentIndex == 2, () => onTap(2)),
-
-                  // 4. Avatar User (Index 3)
-                  GestureDetector(
-                    onTap: () => onTap(3), // CHỈ CẦN GỌI ONTAP(3), để màn hình cha tự chuyển tab sang ProfileScreen
-                    child: Container(
-                      width: 65,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Center(
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFFFD4DA),
-                            border: Border.all(
-                                color: currentIndex == 3 ? const Color(0xFFEF484F) : Colors.white,
-                                width: 1.5
-                            ),
-                            image: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
-                                ? DecorationImage(
-                              image: NetworkImage(userAvatarUrl!),
-                              fit: BoxFit.cover,
-                            )
-                                : null,
-                          ),
-                          child: userAvatarUrl == null || userAvatarUrl!.isEmpty
-                              ? const Center(
-                            child: Icon(Icons.person, size: 18, color: Color(0xFFEF484F)),
-                          )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      height: 70,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildNavItem(index: 0, label: 'Khám phá', icon: Icons.explore)),
+          Expanded(child: _buildNavItem(index: 1, label: 'Bảng tin', icon: Icons.layers)),
+          Expanded(child: _buildNavItem(index: 2, label: 'Nhật ký', icon: Icons.move_to_inbox)),
+          Expanded(child: _buildNavItem(index: 3, label: 'Cá nhân', isAvatar: true)),
+        ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, bool isActive, VoidCallback onTap, {bool isCenterActive = false}) {
-    // Nếu là nút giữa và đang active, dùng màu nền đỏ đậm bự hơn giống thiết kế chính thức
-    final bool showRedBackground = isActive && isCenterActive;
+  Widget _buildNavItem({
+    required int index,
+    required String label,
+    IconData? icon,
+    bool isAvatar = false,
+  }) {
+    final bool isActive = currentIndex == index;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => onTap(index),
       child: Container(
-        width: showRedBackground ? 85 : 65, // Nút giữa khi active sẽ to bè ra chiếm không gian như trong ảnh
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: ShapeDecoration(
-          color: showRedBackground ? const Color(0xFFEF484F) : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(33),
-          ),
-        ),
-        child: Icon(
-          icon,
-          color: showRedBackground
-              ? Colors.white
-              : (isActive ? const Color(0xFFEF484F) : const Color(0xFF46090C)),
-          size: showRedBackground ? 26 : 24,
+        height: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: isActive
+            ? const BoxDecoration(
+          color: Color(0xFFEF484F),
+        )
+            : null,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 30,
+              height: 30,
+              child: isAvatar
+                  ? Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isActive ? Colors.white : Colors.transparent,
+                    width: 1.5,
+                  ),
+                  image: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
+                      ? DecorationImage(
+                    image: NetworkImage(userAvatarUrl!),
+                    fit: BoxFit.cover,
+                  )
+                      : null,
+                ),
+                child: userAvatarUrl == null || userAvatarUrl!.isEmpty
+                    ? Center(
+                  child: Icon(
+                    Icons.person,
+                    size: 16,
+                    color: isActive ? Colors.white : Colors.black,
+                  ),
+                )
+                    : null,
+              )
+                  : Icon(
+                icon,
+                size: 22,
+                color: isActive ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.black,
+                fontSize: 12,
+                fontFamily: 'SF Pro',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );
