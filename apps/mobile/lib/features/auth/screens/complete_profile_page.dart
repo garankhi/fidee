@@ -22,7 +22,7 @@ class CompleteProfilePage extends ConsumerWidget {
     final authState = ref.watch(authControllerProvider).valueOrNull;
 
     return AuthWizardLayout(
-      title: 'Hoan tat ho so',
+      title: 'Hoàn tất hồ sơ',
       onBack: () => ref.read(authControllerProvider.notifier).signOut(),
       child: CompleteProfileForm(
         initialFirstName: initialFirstName,

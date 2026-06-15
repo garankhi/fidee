@@ -64,7 +64,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Khong the tai dia diem gan day';
+        _error = 'Không thể tải địa điểm gần đây';
         _isLoading = false;
       });
     }
@@ -140,7 +140,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Chon dia diem',
+                  'Chọn địa điểm',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -149,7 +149,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Gan anh vao dia diem gan ban',
+                  'Gắn ảnh vào địa điểm gần bạn',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 13,
@@ -189,7 +189,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
           CircularProgressIndicator(color: Color(0xFF3B82F6)),
           SizedBox(height: 16),
           Text(
-            'Dang tim dia diem gan day...',
+            'Đang tìm địa điểm gần đây...',
             style: TextStyle(color: Colors.white54, fontSize: 14),
           ),
         ],
@@ -262,7 +262,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Dich vu ban do tam thoi khong kha dung. Ban co the tao dia diem moi.',
+              'Dịch vụ bản đồ tạm thời không khả dụng. Bạn có thể tạo địa điểm mới.',
               style: TextStyle(color: Color(0xFFF59E0B), fontSize: 12),
             ),
           ),
@@ -337,7 +337,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
-                            'Gan nhat',
+                            'Gần nhất',
                             style: TextStyle(
                               color: Color(0xFF22C55E),
                               fontSize: 10,
@@ -434,7 +434,7 @@ class _NearbyPlacesSheetState extends ConsumerState<NearbyPlacesSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Tao dia diem moi tai day',
+                    'Tạo địa điểm mới tại đây',
                     style: TextStyle(
                       color: Color(0xFF3B82F6),
                       fontSize: 15,

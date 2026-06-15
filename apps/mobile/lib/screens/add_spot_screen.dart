@@ -472,7 +472,7 @@ class _StepOneState extends State<_StepOne> {
               'Học tập',
               'Cà phê',
               'Thư giãn',
-              'Healthy',
+              'Lành mạnh',
               'Acoustic',
               'Đồ ngọt',
               'Khác',

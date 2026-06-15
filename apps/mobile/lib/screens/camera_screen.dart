@@ -589,7 +589,7 @@ class _CameraTopBar extends StatelessWidget {
             ),
             child: const Center(
               child: Text(
-                'Me',
+                'Tôi',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

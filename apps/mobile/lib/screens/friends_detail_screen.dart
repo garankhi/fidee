@@ -267,7 +267,7 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
             ),
           ),
           title: const Text(
-            'FRIENDS',
+            'BẠN BÈ',
             style: TextStyle(
               color: Color(0xFFEF4050),
               fontSize: 22,

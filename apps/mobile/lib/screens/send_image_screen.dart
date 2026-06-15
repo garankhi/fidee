@@ -360,7 +360,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'General',
+                      'Thông thường',
                       style: TextStyle(
                         fontFamily: 'SF Pro Text',
                         color: Colors.white54,
@@ -390,7 +390,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Decorative',
+                      'Trang trí',
                       style: TextStyle(
                         fontFamily: 'SF Pro Text',
                         color: Colors.white54,

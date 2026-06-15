@@ -168,7 +168,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
         .whereType<String>()
         .where((value) => value.trim().isNotEmpty)
         .join(' ');
-    final userName = displayName.isEmpty ? 'You' : displayName;
+    final userName = displayName.isEmpty ? 'Bạn' : displayName;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -184,7 +184,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
           ),
         ),
         title: Text(
-          'JOURNEY',
+          'HÀNH TRÌNH',
           style: GoogleFonts.ericaOne(
             color: const Color(0xFFEF4050),
             fontSize: 25,
@@ -228,7 +228,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
       return _JourneyMessage(
         icon: Icons.cloud_off_rounded,
         message: _errorMessage!,
-        actionLabel: 'TRY AGAIN',
+        actionLabel: 'THỬ LẠI',
         onAction: () => _load(reset: true),
       );
     }
@@ -240,8 +240,8 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
             ? Icons.location_on_outlined
             : Icons.rate_review_outlined,
         message: _period == _JourneyPeriod.all
-            ? 'Your ${_selectedType == JourneyEntryType.checkin ? 'check-ins' : 'reviews'} sẽ hiện ở đây.'
-            : 'Chưa có hoạt động nào phát sinh.',
+            ? 'Các lần check-in của bạn sẽ hiện ở đây.'
+            : 'Các bài đánh giá của bạn sẽ hiện ở đây.',
       );
     }
 
@@ -309,7 +309,7 @@ class _JourneyTabs extends StatelessWidget {
                   borderRadius: BorderRadius.circular(27),
                 ),
                 child: Text(
-                  type == JourneyEntryType.checkin ? 'CHECK-INS' : 'BÀI ĐÁNH GIÁ',
+                  type == JourneyEntryType.checkin ? 'ĐÃ CHECK-IN' : 'BÀI ĐÁNH GIÁ',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isSelected
@@ -549,7 +549,7 @@ class _JourneyCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${entry.friendsSavedCount} FRIENDS SAVED',
+                  '${entry.friendsSavedCount} BẠN ĐÃ LƯU',
                   style: const TextStyle(
                     color: Color(0xFF8B8B8B),
                     fontSize: 9,
@@ -561,7 +561,7 @@ class _JourneyCard extends StatelessWidget {
                 onPressed: canOpenSpot ? onOpenSpot : null,
                 iconAlignment: IconAlignment.end,
                 icon: const Icon(Icons.arrow_forward_rounded, size: 15),
-                label: const Text('OPEN SPOT'),
+                label: const Text('XEM ĐỊA ĐIỂM'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFFEF4050),
                   disabledForegroundColor: const Color(0xFFB9B9B9),

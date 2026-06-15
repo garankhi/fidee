@@ -454,7 +454,7 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
                   ),
                   SizedBox(width: 4),
                   Text(
-                    'PENDING REVIEW',
+                    'CHỜ DUYỆT',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

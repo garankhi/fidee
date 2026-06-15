@@ -272,7 +272,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                   const SizedBox(height: 14),
                   _ProfileTextField(
                     controller: _usernameController,
-                    label: 'Username',
+                    label: 'Tên đăng nhập',
                     prefixText: '@',
                     textInputAction: TextInputAction.done,
                     enabled: !_isSaving,

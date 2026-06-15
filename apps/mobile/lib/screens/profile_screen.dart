@@ -53,7 +53,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       final authService = ref.read(authServiceProvider);
       final token = await authService.getToken();
-      if (token == null) throw Exception('Not authenticated');
+      if (token == null) throw Exception('Chưa đăng nhập');
 
       final file = File(pickedFile.path);
       final length = await file.length();
@@ -187,10 +187,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       lastName,
     ].where((name) => name.trim().isNotEmpty).toList();
     final fullName = fullNameList.isEmpty
-        ? 'Fidee User'
+        ? 'Người dùng Fidee'
         : fullNameList.join(' ');
     final preferredUsername = authState?.preferredUsername ?? 'user';
-    final tier = authState?.tier == UserTier.pro ? 'Premium' : 'Free';
+    final tier = authState?.tier == UserTier.pro ? 'Cao cấp' : 'Miễn phí';
     final since = authState?.since ?? '2026';
     final avatarUrl = authState?.avatarUrl;
     final initials = _getInitials(firstName, lastName);
@@ -237,7 +237,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
           title: Text(
-            'PROFILE',
+            'HỒ SƠ',
             style: GoogleFonts.ericaOne(
               color: const Color(0xFFEF4050),
               fontSize: 32,
@@ -385,7 +385,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '@$preferredUsername · SINCE $since',
+                            '@$preferredUsername · TỪ $since',
                             style: const TextStyle(
                               color: Color(0xFF8D8D8D),
                               fontSize: 12,
@@ -464,7 +464,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'JOURNEY',
+                              'HÀNH TRÌNH',
                               style: TextStyle(
                                 color: Color(0xFF151515),
                                 fontSize: 15,
@@ -474,7 +474,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'See your check-ins and reviews',
+                              'Xem các lần check-in và đánh giá của bạn',
                               style: TextStyle(
                                 color: Color(0xFF8D8D8D),
                                 fontSize: 12,
@@ -513,7 +513,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Friends (${visibleFriends.length})',
+                    'Bạn bè (${visibleFriends.length})',
                     style: const TextStyle(
                       color: Color(0xFF151515),
                       fontSize: 18,

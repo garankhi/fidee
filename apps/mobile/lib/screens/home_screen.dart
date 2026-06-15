@@ -696,11 +696,11 @@ class _LocationDeniedBanner extends StatelessWidget {
   String get _message {
     switch (status) {
       case LocationStatus.denied:
-        return 'Cho phep vi tri de xem ban o dau tren ban do.';
+        return 'Cho phép vị trí để xem bạn ở đâu trên bản đồ.';
       case LocationStatus.deniedForever:
-        return 'Vi tri bi chan. Mo cai dat de bat lai.';
+        return 'Vị trí bị chặn. Mở cài đặt để bật lại.';
       case LocationStatus.serviceDisabled:
-        return 'GPS dang tat. Bat GPS de xem vi tri.';
+        return 'GPS đang tắt. Bật GPS để xem vị trí.';
       default:
         return '';
     }
@@ -709,11 +709,11 @@ class _LocationDeniedBanner extends StatelessWidget {
   String get _buttonText {
     switch (status) {
       case LocationStatus.deniedForever:
-        return 'Mo cai dat';
+        return 'Mở cài đặt';
       case LocationStatus.serviceDisabled:
-        return 'Bat GPS';
+        return 'Bật GPS';
       default:
-        return 'Cho phep';
+        return 'Cho phép';
     }
   }
 

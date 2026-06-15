@@ -187,7 +187,7 @@ class _CameraChatHeader extends StatelessWidget {
               ),
               child: const Center(
                 child: Text(
-                  'Me',
+                  'Tôi',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,

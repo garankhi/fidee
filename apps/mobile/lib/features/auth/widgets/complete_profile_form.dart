@@ -59,7 +59,7 @@ class _CompleteProfileFormState extends State<CompleteProfileForm> {
 
     if (firstName.isEmpty || lastName.isEmpty || username.isEmpty) {
       setState(() {
-        _localError = 'Vui long nhap day du ho, ten va username';
+        _localError = 'Vui lòng nhập đầy đủ họ, tên và tên đăng nhập';
       });
       return;
     }
@@ -81,33 +81,33 @@ class _CompleteProfileFormState extends State<CompleteProfileForm> {
         const SizedBox(height: 24),
         if (widget.showTitle) ...[
           Text(
-            'Hoan tat ho so',
+            'Hoàn tất hồ sơ',
             textAlign: TextAlign.center,
             style: LoginTextStyles.title().copyWith(fontSize: 28),
           ),
           const SizedBox(height: 12),
         ],
         Text(
-          'Them thong tin con thieu de bat dau dung Fidee.',
+          'Thêm thông tin còn thiếu để bắt đầu dùng Fidee.',
           textAlign: TextAlign.center,
           style: LoginTextStyles.fieldText(),
         ),
         const SizedBox(height: 28),
         AuthTextField(
           controller: _firstNameCtrl,
-          label: 'Ho',
-          hintText: 'Nguyen',
+          label: 'Họ',
+          hintText: 'Nguyễn',
         ),
         const SizedBox(height: 18),
         AuthTextField(
           controller: _lastNameCtrl,
-          label: 'Ten',
+          label: 'Tên',
           hintText: 'Minh',
         ),
         const SizedBox(height: 18),
         AuthTextField(
           controller: _usernameCtrl,
-          label: 'Username',
+          label: 'Tên đăng nhập',
           hintText: 'minh.nguyen',
         ),
         if (errorMessage != null) ...[
@@ -142,7 +142,7 @@ class _CompleteProfileFormState extends State<CompleteProfileForm> {
                         color: Colors.white,
                       ),
                     )
-                  : Text('Hoan tat', style: LoginTextStyles.button()),
+                  : Text('Hoàn tất', style: LoginTextStyles.button()),
             ),
           ),
         ),

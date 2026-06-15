@@ -66,7 +66,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (code.length != 6) {
       ref
           .read(authControllerProvider.notifier)
-          .setError('Vui long nhap du 6 so');
+          .setError('Vui lòng nhập đủ 6 số');
       return;
     }
 
@@ -108,14 +108,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _startCooldown();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Ma OTP da duoc gui lai'),
+          content: Text('Mã OTP đã được gửi lại'),
           backgroundColor: Color(0xFF22C55E),
         ),
       );
     } else {
       ref
           .read(authControllerProvider.notifier)
-          .setError(result.errorMessage ?? 'Khong the gui lai ma OTP');
+          .setError(result.errorMessage ?? 'Không thể gửi lại mã OTP');
     }
   }
 
@@ -173,7 +173,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
               // Title
               const Text(
-                'Nhap ma xac thuc',
+                'Nhập mã xác thực',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -182,7 +182,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Ma OTP da gui den $destination',
+                'Mã OTP đã gửi đến $destination',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.6),
@@ -278,7 +278,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           ),
                         )
                       : const Text(
-                          'Xac nhan',
+                          'Xác nhận',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -291,7 +291,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               // Resend OTP
               _cooldownSeconds > 0
                   ? Text(
-                      'Gui lai ma sau $_cooldownSeconds giay',
+                      'Gửi lại mã sau $_cooldownSeconds giây',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.4),
                         fontSize: 14,
@@ -300,7 +300,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   : TextButton(
                       onPressed: _resendOtp,
                       child: const Text(
-                        'Gui lai ma OTP',
+                        'Gửi lại mã OTP',
                         style: TextStyle(
                           color: Color(0xFF3B82F6),
                           fontSize: 14,

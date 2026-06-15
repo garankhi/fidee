@@ -20,7 +20,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'History',
+          'Lịch sử',
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -152,7 +152,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          'Restaurant $index',
+                          'Nhà hàng $index',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
