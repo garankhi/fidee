@@ -62,6 +62,7 @@ class CameraChatInboxScreen extends StatelessWidget {
       return _CameraChatInboxScaffold(
         threadRows: localThreads,
         isLoading: false,
+        unreadCount: 0,
       );
     }
 
@@ -73,6 +74,7 @@ class CameraChatInboxScreen extends StatelessWidget {
               .map(CameraChatThread.fromConversation)
               .toList(growable: false),
           isLoading: inboxState.isLoading,
+          unreadCount: inboxState.totalUnreadCount,
         );
       },
     );
@@ -82,10 +84,12 @@ class CameraChatInboxScreen extends StatelessWidget {
 class _CameraChatInboxScaffold extends StatelessWidget {
   final List<CameraChatThread> threadRows;
   final bool isLoading;
+  final int unreadCount;
 
   const _CameraChatInboxScaffold({
     required this.threadRows,
     required this.isLoading,
+    required this.unreadCount,
   });
 
   @override
@@ -131,6 +135,8 @@ class _CameraChatInboxScaffold extends StatelessWidget {
                 ),
                 CameraBottomSection(
                   activeTab: CameraBottomTab.chat,
+                  showHistory: false,
+                  unreadCount: unreadCount,
                   onHomeTap: () => Navigator.pop(context),
                 ),
                 const SizedBox(height: 10),

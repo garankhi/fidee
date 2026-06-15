@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../features/auth/camera_checkin_feed_provider.dart';
+import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
@@ -382,6 +383,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     final friendsState = ref.watch(friendsControllerProvider);
     final feedState = ref.watch(cameraCheckinFeedControllerProvider);
+    final unreadCount = ref.watch(
+      chatInboxControllerProvider.select((state) => state.totalUnreadCount),
+    );
     final feedController = ref.read(
       cameraCheckinFeedControllerProvider.notifier,
     );
@@ -451,7 +455,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                         ),
                       ),
                     ),
-                    CameraBottomSection(onChatTap: _openChatInbox),
+                    CameraBottomSection(
+                      unreadCount: unreadCount,
+                      onChatTap: _openChatInbox,
+                    ),
                     const SizedBox(height: 10),
                   ],
                 );
