@@ -6,12 +6,16 @@ class CameraBottomSection extends StatelessWidget {
   final VoidCallback? onHomeTap;
   final VoidCallback? onChatTap;
   final CameraBottomTab activeTab;
+  final bool showHistory;
+  final int unreadCount;
 
   const CameraBottomSection({
     super.key,
     this.onHomeTap,
     this.onChatTap,
     this.activeTab = CameraBottomTab.home,
+    this.showHistory = true,
+    this.unreadCount = 0,
   });
 
   @override
@@ -21,6 +25,7 @@ class CameraBottomSection extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        if (showHistory) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
@@ -62,6 +67,7 @@ class CameraBottomSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+        ],
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 48),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -119,25 +125,26 @@ class CameraBottomSection extends StatelessWidget {
                           size: 24,
                         ),
                       ),
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.amber,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Text(
-                            '1',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.amber,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

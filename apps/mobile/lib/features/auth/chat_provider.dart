@@ -22,6 +22,11 @@ class ChatInboxState {
     this.currentUserId,
   });
 
+  int get totalUnreadCount => conversations.fold(
+    0,
+    (total, conversation) => total + conversation.unreadCount,
+  );
+
   ChatInboxState copyWith({
     List<UserChatConversation>? conversations,
     bool? isLoading,
@@ -106,6 +111,18 @@ class ChatInboxController extends _$ChatInboxController {
     return conversationId;
   }
 
+  void markConversationRead(String conversationId) {
+    state = state.copyWith(
+      conversations: state.conversations
+          .map(
+            (conversation) => conversation.id == conversationId
+                ? conversation.copyWith(unreadCount: 0)
+                : conversation,
+          )
+          .toList(growable: false),
+    );
+  }
+
   void applyRealtimeEvent(ChatRealtimeEvent event) {
     if (event.type == 'MESSAGE_CREATED' && event.message != null) {
       final message = UserChatMessage(
@@ -125,7 +142,9 @@ class ChatInboxController extends _$ChatInboxController {
                 }
                 return conversation.copyWith(
                   lastMessage: message,
-                  unreadCount: conversation.unreadCount + 1,
+                  unreadCount: message.senderId == state.currentUserId
+                      ? conversation.unreadCount
+                      : conversation.unreadCount + 1,
                   updatedAt: message.createdAt,
                 );
               })
@@ -163,6 +182,9 @@ class ChatThreadController
     state = ChatThreadState(messages: messages, isLoading: false);
     final lastMessage = messages.isEmpty ? null : messages.last;
     if (lastMessage != null) {
+      ref
+          .read(chatInboxControllerProvider.notifier)
+          .markConversationRead(conversationId);
       unawaited(
         _service.markRead(
           conversationId: conversationId,
