@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 
+enum CameraBottomTab { home, chat }
+
 class CameraBottomSection extends StatelessWidget {
   final VoidCallback? onHomeTap;
   final VoidCallback? onChatTap;
+  final CameraBottomTab activeTab;
 
-  const CameraBottomSection({super.key, this.onHomeTap, this.onChatTap});
+  const CameraBottomSection({
+    super.key,
+    this.onHomeTap,
+    this.onChatTap,
+    this.activeTab = CameraBottomTab.home,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Column(
       key: const ValueKey('camera-bottom-section'),
-      height: 120,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
@@ -57,7 +63,7 @@ class CameraBottomSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Container(
-            margin: const EdgeInsets.only(left: 110, right: 110),
+            margin: const EdgeInsets.symmetric(horizontal: 48),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.grey[900],
@@ -77,12 +83,16 @@ class CameraBottomSection extends StatelessWidget {
                     key: const ValueKey('camera-bottom-home-button'),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.grey[800],
+                      color: activeTab == CameraBottomTab.home
+                          ? Colors.grey[800]
+                          : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.home_filled,
-                      color: Colors.white,
+                      color: activeTab == CameraBottomTab.home
+                          ? Colors.white
+                          : Colors.grey,
                       size: 24,
                     ),
                   ),
@@ -93,14 +103,25 @@ class CameraBottomSection extends StatelessWidget {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(
-                        Icons.chat_bubble_rounded,
-                        color: Colors.grey,
-                        size: 28,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: activeTab == CameraBottomTab.chat
+                              ? Colors.grey[800]
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.chat_bubble_rounded,
+                          color: activeTab == CameraBottomTab.chat
+                              ? Colors.white
+                              : Colors.grey,
+                          size: 24,
+                        ),
                       ),
                       Positioned(
-                        right: -4,
-                        top: -4,
+                        right: -2,
+                        top: -2,
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
@@ -123,8 +144,7 @@ class CameraBottomSection extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

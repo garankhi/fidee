@@ -21,6 +21,7 @@ class NearbyService {
     required double lng,
     int radius = 50,
     String? mediaId,
+    String? query,
   }) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
@@ -34,6 +35,7 @@ class NearbyService {
           'lng': lng.toString(),
           'radius': radius.toString(),
           if (mediaId != null && mediaId.isNotEmpty) 'media_id': mediaId,
+          if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
         },
       );
       final response = await _client.get(

@@ -51,7 +51,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   }
 
   void _onAddSpot() {
-    Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute<void>(

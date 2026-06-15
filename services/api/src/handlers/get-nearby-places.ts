@@ -34,6 +34,7 @@ function getConfidence(distanceMeters: number): Confidence {
  *   - radius (optional): search radius in meters (default 100, max 1000)
  *   - context (optional): e.g. 'camera_check_in'
  *   - media_id (optional): associated media ID
+ *   - q (optional): case-insensitive place-name search
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -64,6 +65,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     let radius = parseInt(event.queryStringParameters?.radius || `${DEFAULT_RADIUS}`, 10);
     if (isNaN(radius) || radius <= 0) radius = DEFAULT_RADIUS;
     if (radius > MAX_RADIUS) radius = MAX_RADIUS;
+    const searchQuery = event.queryStringParameters?.q?.trim().slice(0, 80) || null;
+    const searchPattern = searchQuery ? `%${searchQuery}%` : null;
 
     // 3. Query public approved places within radius
     const publicPlacesSql = `
@@ -87,10 +90,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       WHERE ST_DWithin(p.location, ST_MakePoint($1, $2)::geography, $3)
         AND ps.status = 'APPROVED'
         AND ps.visibility IN ('PUBLIC', 'FRIENDS')
+        AND ($4::text IS NULL OR p.name ILIKE $4)
       ORDER BY distance_meters ASC
       LIMIT 20;
     `;
-    const publicResult = await query(publicPlacesSql, [lng, lat, radius]);
+    const publicResult = await query(publicPlacesSql, [lng, lat, radius, searchPattern]);
 
     // 4. Query friends' place_candidates within radius
     const friendCandidatesSql = `
@@ -116,10 +120,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           WHERE user_id = $4 AND status = 'ACCEPTED'
           UNION ALL SELECT $4
         )
+        AND ($5::text IS NULL OR pc.name ILIKE $5)
       ORDER BY distance_meters ASC
       LIMIT 10;
     `;
-    const friendResult = await query(friendCandidatesSql, [lng, lat, radius, userId]);
+    const friendResult = await query(friendCandidatesSql, [lng, lat, radius, userId, searchPattern]);
 
     // 5. Merge, deduplicate by name similarity, sort by distance
     const allResults = [
@@ -187,6 +192,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         request_lat: lat,
         request_lng: lng,
         radius_meters: radius,
+        query: searchQuery,
       },
       data: allResults,
     };

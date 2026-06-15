@@ -35,4 +35,27 @@ void main() {
       expect(capturedUri?.queryParameters.containsKey('media_id'), isFalse);
     },
   );
+
+  test('fetchNearby sends a trimmed spot search query', () async {
+    Uri? capturedUri;
+    final service = NearbyService(
+      _TokenAuthService(),
+      client: MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response(
+          '{"status":"success","metadata":{"source":"local_db","has_goong_fallback":false,"total_results":0},"data":[]}',
+          200,
+        );
+      }),
+    );
+
+    await service.fetchNearby(
+      lat: 10.7738,
+      lng: 106.7035,
+      radius: 1000,
+      query: '  coffee  ',
+    );
+
+    expect(capturedUri?.queryParameters['q'], 'coffee');
+  });
 }

@@ -2,13 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../features/auth/friends_provider.dart';
 import '../models/nearby_place.dart';
 import '../services/auth_service.dart';
 import '../services/friend_service.dart';
+import '../services/nearby_service.dart';
 
-class AddSpotScreen extends StatefulWidget {
+class AddSpotScreen extends ConsumerStatefulWidget {
   final List<NearbyPlace> spotSuggestions;
   final AuthService authService;
 
@@ -19,10 +22,10 @@ class AddSpotScreen extends StatefulWidget {
   });
 
   @override
-  State<AddSpotScreen> createState() => _AddSpotScreenState();
+  ConsumerState<AddSpotScreen> createState() => _AddSpotScreenState();
 }
 
-class _AddSpotScreenState extends State<AddSpotScreen> {
+class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
   static const Color _accent = Color(0xFFEF4050);
   static const Color _softAccent = Color(0xFFFFE9EC);
   static const Color _text = Color(0xFF151515);
@@ -34,7 +37,6 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
 
   final PageController _pageController = PageController();
   final ImagePicker _imagePicker = ImagePicker();
-  late final FriendService _friendService;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _openController = TextEditingController();
   final TextEditingController _closeController = TextEditingController();
@@ -58,7 +60,6 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
   XFile? _vibeImage;
   XFile? _dishImage;
   XFile? _checkInImage;
-  Future<List<FriendProfile>>? _friendsFuture;
 
   @override
   void dispose() {
@@ -126,16 +127,30 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
     Navigator.pop(context);
   }
 
+  Future<List<NearbyPlace>> _searchSpots(String query) async {
+    final available = widget.spotSuggestions.where(
+      (place) => !place.isCustomFallback,
+    );
+    final origin = available.isEmpty ? null : available.first;
+    final response = await NearbyService(widget.authService).fetchNearby(
+      lat: origin?.coordinates.lat ?? 10.762892,
+      lng: origin?.coordinates.lng ?? 106.682586,
+      radius: 1000,
+      query: query,
+    );
+    return response.data
+        .where((place) => !place.isCustomFallback)
+        .toList(growable: false);
+  }
+
   void _showFriendSheet() {
     setState(() => _visibility = 'friends');
-    _friendsFuture ??= _friendService.fetchFriends();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return _FriendPickerSheet(
-          friendsFuture: _friendsFuture!,
           sentFriendIds: _sentFriendIds,
           onSendFriend: (String id) {
             setState(() => _sentFriendIds.add(id));
@@ -165,6 +180,7 @@ class _AddSpotScreenState extends State<AddSpotScreen> {
                     selectedSpotName: _selectedSpotName,
                     onSpotNameChanged: (v) =>
                         setState(() => _selectedSpotName = v),
+                    onSearchSpots: _searchSpots,
                     openController: _openController,
                     closeController: _closeController,
                     priceFromController: _priceFromController,
@@ -300,6 +316,7 @@ class _StepOne extends StatefulWidget {
   final List<NearbyPlace> spotSuggestions;
   final String? selectedSpotName;
   final ValueChanged<String> onSpotNameChanged;
+  final Future<List<NearbyPlace>> Function(String query) onSearchSpots;
   final TextEditingController openController;
   final TextEditingController closeController;
   final TextEditingController priceFromController;
@@ -318,6 +335,7 @@ class _StepOne extends StatefulWidget {
     required this.spotSuggestions,
     required this.selectedSpotName,
     required this.onSpotNameChanged,
+    required this.onSearchSpots,
     required this.openController,
     required this.closeController,
     required this.priceFromController,
@@ -441,6 +459,7 @@ class _StepOneState extends State<_StepOne> {
             suggestions: widget.spotSuggestions,
             value: widget.selectedSpotName,
             onChanged: widget.onSpotNameChanged,
+            onSearch: widget.onSearchSpots,
             hasError: _nameError != null,
           ),
           if (_nameError != null) _ErrorText(_nameError!),
@@ -859,23 +878,29 @@ class _StepFour extends StatelessWidget {
   }
 }
 
-class _FriendPickerSheet extends StatefulWidget {
-  final Future<List<FriendProfile>> friendsFuture;
+class _FriendPickerSheet extends ConsumerStatefulWidget {
   final Set<String> sentFriendIds;
   final ValueChanged<String> onSendFriend;
 
   const _FriendPickerSheet({
-    required this.friendsFuture,
     required this.sentFriendIds,
     required this.onSendFriend,
   });
 
   @override
-  State<_FriendPickerSheet> createState() => _FriendPickerSheetState();
+  ConsumerState<_FriendPickerSheet> createState() => _FriendPickerSheetState();
 }
 
-class _FriendPickerSheetState extends State<_FriendPickerSheet> {
+class _FriendPickerSheetState extends ConsumerState<_FriendPickerSheet> {
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+      () => ref.read(friendsControllerProvider.notifier).load(silent: true),
+    );
+  }
 
   @override
   void dispose() {
@@ -927,44 +952,42 @@ class _FriendPickerSheetState extends State<_FriendPickerSheet> {
             ),
             const SizedBox(height: 14),
             Flexible(
-              child: FutureBuilder<List<FriendProfile>>(
-                future: widget.friendsFuture,
-                builder:
-                    (
-                      BuildContext context,
-                      AsyncSnapshot<List<FriendProfile>> snapshot,
-                    ) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const _FriendSheetSkeleton();
-                      }
-
-                      final List<FriendProfile> friends = _filteredFriends(
-                        snapshot.data ?? const <FriendProfile>[],
-                      );
-                      if (friends.isEmpty) {
-                        return const _FriendEmptyState();
-                      }
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: friends.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final FriendProfile friend = friends[index];
-                          return _FriendRow(
-                            friend: friend,
-                            sent: widget.sentFriendIds.contains(friend.id),
-                            onSend: () {
-                              widget.onSendFriend(friend.id);
-                              setState(() {});
-                            },
-                          );
-                        },
-                      );
-                    },
-              ),
+              child: _buildFriendList(ref.watch(friendsControllerProvider)),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFriendList(FriendsState friendsState) {
+    if (friendsState.isInitialLoading) {
+      return const _FriendSheetSkeleton();
+    }
+
+    final List<FriendProfile> friends = _filteredFriends(friendsState.friends);
+    if (friends.isEmpty) {
+      return const _FriendEmptyState();
+    }
+
+    return RefreshIndicator(
+      color: _AddSpotScreenState._accent,
+      onRefresh: () => ref.read(friendsControllerProvider.notifier).load(),
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: friends.length,
+        itemBuilder: (BuildContext context, int index) {
+          final FriendProfile friend = friends[index];
+          return _FriendRow(
+            friend: friend,
+            sent: widget.sentFriendIds.contains(friend.id),
+            onSend: () {
+              widget.onSendFriend(friend.id);
+              setState(() {});
+            },
+          );
+        },
       ),
     );
   }
@@ -1173,12 +1196,14 @@ class _SpotNameDropdown extends StatefulWidget {
   final List<NearbyPlace> suggestions;
   final String? value;
   final ValueChanged<String> onChanged;
+  final Future<List<NearbyPlace>> Function(String query) onSearch;
   final bool hasError;
 
   const _SpotNameDropdown({
     required this.suggestions,
     required this.value,
     required this.onChanged,
+    required this.onSearch,
     this.hasError = false,
   });
 
@@ -1189,6 +1214,32 @@ class _SpotNameDropdown extends StatefulWidget {
 class _SpotNameDropdownState extends State<_SpotNameDropdown> {
   final TextEditingController _customController = TextEditingController();
   bool _isCustom = false;
+
+  Future<void> _openSearch() async {
+    final result = await showModalBottomSheet<_SpotSearchResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _SpotSearchSheet(
+        initialSuggestions: widget.suggestions
+            .where((place) => !place.isCustomFallback)
+            .toList(growable: false),
+        selectedName: widget.value,
+        onSearch: widget.onSearch,
+      ),
+    );
+    if (!mounted || result == null) return;
+    if (result.isCustom) {
+      _customController.text = result.name;
+      widget.onChanged(result.name);
+      setState(() => _isCustom = true);
+      return;
+    }
+    widget.onChanged(result.name);
+  }
 
   @override
   void dispose() {
@@ -1225,91 +1276,8 @@ class _SpotNameDropdownState extends State<_SpotNameDropdown> {
       );
     }
 
-    final items = [
-      ...widget.suggestions.map((p) => p.displayName),
-      '+ Nhập tên khác',
-    ];
-
     return GestureDetector(
-      onTap: () {
-        showModalBottomSheet<String>(
-          context: context,
-          backgroundColor: Colors.white,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (_) => Padding(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E2E2),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Chọn địa điểm',
-                  style: TextStyle(
-                    color: _AddSpotScreenState._text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...items.map(
-                  (name) => GestureDetector(
-                    onTap: () => Navigator.pop(context, name),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: widget.value == name
-                            ? _AddSpotScreenState._softAccent
-                            : _AddSpotScreenState._field,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: widget.value == name
-                              ? _AddSpotScreenState._accent
-                              : _AddSpotScreenState._border,
-                        ),
-                      ),
-                      child: Text(
-                        name,
-                        style: TextStyle(
-                          color: name.startsWith('+')
-                              ? _AddSpotScreenState._accent
-                              : _AddSpotScreenState._text,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ).then((selected) {
-          if (selected == null) return;
-          if (selected.startsWith('+')) {
-            setState(() => _isCustom = true);
-          } else {
-            widget.onChanged(selected);
-          }
-        });
-      },
+      onTap: _openSearch,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -1344,6 +1312,183 @@ class _SpotNameDropdownState extends State<_SpotNameDropdown> {
               size: 20,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SpotSearchResult {
+  final String name;
+  final bool isCustom;
+
+  const _SpotSearchResult({required this.name, this.isCustom = false});
+}
+
+class _SpotSearchSheet extends StatefulWidget {
+  final List<NearbyPlace> initialSuggestions;
+  final String? selectedName;
+  final Future<List<NearbyPlace>> Function(String query) onSearch;
+
+  const _SpotSearchSheet({
+    required this.initialSuggestions,
+    required this.selectedName,
+    required this.onSearch,
+  });
+
+  @override
+  State<_SpotSearchSheet> createState() => _SpotSearchSheetState();
+}
+
+class _SpotSearchSheetState extends State<_SpotSearchSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  List<NearbyPlace> _results = <NearbyPlace>[];
+  bool _isLoading = false;
+  int _requestId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _results = widget.initialSuggestions;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String value) async {
+    final searchQuery = value.trim();
+    final requestId = ++_requestId;
+    if (searchQuery.isEmpty) {
+      setState(() {
+        _results = widget.initialSuggestions;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (requestId != _requestId) return;
+    final results = await widget.onSearch(searchQuery);
+    if (!mounted || requestId != _requestId) return;
+    setState(() {
+      _results = results;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.trim();
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.7,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E2E2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Tìm địa điểm',
+                style: TextStyle(
+                  color: _AddSpotScreenState._text,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _SoftTextField(
+                controller: _searchController,
+                hint: 'Tìm theo tên địa điểm...',
+                prefixIcon: Icons.search_rounded,
+                onChanged: (value) {
+                  setState(() {});
+                  _search(value);
+                },
+              ),
+              const SizedBox(height: 10),
+              if (_isLoading)
+                const LinearProgressIndicator(
+                  color: _AddSpotScreenState._accent,
+                  backgroundColor: _AddSpotScreenState._softAccent,
+                ),
+              Expanded(
+                child: ListView(
+                  children: [
+                    for (final place in _results)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const CircleAvatar(
+                          backgroundColor: _AddSpotScreenState._softAccent,
+                          child: Icon(
+                            Icons.location_on_rounded,
+                            color: _AddSpotScreenState._accent,
+                          ),
+                        ),
+                        title: Text(
+                          place.displayName,
+                          style: const TextStyle(
+                            color: _AddSpotScreenState._text,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(place.address),
+                        trailing: widget.selectedName == place.displayName
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: _AddSpotScreenState._accent,
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(
+                          context,
+                          _SpotSearchResult(name: place.displayName),
+                        ),
+                      ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        backgroundColor: _AddSpotScreenState._softAccent,
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: _AddSpotScreenState._accent,
+                        ),
+                      ),
+                      title: Text(
+                        query.isEmpty
+                            ? 'Nhập tên địa điểm khác'
+                            : 'Thêm "$query"',
+                        style: const TextStyle(
+                          color: _AddSpotScreenState._accent,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onTap: query.isEmpty
+                          ? null
+                          : () => Navigator.pop(
+                              context,
+                              _SpotSearchResult(name: query, isCustom: true),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1452,24 +1597,70 @@ class _ChipWrap extends StatelessWidget {
     required this.onToggle,
   });
 
+  Future<void> _addCustomOption(BuildContext context) async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Thêm tiện ích',
+          style: TextStyle(
+            color: _AddSpotScreenState._text,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 40,
+          textCapitalization: TextCapitalization.sentences,
+          style: const TextStyle(color: _AddSpotScreenState._text),
+          decoration: const InputDecoration(
+            hintText: 'Nhập tiện ích mới',
+            hintStyle: TextStyle(color: _AddSpotScreenState._muted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final normalized = controller.text.trim();
+              if (normalized.isNotEmpty) {
+                Navigator.pop(dialogContext, normalized);
+              }
+            },
+            child: const Text('Thêm'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null || value.isEmpty || selected.contains(value)) return;
+    onToggle(value);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final visibleOptions = <String>[
+      ...options,
+      ...selected.where((value) => !options.contains(value)),
+    ];
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: options
+      children: visibleOptions
           .map((String option) {
             final bool isAddButton = option.startsWith('+');
             final bool active = !isAddButton && selected.contains(option);
             return GestureDetector(
               onTap: () {
                 if (isAddButton) {
-                  // TODO: Show add custom option dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chức năng thêm tùy chỉnh đang phát triển'),
-                    ),
-                  );
+                  _addCustomOption(context);
                 } else {
                   onToggle(option);
                 }
@@ -1715,20 +1906,28 @@ class _FriendRow extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
-            decoration: const BoxDecoration(
-              color: Color(0xFF5FA66B),
+            decoration: BoxDecoration(
+              color: const Color(0xFF5FA66B),
               shape: BoxShape.circle,
+              image: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(friend.avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: Center(
-              child: Text(
-                friend.initials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+            child: friend.avatarUrl == null || friend.avatarUrl!.isEmpty
+                ? Center(
+                    child: Text(
+                      friend.initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 10),
           Expanded(
