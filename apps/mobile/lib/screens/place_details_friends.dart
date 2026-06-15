@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/place_provider.dart';
 import '../features/auth/review_provider.dart';
@@ -239,7 +238,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 child: Image.network(
                   bannerUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, error, __) {
+                  errorBuilder: (_, _, _) {
                     return const Center(
                       child: Icon(
                         Icons.broken_image,
@@ -262,7 +261,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -581,7 +580,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                           checkinPhoto,
                           fit: BoxFit.cover,
                           width: double.infinity,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             color: Colors.grey[300],
                             child: const Icon(Icons.broken_image, color: Colors.white),
                           ),
@@ -894,7 +893,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
 class NewRatingBottomSheet extends ConsumerStatefulWidget {
   final String placeId;
-  final Function(int rating, String content) onSuccess;
+  final void Function(int rating, String content) onSuccess;
 
   const NewRatingBottomSheet({
     super.key,
@@ -963,12 +962,12 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
             const SizedBox(height: 22),
 
             // --- UPLOAD ẢNH CHECK-IN (Giữ UI, chưa đính kèm payload API) ---
-            Align(
+            const Align(
               alignment: Alignment.centerLeft,
               child: Text.rich(
                 TextSpan(
                   children: [
-                    const TextSpan(
+                    TextSpan(
                       text: 'Thả ảnh check-in của bạn ',
                       style: TextStyle(
                         color: Color(0xFF1E1E1E),
@@ -977,7 +976,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const TextSpan(
+                    TextSpan(
                       text: '*',
                       style: TextStyle(
                         color: Colors.red,
@@ -1131,7 +1130,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 ),
                 Switch.adaptive(
                   value: _isPrivate,
-                  activeColor: const Color(0xFFEF484F),
+                  activeThumbColor: const Color(0xFFEF484F),
                   onChanged: isLoading ? null : (value) {
                     setState(() {
                       _isPrivate = value;
