@@ -54,7 +54,7 @@ void main() {
     );
     expect(homeIcon.color, Colors.grey);
     expect(chatIcon.color, Colors.white);
-    expect(find.text('Lịch sử'), findsOneWidget);
+    expect(find.text('Lịch sử'), findsNothing);
     expect(find.byKey(const ValueKey('camera-chat-bottom-tab')), findsNothing);
   });
 
