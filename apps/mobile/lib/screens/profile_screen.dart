@@ -238,10 +238,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           title: Text(
             'HỒ SƠ',
-            style: GoogleFonts.ericaOne(
+            style: GoogleFonts.anton(
               color: const Color(0xFFEF4050),
               fontSize: 32,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
             ),
           ),
