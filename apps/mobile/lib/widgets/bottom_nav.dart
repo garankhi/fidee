@@ -23,7 +23,9 @@ class CustomBottomNav extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 350,
+              width: (MediaQuery.sizeOf(context).width - 30)
+                  .clamp(0.0, 350.0)
+                  .toDouble(),
               height: 60,
               padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8), // Thêm chút padding ngang cho thoáng
               decoration: ShapeDecoration(
@@ -55,7 +57,6 @@ class CustomBottomNav extends StatelessWidget {
                   GestureDetector(
                     onTap: () => onTap(3), // CHỈ CẦN GỌI ONTAP(3), để màn hình cha tự chuyển tab sang ProfileScreen
                     child: Container(
-                      width: 65,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Center(
                         child: Container(
@@ -100,7 +101,6 @@ class CustomBottomNav extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: showRedBackground ? 85 : 65, // Nút giữa khi active sẽ to bè ra chiếm không gian như trong ảnh
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: ShapeDecoration(
           color: showRedBackground ? const Color(0xFFEF484F) : Colors.transparent,

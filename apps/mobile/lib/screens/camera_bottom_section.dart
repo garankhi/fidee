@@ -16,13 +16,11 @@ class CameraBottomSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Column(
       key: const ValueKey('camera-bottom-section'),
-      height: 120,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
@@ -65,7 +63,7 @@ class CameraBottomSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Container(
-            margin: const EdgeInsets.only(left: 110, right: 110),
+            margin: const EdgeInsets.symmetric(horizontal: 48),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.grey[900],
@@ -146,8 +144,7 @@ class CameraBottomSection extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
