@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fidee_mobile/features/auth/auth_providers.dart';
 import 'package:fidee_mobile/features/auth/friends_provider.dart';
 import 'package:fidee_mobile/services/auth_service.dart';
 import 'package:fidee_mobile/services/friend_service.dart';
@@ -8,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAuthService extends AuthService {
   _FakeAuthService() : super(isTestMode: true);
+
+  @override
+  Future<String?> getCurrentUserSub() async => 'current-user';
 }
 
 class _QueuedFriendService extends FriendService {
@@ -41,7 +45,10 @@ void main() {
     () async {
       final service = _QueuedFriendService();
       final container = ProviderContainer(
-        overrides: [friendServiceProvider.overrideWithValue(service)],
+        overrides: [
+          authServiceProvider.overrideWithValue(_FakeAuthService()),
+          friendServiceProvider.overrideWithValue(service),
+        ],
       );
       addTearDown(container.dispose);
 

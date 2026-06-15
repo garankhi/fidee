@@ -13,7 +13,7 @@ import '../models/nearby_place.dart';
 import '../services/nearby_service.dart';
 import '../widgets/bottom_nav.dart';
 import 'add_spot_screen.dart';
-import 'journey_screen.dart';
+import 'camera_chat_inbox.dart';
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -74,19 +74,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBody: false,
+      extendBody: true,
 
       body: IndexedStack(
         index: _currentNavIndex,
         children: [
           _buildDashboardBody(context, dashboardState, userAvatarUrl),
           const CandidateFeedScreen(),
-          const JourneyScreen(),
+          const CameraChatInboxScreen(),
           const ProfileScreen(),
         ],
       ),
 
-      bottomNavigationBar: BottomNav(
+      bottomNavigationBar: CustomBottomNav(
         currentIndex: _currentNavIndex,
         userAvatarUrl: userAvatarUrl,
         onTap: (index) {
@@ -105,10 +105,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
+        left: 20, right: 20,
         top: systemPadding.top > 0 ? systemPadding.top + 10 : 20,
-       bottom: 30,
+        bottom: systemPadding.bottom > 0 ? systemPadding.bottom + 100 : 110,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class BottomNav extends StatelessWidget {
+class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
   final String? userAvatarUrl;
   final ValueChanged<int> onTap;
 
-  const BottomNav({
+  const CustomBottomNav({
     super.key,
     required this.currentIndex,
     required this.userAvatarUrl,
@@ -16,125 +16,128 @@ class BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: Container(
-        width: double.infinity,
-        height: 70,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _buildNavItem(
-                index: 0,
-                label: 'Khám phá',
-                icon: Icons.explore,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10, left: 15, right: 15),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 350),
+            child: Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+              decoration: ShapeDecoration(
+                color: const Color(0xA8E78B8B),
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(
+                    width: 0.8,
+                    strokeAlign: BorderSide.strokeAlignOutside,
+                    color: Color(0xFFEF484F),
+                  ),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.layers,
+                      currentIndex == 0,
+                      () => onTap(0),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.explore,
+                      currentIndex == 1,
+                      () => onTap(1),
+                      isCenterActive: true,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.move_to_inbox,
+                      currentIndex == 2,
+                      () => onTap(2),
+                    ),
+                  ),
+                  Expanded(child: _buildAvatarNavItem(currentIndex == 3)),
+                ],
               ),
             ),
-            Expanded(
-              child: _buildNavItem(
-                index: 1,
-                label: 'Bảng tin',
-                icon: Icons.layers,
-              ),
-            ),
-            Expanded(
-              child: _buildNavItem(
-                index: 2,
-                label: 'Nhật ký',
-                icon: Icons.move_to_inbox,
-              ),
-            ),
-            Expanded(
-              child: _buildNavItem(
-                index: 3,
-                label: 'Cá nhân',
-                isAvatar: true,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNavItem({
-    required int index,
-    required String label,
-    IconData? icon,
-    bool isAvatar = false,
+  Widget _buildNavItem(
+    IconData icon,
+    bool isActive,
+    VoidCallback onTap, {
+    bool isCenterActive = false,
   }) {
-    final bool isActive = currentIndex == index;
+    final bool showRedBackground = isActive && isCenterActive;
 
     return GestureDetector(
-      onTap: () => onTap(index),
-      child: Container(
-        height: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: isActive
-            ? const BoxDecoration(
-                color: Color(0xFFEF484F),
-              )
-            : null,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 30,
-              height: 30,
-              child: isAvatar
-                  ? Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isActive ? Colors.white : Colors.transparent,
-                          width: 1.5,
-                        ),
-                        image: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
-                            ? DecorationImage(
-                                image: NetworkImage(userAvatarUrl!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: userAvatarUrl == null || userAvatarUrl!.isEmpty
-                          ? Center(
-                              child: Icon(
-                                Icons.person,
-                                size: 16,
-                                color: isActive ? Colors.white : Colors.black,
-                              ),
-                            )
-                          : null,
-                    )
-                  : Icon(
-                      icon,
-                      size: 22,
-                      color: isActive ? Colors.white : Colors.black,
-                    ),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Container(
+          height: double.infinity,
+          decoration: ShapeDecoration(
+            color: showRedBackground
+                ? const Color(0xFFEF484F)
+                : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(33),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.black,
-                fontSize: 12,
-                fontFamily: 'SF Pro',
-                fontWeight: FontWeight.w700,
+          ),
+          child: Icon(
+            icon,
+            color: showRedBackground
+                ? Colors.white
+                : (isActive
+                      ? const Color(0xFFEF484F)
+                      : const Color(0xFF46090C)),
+            size: showRedBackground ? 26 : 24,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarNavItem(bool isActive) {
+    return GestureDetector(
+      onTap: () => onTap(3),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Center(
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFFFD4DA),
+              border: Border.all(
+                color: isActive ? const Color(0xFFEF484F) : Colors.white,
+                width: 1.5,
               ),
+              image: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(userAvatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-          ],
+            child: userAvatarUrl == null || userAvatarUrl!.isEmpty
+                ? const Center(
+                    child: Icon(
+                      Icons.person,
+                      size: 18,
+                      color: Color(0xFFEF484F),
+                    ),
+                  )
+                : null,
+          ),
         ),
       ),
     );
