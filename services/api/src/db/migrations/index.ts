@@ -781,4 +781,20 @@ CREATE TRIGGER trg_user_chat_conversations_updated
   BEFORE UPDATE ON user_chat_conversations
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 `,
+  '015_vector_768': `-- ============================================================================
+-- 015_vector_768
+-- Migrate embedding column from VECTOR(1536) to VECTOR(3072) for Gemini
+-- gemini-embedding-001 model (native 3072 dimensions).
+-- ============================================================================
+
+-- Step 1: Drop old column (currently NULL for all rows, no data loss)
+ALTER TABLE places DROP COLUMN IF EXISTS embedding;
+
+-- Step 2: Recreate with correct dimensions for Gemini gemini-embedding-001
+ALTER TABLE places ADD COLUMN embedding VECTOR(3072);
+
+-- Step 3: Create HNSW index for cosine similarity search
+CREATE INDEX idx_places_embedding ON places
+  USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+`,
 };

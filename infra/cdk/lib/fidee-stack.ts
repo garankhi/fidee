@@ -21,6 +21,8 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
+import { ChatApiStack } from './nested/chat-api-stack';
+import { AdminApiStack } from './nested/admin-api-stack';
 
 export const MAIN_REGION = 'ap-southeast-1';
 export const CLOUDFRONT_WAF_REGION = 'us-east-1';
@@ -422,11 +424,14 @@ export class FideeStack extends cdk.Stack {
       sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
     });
 
-    // ─── VPC (Private Isolated for Aurora — no NAT = $0) ────────
+    // ─── VPC ─────────────────────────────────────────────────────
+    // natGateways: 1 enables internet egress for Lambdas in
+    // PRIVATE_WITH_EGRESS subnet (needed for calling external APIs
+    // like OpenAI). Cost: ~$32/month. Set to 0 if not needed.
     const vpc = new ec2.Vpc(this, 'Vpc', {
       vpcName: resourceName(stage, 'vpc'),
       maxAzs: 2,
-      natGateways: 0,
+      natGateways: 1,
       subnetConfiguration: [
         {
           name: 'isolated',
@@ -436,6 +441,11 @@ export class FideeStack extends cdk.Stack {
         {
           name: 'public',
           subnetType: ec2.SubnetType.PUBLIC,
+          cidrMask: 24,
+        },
+        {
+          name: 'private-egress',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
           cidrMask: 24,
         },
       ],
@@ -537,55 +547,34 @@ export class FideeStack extends cdk.Stack {
       webAclId: props.mediaWebAclArn,
     });
 
-    const searchFunctionName = resourceName(stage, 'search');
-    const searchLogGroup = new logs.LogGroup(this, 'SearchLogGroup', {
-      logGroupName: `/aws/lambda/${searchFunctionName}`,
-      retention: logs.RetentionDays.ONE_MONTH,
-      removalPolicy,
-    });
-
-    const searchRole = new iam.Role(this, 'SearchFunctionRole', {
-      roleName: resourceName(stage, 'search-role'),
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      inlinePolicies: {
-        SearchFunctionPolicy: new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
-              resources: [`${searchLogGroup.logGroupArn}:*`],
-            }),
-            new iam.PolicyStatement({
-              actions: [
-                'dynamodb:BatchGetItem',
-                'dynamodb:ConditionCheckItem',
-                'dynamodb:DescribeTable',
-                'dynamodb:GetItem',
-                'dynamodb:Query',
-                'dynamodb:Scan',
-              ],
-              resources: [placesTable.tableArn, `${placesTable.tableArn}/index/GSI1`],
-            }),
-          ],
-        }),
-      },
-    });
-
-    const searchFn = new lambda.Function(this, 'SearchFunction', {
-      functionName: searchFunctionName,
+    // ─── Search Lambda (AI Chat — needs VPC for DB + internet for LLM) ──
+    const searchFn = new nodejs.NodejsFunction(this, 'SearchFunction', {
+      functionName: resourceName(stage, 'search'),
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'handlers/search.handler',
-      code: lambda.Code.fromAsset('../../services/api/dist'),
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(30),
-      logGroup: searchLogGroup,
-      role: searchRole,
+      entry: '../../services/api/src/handlers/search.ts',
+      handler: 'handler',
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(60),
+      vpc,
+      // PRIVATE_WITH_EGRESS: can reach Aurora (internal) + OpenAI (internet via NAT)
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [lambdaSecurityGroup],
       environment: {
         STAGE: stage,
-        PLACES_TABLE: placesTable.tableName,
-        MEDIA_BUCKET: mediaBucket.bucketName,
-        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+        // LLM config — native Gemini API
+        LLM_PROVIDER: 'gemini',
+        GEMINI_API_KEYS: process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '',
+        GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID || '',
+        BEDROCK_REGION: process.env.BEDROCK_REGION || 'ap-northeast-1',
+      },
+      bundling: {
+        nodeModules: ['pg', 'openai', '@google/genai'],
       },
     });
+    dbCluster.secret!.grantRead(searchFn);
 
     const createMediaUploadFn = new nodejs.NodejsFunction(this, 'CreateMediaUploadFunction', {
       functionName: resourceName(stage, 'create-media-upload'),
@@ -816,89 +805,6 @@ export class FideeStack extends cdk.Stack {
     );
     friendRealtimeApi.grantMutation(publishFriendRealtimeEventFn);
 
-    const chatLambdaProps = {
-      ...friendsLambdaProps,
-      environment: {
-        ...friendsLambdaProps.environment,
-        CHAT_REALTIME_EVENTS_TABLE: chatRealtimeEventsTable.tableName,
-        CHAT_PRESENCE_TABLE: chatPresenceTable.tableName,
-      },
-    };
-
-    const createDirectConversationFn = new nodejs.NodejsFunction(
-      this,
-      'CreateDirectConversationFunction',
-      {
-        ...chatLambdaProps,
-        functionName: resourceName(stage, 'create-direct-conversation'),
-        entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-        handler: 'createDirectConversation',
-      },
-    );
-    dbCluster.secret!.grantRead(createDirectConversationFn);
-
-    const listConversationsFn = new nodejs.NodejsFunction(this, 'ListConversationsFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'list-conversations'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'listConversations',
-    });
-    dbCluster.secret!.grantRead(listConversationsFn);
-
-    const listMessagesFn = new nodejs.NodejsFunction(this, 'ListMessagesFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'list-chat-messages'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'listMessages',
-    });
-    dbCluster.secret!.grantRead(listMessagesFn);
-
-    const sendMessageFn = new nodejs.NodejsFunction(this, 'SendChatMessageFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'send-chat-message'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'sendMessage',
-    });
-    dbCluster.secret!.grantRead(sendMessageFn);
-    chatRealtimeEventsTable.grantWriteData(sendMessageFn);
-
-    const markChatReadFn = new nodejs.NodejsFunction(this, 'MarkChatReadFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'mark-chat-read'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'markRead',
-    });
-    dbCluster.secret!.grantRead(markChatReadFn);
-    chatRealtimeEventsTable.grantWriteData(markChatReadFn);
-
-    const markChatDeliveredFn = new nodejs.NodejsFunction(this, 'MarkChatDeliveredFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'mark-chat-delivered'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'markDelivered',
-    });
-    dbCluster.secret!.grantRead(markChatDeliveredFn);
-    chatRealtimeEventsTable.grantWriteData(markChatDeliveredFn);
-
-    const sendChatTypingFn = new nodejs.NodejsFunction(this, 'SendChatTypingFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'send-chat-typing'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'sendTyping',
-    });
-    dbCluster.secret!.grantRead(sendChatTypingFn);
-    chatRealtimeEventsTable.grantWriteData(sendChatTypingFn);
-
-    const chatHeartbeatFn = new nodejs.NodejsFunction(this, 'ChatHeartbeatFunction', {
-      ...chatLambdaProps,
-      functionName: resourceName(stage, 'chat-heartbeat'),
-      entry: '../../services/api/src/handlers/user-chat-handlers.ts',
-      handler: 'heartbeat',
-    });
-    dbCluster.secret!.grantRead(chatHeartbeatFn);
-    chatRealtimeEventsTable.grantWriteData(chatHeartbeatFn);
-    chatPresenceTable.grantReadWriteData(chatHeartbeatFn);
-
     const publishChatRealtimeEventFn = new nodejs.NodejsFunction(
       this,
       'PublishChatRealtimeEventFunction',
@@ -1016,7 +922,10 @@ export class FideeStack extends cdk.Stack {
     });
 
     const searchResource = api.root.addResource('search');
-    searchResource.addMethod('POST', new apigateway.LambdaIntegration(searchFn));
+    searchResource.addMethod('POST', new apigateway.LambdaIntegration(searchFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     // ─── /profile (protected) ────────────────────────────────────
     const profileFn = new nodejs.NodejsFunction(this, 'GetProfileFunction', {
@@ -1218,109 +1127,8 @@ export class FideeStack extends cdk.Stack {
     });
 
     // === /conversations API Routes ===
-    const conversationsResource = api.root.addResource('conversations');
-    conversationsResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    conversationsResource.addMethod('GET', new apigateway.LambdaIntegration(listConversationsFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const directConversationResource = conversationsResource.addResource('direct');
-    directConversationResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    directConversationResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(createDirectConversationFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
-
-    const conversationResource = conversationsResource.addResource('{conversationId}');
-    const conversationMessagesResource = conversationResource.addResource('messages');
-    conversationMessagesResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    conversationMessagesResource.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(listMessagesFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
-    conversationMessagesResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(sendMessageFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
-
-    const conversationReadResource = conversationResource.addResource('read');
-    conversationReadResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    conversationReadResource.addMethod('POST', new apigateway.LambdaIntegration(markChatReadFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const conversationDeliveredResource = conversationResource.addResource('delivered');
-    conversationDeliveredResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    conversationDeliveredResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(markChatDeliveredFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
-
-    const conversationTypingResource = conversationResource.addResource('typing');
-    conversationTypingResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    conversationTypingResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(sendChatTypingFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
-
-    const presenceResource = api.root.addResource('presence');
-    const heartbeatResource = presenceResource.addResource('heartbeat');
-    heartbeatResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    heartbeatResource.addMethod('POST', new apigateway.LambdaIntegration(chatHeartbeatFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
+    // ─── Chat APIs moved to ChatApiStack ─────────────────────────────
+    
     // ─── POST /place-candidates (protected) ─────────────────────
     const createPlaceCandidateFn = new nodejs.NodejsFunction(this, 'CreatePlaceCandidateFunction', {
       functionName: resourceName(stage, 'create-place-candidate'),
@@ -1798,237 +1606,28 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
-    // ─── GET /admin/users (VPC, connects to Aurora) ────────────
-    const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {
-      functionName: resourceName(stage, 'get-users'),
-      runtime: lambda.Runtime.NODEJS_20_X,
-      entry: '../../services/api/src/handlers/get-users.ts',
-      handler: 'handler',
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
+    // ─── Chat APIs (Nested Stack) ──────────────────────────────────
+    const chatApiStack = new ChatApiStack(this, 'ChatApiNestedStack', {
+      api,
+      authorizer: cognitoAuthorizer,
       vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      securityGroups: [lambdaSecurityGroup],
-      environment: {
-        STAGE: stage,
-        DB_SECRET_ARN: dbCluster.secret!.secretArn,
-        DB_NAME: 'fidee',
-      },
-      bundling: {
-        nodeModules: ['pg'],
-      },
+      lambdaSecurityGroup,
+      dbSecret: dbCluster.secret!,
+      chatRealtimeEventsTable,
+      chatPresenceTable,
+      stage,
     });
-    dbCluster.secret!.grantRead(getUsersFn);
 
-    // ─── PUT /admin/users/{userId} (VPC, connects to Aurora) ────
-    const updateUserFn = new nodejs.NodejsFunction(this, 'UpdateUserFunction', {
-      functionName: resourceName(stage, 'update-user'),
-      runtime: lambda.Runtime.NODEJS_20_X,
-      entry: '../../services/api/src/handlers/update-user.ts',
-      handler: 'handler',
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
+    // ─── Admin APIs (Nested Stack) ──────────────────────
+    const adminApiStack = new AdminApiStack(this, 'AdminApiNestedStack', {
+      api,
+      authorizer: cognitoAuthorizer,
       vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      securityGroups: [lambdaSecurityGroup],
-      environment: {
-        STAGE: stage,
-        DB_SECRET_ARN: dbCluster.secret!.secretArn,
-        DB_NAME: 'fidee',
-        USER_PROFILES_TABLE: userProfilesTable.tableName,
-      },
-      bundling: {
-        nodeModules: ['pg'],
-      },
+      lambdaSecurityGroup,
+      dbSecret: dbCluster.secret!,
+      userProfilesTable,
+      stage,
     });
-    dbCluster.secret!.grantRead(updateUserFn);
-    userProfilesTable.grantReadWriteData(updateUserFn);
-
-    // ─── Admin Users Resources (protected) ──────────────────────
-    const adminResource = api.root.addResource('admin');
-    const adminUsersResource = adminResource.addResource('users');
-
-    // Add CORS Preflight options for web browser clients
-    adminUsersResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-
-    adminUsersResource.addMethod('GET', new apigateway.LambdaIntegration(getUsersFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminUserDetailResource = adminUsersResource.addResource('{userId}');
-    // Add CORS Preflight options for web browser clients
-    adminUserDetailResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['PUT', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-
-    adminUserDetailResource.addMethod('PUT', new apigateway.LambdaIntegration(updateUserFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    // ─── Admin Places Review APIs ────────────────────────────────
-
-    // Shared Lambda config for admin place handlers
-    const adminLambdaProps = {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
-      vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      securityGroups: [lambdaSecurityGroup],
-      environment: {
-        STAGE: stage,
-        DB_SECRET_ARN: dbCluster.secret!.secretArn,
-        DB_NAME: 'fidee',
-      },
-      bundling: {
-        nodeModules: ['pg'],
-      },
-    };
-
-    // GET /admin/places/pending
-    const getPendingPlacesFn = new nodejs.NodejsFunction(this, 'GetPendingPlacesFunction', {
-      ...adminLambdaProps,
-      functionName: resourceName(stage, 'get-pending-places'),
-      entry: '../../services/api/src/handlers/admin/get-pending-places.ts',
-      handler: 'handler',
-    });
-    dbCluster.secret!.grantRead(getPendingPlacesFn);
-
-    // GET /admin/places/candidates/{id}
-    const getCandidateDetailFn = new nodejs.NodejsFunction(this, 'GetCandidateDetailFunction', {
-      ...adminLambdaProps,
-      functionName: resourceName(stage, 'get-candidate-detail'),
-      entry: '../../services/api/src/handlers/admin/get-candidate-detail.ts',
-      handler: 'handler',
-    });
-    dbCluster.secret!.grantRead(getCandidateDetailFn);
-
-    // POST /admin/places/candidates/{id}/approve
-    const approveCandidateFn = new nodejs.NodejsFunction(this, 'ApproveCandidateFunction', {
-      ...adminLambdaProps,
-      functionName: resourceName(stage, 'approve-candidate'),
-      entry: '../../services/api/src/handlers/admin/approve-candidate.ts',
-      handler: 'handler',
-    });
-    dbCluster.secret!.grantRead(approveCandidateFn);
-
-    // POST /admin/places/candidates/{id}/reject
-    const rejectCandidateFn = new nodejs.NodejsFunction(this, 'RejectCandidateFunction', {
-      ...adminLambdaProps,
-      functionName: resourceName(stage, 'reject-candidate'),
-      entry: '../../services/api/src/handlers/admin/reject-candidate.ts',
-      handler: 'handler',
-    });
-    dbCluster.secret!.grantRead(rejectCandidateFn);
-
-    // POST /admin/places/candidates/{id}/merge
-    const mergeCandidateFn = new nodejs.NodejsFunction(this, 'MergeCandidateFunction', {
-      ...adminLambdaProps,
-      functionName: resourceName(stage, 'merge-candidate'),
-      entry: '../../services/api/src/handlers/admin/merge-candidate.ts',
-      handler: 'handler',
-    });
-    dbCluster.secret!.grantRead(mergeCandidateFn);
-
-    // ─── Admin Places API Resources ─────────────────────────────
-    const adminPlacesResource = adminResource.addResource('places');
-
-    // /admin/places/pending
-    const adminPendingResource = adminPlacesResource.addResource('pending');
-    adminPendingResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    adminPendingResource.addMethod('GET', new apigateway.LambdaIntegration(getPendingPlacesFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    // /admin/places/candidates/{id}
-    const adminCandidatesResource = adminPlacesResource.addResource('candidates');
-    const adminCandidateDetailResource = adminCandidatesResource.addResource('{id}');
-    adminCandidateDetailResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    adminCandidateDetailResource.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(getCandidateDetailFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
-
-    // /admin/places/candidates/{id}/approve
-    const adminApproveResource = adminCandidateDetailResource.addResource('approve');
-    adminApproveResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    adminApproveResource.addMethod('POST', new apigateway.LambdaIntegration(approveCandidateFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    // /admin/places/candidates/{id}/reject
-    const adminRejectResource = adminCandidateDetailResource.addResource('reject');
-    adminRejectResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    adminRejectResource.addMethod('POST', new apigateway.LambdaIntegration(rejectCandidateFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    // /admin/places/candidates/{id}/merge
-    const adminMergeResource = adminCandidateDetailResource.addResource('merge');
-    adminMergeResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    adminMergeResource.addMethod('POST', new apigateway.LambdaIntegration(mergeCandidateFn), {
-      authorizer: cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    // POST /admin/places/candidates/{id}/request-info
-    const requestInfoCandidateFn = new nodejs.NodejsFunction(this, 'RequestInfoCandidateFunction', {
-      ...adminLambdaProps,
-      functionName: resourceName(stage, 'request-info-candidate'),
-      entry: '../../services/api/src/handlers/admin/request-info-candidate.ts',
-      handler: 'handler',
-    });
-    dbCluster.secret!.grantRead(requestInfoCandidateFn);
-
-    const adminRequestInfoResource = adminCandidateDetailResource.addResource('request-info');
-    adminRequestInfoResource.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    });
-    adminRequestInfoResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(requestInfoCandidateFn),
-      {
-        authorizer: cognitoAuthorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      },
-    );
 
     const mediaUploadObjectCreatedRule = new events.Rule(this, 'MediaUploadObjectCreatedRule', {
       ruleName: resourceName(stage, 'media-upload-object-created'),
