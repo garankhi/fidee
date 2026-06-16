@@ -1,9 +1,14 @@
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
 export interface ChatResponse {
   content: string;
 }
 
 export interface LlmProvider {
-  chat(systemPrompt: string, userMessage: string, forceJson?: boolean): Promise<ChatResponse>;
+  chat(systemPrompt: string, userMessage: string, forceJson?: boolean, history?: ChatMessage[]): Promise<ChatResponse>;
 }
 
 export async function createLlmProvider(): Promise<LlmProvider> {

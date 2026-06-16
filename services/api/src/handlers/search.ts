@@ -21,6 +21,7 @@ const CORS_HEADERS = {
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const body = event.body ? JSON.parse(event.body) : {};
   const prompt = body.prompt as string | undefined;
+  const history = body.history as any[] | undefined; // ChatMessage array
   const limit = Math.min(Math.max(body.limit || 10, 1), 20);
 
   if (!prompt || prompt.trim().length === 0) {
@@ -159,7 +160,10 @@ Quy tắc trả lời:
 - Nếu không có kết quả, xin lỗi lịch sự và gợi ý user thử từ khóa khác
 - Nếu có nhiều kết quả, ưu tiên giới thiệu 2-3 nơi nổi bật nhất`;
 
-    const answerResponse = await llm.chat(ragSystemPrompt, 'Hãy trả lời người dùng.', false);
+    // Inject user prompt and contextual places into the user message
+    const userMessage = `Câu hỏi của user: "${prompt}"\n\nDanh sách địa điểm (Context):\n${placeSummary}`;
+
+    const answerResponse = await llm.chat(ragSystemPrompt, userMessage, false, history);
 
     return {
       statusCode: 200,
