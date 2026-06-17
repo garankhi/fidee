@@ -1,18 +1,38 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../../db/client';
+import { EmbeddingService } from '../../services/embedding-service';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
 };
 
+interface PlaceCandidateRow {
+  [key: string]: unknown;
+  id: string;
+  name: string;
+  normalized_name: string;
+  category: string;
+  address: string | null;
+  location: unknown;
+  created_by: string;
+  open_time: string | null;
+  close_time: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  phone_number: string | null;
+  description: string | null;
+  metadata: string | Record<string, unknown> | null;
+}
+
 /**
  * POST /admin/places/candidates/{id}/approve
  *
  * Approve a place candidate:
  * 1. Copy data from place_candidates → places + place_settings (APPROVED)
- * 2. Delete from place_candidates
- * 3. Write audit log to place_moderation
+ * 2. Generate AI embedding for the new place (non-blocking)
+ * 3. Delete from place_candidates
+ * 4. Write audit log to place_moderation
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -40,7 +60,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const fetchSql = `
       SELECT * FROM place_candidates WHERE id = $1;
     `;
-    const fetchResult = await query(fetchSql, [candidateId]);
+    const fetchResult = await query<PlaceCandidateRow>(fetchSql, [candidateId]);
     if (fetchResult.rows.length === 0) {
       return {
         statusCode: 404,
@@ -76,6 +96,28 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     ]);
     const newPlaceId = placeResult.rows[0].id;
 
+    // 2.5. Generate embedding for the new place (non-blocking: failure does NOT block approve)
+    let embeddingGenerated = false;
+    try {
+      const embeddingService = new EmbeddingService();
+      const placeText = embeddingService.buildPlaceText({
+        name: c.name,
+        category: c.category,
+        description: c.description,
+        metadata: typeof c.metadata === 'string' ? JSON.parse(c.metadata) : c.metadata,
+      });
+      const vector = await embeddingService.embedText(placeText);
+      await query(
+        'UPDATE places SET embedding = $1 WHERE id = $2',
+        [`[${vector.join(',')}]`, newPlaceId],
+      );
+      embeddingGenerated = true;
+      console.log(`✅ Embedding generated for place: ${c.name} (${newPlaceId})`);
+    } catch (embeddingError) {
+      // Non-fatal: place is created successfully, embedding can be backfilled later
+      console.error(`⚠️ Embedding failed for place ${newPlaceId} (will be backfilled):`, embeddingError);
+    }
+
     // 3. Insert place_settings (APPROVED + PUBLIC)
     const insertSettingsSql = `
       INSERT INTO place_settings (place_id, visibility, status, updated_by)
@@ -102,6 +144,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           action: 'approved',
           candidate_id: candidateId,
           new_place_id: newPlaceId,
+          embedding_generated: embeddingGenerated,
           message: `Place "${c.name}" has been approved and is now publicly visible.`,
         },
       }),
@@ -115,3 +158,4 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   }
 }
+

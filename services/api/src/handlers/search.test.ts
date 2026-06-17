@@ -30,9 +30,11 @@ const mockEvent = (
 describe('search handler', () => {
   it('returns 400 when prompt is missing without counting quota', async () => {
     const incrementUsage = vi.fn();
+    const searchPlaces = vi.fn();
     const handler = createSearchHandler({
       getPlan: vi.fn().mockResolvedValue('FREE'),
       incrementUsage,
+      searchPlaces,
     });
 
     const result = await handler(mockEvent(null));
@@ -48,9 +50,15 @@ describe('search handler', () => {
       allowed: true,
       usageDate: '2026-06-16',
     });
+    const searchPlaces = vi.fn().mockResolvedValue({
+      answer: 'Found a rooftop option.',
+      search_method: 'keyword',
+      results: [],
+    });
     const handler = createSearchHandler({
       getPlan: vi.fn().mockResolvedValue('FREE'),
       incrementUsage,
+      searchPlaces,
     });
 
     const result = await handler(mockEvent({ prompt: 'rooftop restaurant' }));
@@ -58,10 +66,17 @@ describe('search handler', () => {
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
     expect(body.prompt).toBe('rooftop restaurant');
+    expect(body.answer).toBe('Found a rooftop option.');
     expect(body.quota).toEqual({ limit: 5, used: 1, resetDate: '2026-06-16' });
+    expect(searchPlaces).toHaveBeenCalledWith({
+      prompt: 'rooftop restaurant',
+      history: undefined,
+      limit: 10,
+    });
   });
 
   it('returns 429 when AI quota is exceeded', async () => {
+    const searchPlaces = vi.fn();
     const handler = createSearchHandler({
       getPlan: vi.fn().mockResolvedValue('FREE'),
       incrementUsage: vi.fn().mockResolvedValue({
@@ -70,6 +85,7 @@ describe('search handler', () => {
         allowed: false,
         usageDate: '2026-06-16',
       }),
+      searchPlaces,
     });
 
     const result = await handler(mockEvent({ prompt: 'late night cafe' }));

@@ -1,5 +1,5 @@
 -- ============================================================================
--- 015_revenuecat_development_mode
+-- 016_revenuecat_development_mode
 -- Subscription state, RevenueCat webhook idempotency, and AI daily usage.
 -- ============================================================================
 
