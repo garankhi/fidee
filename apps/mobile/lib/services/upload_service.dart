@@ -7,6 +7,27 @@ import 'package:fidee_mobile/services/auth_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const int maxVideoUploadBytes = 20 * 1024 * 1024;
+
+String detectUploadContentType(String path) {
+  final ext = path.split('.').last.toLowerCase();
+  return switch (ext) {
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'mp4' => 'video/mp4',
+    'mov' => 'video/quicktime',
+    _ => 'image/jpeg',
+  };
+}
+
+bool isVideoUploadTooLarge({
+  required String contentType,
+  required int byteLength,
+}) {
+  return contentType.startsWith('video/') && byteLength > maxVideoUploadBytes;
+}
+
 class PendingUpload {
   final String id;
   final String imagePath;
@@ -84,7 +105,9 @@ class UploadService {
     required String imagePath,
     required double longitude,
     required double latitude,
-    required String source, // 'IN_APP_CAMERA' or 'EXIF_GALLERY'
+    required String source,
+    String? contentTypeOverride,
+    int? durationMs,
     void Function(double progress)? onProgress,
   }) async {
     final file = File(imagePath);
@@ -94,7 +117,10 @@ class UploadService {
     }
 
     final stat = await file.stat();
-    final contentType = _detectContentType(imagePath);
+    final contentType = contentTypeOverride ?? detectUploadContentType(imagePath);
+    if (isVideoUploadTooLarge(contentType: contentType, byteLength: stat.size)) {
+      throw UploadException('Video phải nhỏ hơn 20MB');
+    }
 
     final presigned = await _getPresignedUrl(
       source: source,
@@ -102,6 +128,7 @@ class UploadService {
       contentLength: stat.size,
       latitude: latitude,
       longitude: longitude,
+      durationMs: durationMs,
     );
 
     await _uploadToS3(presigned, file, onProgress: onProgress);
@@ -115,6 +142,7 @@ class UploadService {
     required int contentLength,
     required double latitude,
     required double longitude,
+    int? durationMs,
   }) async {
     final token = await _authService.getToken();
 
@@ -130,6 +158,7 @@ class UploadService {
           'source': source,
           'contentType': contentType,
           'contentLength': contentLength,
+          'durationMs': ?durationMs,
           'gpsProof': {
             'latitude': latitude,
             'longitude': longitude,
@@ -194,17 +223,6 @@ class UploadService {
     } on DioException catch (e) {
       _throwFromDioError(e);
     }
-  }
-
-  String _detectContentType(String path) {
-    // toLowerCase() để xử lý cả .JPG lẫn .jpg
-    final ext = path.split('.').last.toLowerCase();
-    return switch (ext) {
-      'jpg' || 'jpeg' => 'image/jpeg',
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      _ => 'image/jpeg', // fallback an toàn
-    };
   }
 
   Never _throwFromDioError(DioException e) {

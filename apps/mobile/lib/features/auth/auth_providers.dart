@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
+import 'billing_provider.dart';
 
 part 'auth_providers.g.dart';
 
@@ -91,6 +93,14 @@ class AuthUiState {
   }
 }
 
+bool shouldLogInRevenueCat(AuthUiState state, String? appUserId) {
+  final hasAppUserId = appUserId != null && appUserId.trim().isNotEmpty;
+  if (!hasAppUserId) return false;
+
+  return state.authState == AuthState.authenticated ||
+      state.authState == AuthState.incompleteProfile;
+}
+
 @Riverpod(keepAlive: true)
 AuthService authService(AuthServiceRef ref) {
   return AuthService();
@@ -115,6 +125,7 @@ class AuthController extends _$AuthController {
   Future<AuthUiState> build() async {
     final service = ref.read(authServiceProvider);
     await service.initialize();
+    await _syncRevenueCatLogin(service);
     return AuthUiState.fromService(service);
   }
 
@@ -124,6 +135,9 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.signIn(email, password);
+    if (result.success) {
+      await _syncRevenueCatLogin(service);
+    }
     state = AsyncData(
       AuthUiState.fromService(
         service,
@@ -154,6 +168,9 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.signInWithGoogle();
+    if (result.success) {
+      await _syncRevenueCatLogin(service);
+    }
     state = AsyncData(
       AuthUiState.fromService(
         service,
@@ -169,6 +186,9 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.verifyOtp(code);
+    if (result.success) {
+      await _syncRevenueCatLogin(service);
+    }
     state = AsyncData(
       AuthUiState.fromService(
         service,
@@ -194,6 +214,7 @@ class AuthController extends _$AuthController {
   Future<void> signOut() async {
     final service = ref.read(authServiceProvider);
     await service.signOut();
+    await _syncRevenueCatLogout();
     state = AsyncData(AuthUiState.fromService(service));
   }
 
@@ -207,6 +228,9 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.completeProfile(firstName, lastName, username);
+    if (result.success) {
+      await _syncRevenueCatLogin(service);
+    }
     state = AsyncData(
       AuthUiState.fromService(
         service,
@@ -253,6 +277,30 @@ class AuthController extends _$AuthController {
 
   void clearError() {
     state = AsyncData(_currentState().copyWith(clearError: true));
+  }
+
+  Future<void> _syncRevenueCatLogin(AuthService service) async {
+    final nextState = AuthUiState.fromService(service);
+    final userId = await service.getCurrentUserSub();
+    if (!shouldLogInRevenueCat(nextState, userId)) return;
+
+    try {
+      await ref.read(revenueCatServiceProvider).logIn(userId!.trim());
+    } catch (error, stackTrace) {
+      debugPrint('[RevenueCat] auth logIn failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      // Billing sync must not block auth state transitions.
+    }
+  }
+
+  Future<void> _syncRevenueCatLogout() async {
+    try {
+      await ref.read(revenueCatServiceProvider).logOut();
+    } catch (error, stackTrace) {
+      debugPrint('[RevenueCat] auth logOut failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      // Billing sync must not block auth state transitions.
+    }
   }
 
   AuthUiState _currentState() {

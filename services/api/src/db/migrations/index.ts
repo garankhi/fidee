@@ -783,18 +783,67 @@ CREATE TRIGGER trg_user_chat_conversations_updated
 `,
   '015_vector_768': `-- ============================================================================
 -- 015_vector_768
--- Migrate embedding column from VECTOR(1536) to VECTOR(3072) for Gemini
--- gemini-embedding-001 model (native 3072 dimensions).
+-- Migrate embedding column from VECTOR(1536) to VECTOR(768) for Gemini
+-- gemini-embedding-001 model with outputDimensionality=768.
 -- ============================================================================
 
 -- Step 1: Drop old column (currently NULL for all rows, no data loss)
 ALTER TABLE places DROP COLUMN IF EXISTS embedding;
 
 -- Step 2: Recreate with correct dimensions for Gemini gemini-embedding-001
-ALTER TABLE places ADD COLUMN embedding VECTOR(3072);
+ALTER TABLE places ADD COLUMN embedding VECTOR(768);
 
 -- Step 3: Create HNSW index for cosine similarity search
+-- HNSW advantages over IVFFlat:
+--   - No training data needed (works well even with few rows)
+--   - Auto-updates on INSERT (no rebuild required)
+--   - Better recall at small-to-medium scale (< 1M rows)
 CREATE INDEX idx_places_embedding ON places
   USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+`,
+  '016_revenuecat_development_mode': `-- ============================================================================
+-- 016_revenuecat_development_mode
+-- Subscription state, RevenueCat webhook idempotency, and AI daily usage.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  revenuecat_app_user_id TEXT NOT NULL UNIQUE,
+  entitlement TEXT NOT NULL DEFAULT 'free' CHECK (entitlement IN ('free', 'pro')),
+  plan TEXT NOT NULL DEFAULT 'FREE' CHECK (plan IN ('FREE', 'PRO')),
+  store TEXT,
+  product_id TEXT,
+  period_type TEXT,
+  expires_at TIMESTAMPTZ,
+  last_event_at TIMESTAMPTZ,
+  last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  raw_customer_info JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS revenuecat_webhook_events (
+  event_id TEXT PRIMARY KEY,
+  app_user_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  product_id TEXT,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  payload JSONB NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ai_usage_daily (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  input_count INTEGER NOT NULL DEFAULT 0 CHECK (input_count >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, usage_date)
+);
+
+ALTER TABLE check_ins
+  ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'IMAGE'
+  CHECK (media_type IN ('IMAGE', 'VIDEO'));
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_plan ON user_subscriptions(plan);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_daily_date ON ai_usage_daily(usage_date);
 `,
 };

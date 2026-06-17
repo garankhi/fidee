@@ -44,6 +44,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         pc.phone_number,
         pc.description,
         pc.status,
+        pc.visibility,
         pc.created_at,
         pc.created_by,
         u.display_name AS created_by_name,
@@ -52,10 +53,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       FROM place_candidates pc
       JOIN users u ON pc.created_by = u.id
       WHERE pc.status = $1
+        AND (pc.visibility = 'FRIENDS' OR pc.created_by = $2)
       ORDER BY pc.created_at DESC
       LIMIT 50;
     `;
-    const result = await query(sql, [statusFilter]);
+    const result = await query(sql, [statusFilter, userId]);
 
     return {
       statusCode: 200,

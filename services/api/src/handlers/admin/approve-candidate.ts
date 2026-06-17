@@ -7,6 +7,24 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
 };
 
+interface PlaceCandidateRow {
+  [key: string]: unknown;
+  id: string;
+  name: string;
+  normalized_name: string;
+  category: string;
+  address: string | null;
+  location: unknown;
+  created_by: string;
+  open_time: string | null;
+  close_time: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  phone_number: string | null;
+  description: string | null;
+  metadata: string | Record<string, unknown> | null;
+}
+
 /**
  * POST /admin/places/candidates/{id}/approve
  *
@@ -42,7 +60,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const fetchSql = `
       SELECT * FROM place_candidates WHERE id = $1;
     `;
-    const fetchResult = await query(fetchSql, [candidateId]);
+    const fetchResult = await query<PlaceCandidateRow>(fetchSql, [candidateId]);
     if (fetchResult.rows.length === 0) {
       return {
         statusCode: 404,

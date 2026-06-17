@@ -8,7 +8,7 @@ typedef GalleryAssetSheetLoader =
 class GalleryAssetPickerSheet extends StatefulWidget {
   GalleryAssetPickerSheet({super.key, GalleryAssetSheetLoader? loadAssets})
     : loadAssets =
-          loadAssets ?? const GalleryAssetPickerService().loadRecentImages;
+          loadAssets ?? const GalleryAssetPickerService().loadRecentMedia;
 
   final GalleryAssetSheetLoader loadAssets;
 
@@ -28,6 +28,14 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
   }
 
   Future<void> _selectAsset(GalleryAssetPickerItem item) async {
+    final validationError = galleryAssetUploadError(item);
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(validationError)),
+      );
+      return;
+    }
+
     setState(() {
       _busyAssetId = item.id;
     });
@@ -40,14 +48,27 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
         _busyAssetId = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không mở được ảnh này. Vui lòng chọn ảnh khác.'),
+        SnackBar(
+          content: Text(
+            item.isVideo
+                ? 'Không mở được video này. Vui lòng chọn video khác.'
+                : 'Không mở được ảnh này. Vui lòng chọn ảnh khác.',
+          ),
         ),
       );
       return;
     }
 
-    Navigator.pop(context, path);
+    Navigator.pop(
+      context,
+      GalleryAssetPickerSelection(
+        path: path,
+        source: galleryAssetSourceForMediaType(item.mediaType),
+        mediaType: item.mediaType,
+        durationMs: item.durationMs,
+        gpsCoordinates: item.gpsCoordinates,
+      ),
+    );
   }
 
   @override
@@ -76,7 +97,7 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
                 ),
                 const SizedBox(height: 18),
                 const Text(
-                  'Chọn ảnh từ thư viện',
+                  'Chọn ảnh hoặc video',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -99,7 +120,7 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
                       if (assets.isEmpty) {
                         return Center(
                           child: Text(
-                            'Không có ảnh nào để chọn',
+                            'Không có ảnh hoặc video nào để chọn',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.72),
                               fontSize: 17,
@@ -165,6 +186,26 @@ class _GalleryAssetTile extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Image.memory(item.thumbnail, fit: BoxFit.cover),
+              if (item.isVideo)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.54),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
               if (isBusy)
                 Container(
                   color: Colors.black.withValues(alpha: 0.46),

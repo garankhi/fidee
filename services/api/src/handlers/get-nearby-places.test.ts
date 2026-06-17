@@ -53,6 +53,17 @@ describe('getNearbyPlaces handler', () => {
     expect(JSON.parse(result.body).metadata.radius_meters).toBe(1000);
   });
 
+  it('hides private friend candidates unless created by the viewer', async () => {
+    const result = await handler(nearbyEvent('1000'));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("(pc.visibility = 'FRIENDS' OR pc.created_by = $4)"),
+      [106.7035, 10.7738, 1000, 'user-123', null],
+    );
+  });
+
   it('filters nearby places by name when q is provided', async () => {
     const result = await handler(nearbyEvent('1000', 'coffee'));
 

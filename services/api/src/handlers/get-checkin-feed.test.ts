@@ -50,6 +50,18 @@ describe('get-checkin-feed handler', () => {
     ]);
   });
 
+  it('selects media type for image and video feed rendering', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const result = await handler(event({ filter: 'everyone', limit: '12' }));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining('ci.media_type as "mediaType"'),
+      ['user-1', 13],
+    );
+  });
+
   it('filters to current user for filter=me', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
@@ -72,10 +84,10 @@ describe('get-checkin-feed handler', () => {
       'user-1',
       13,
     ]);
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ci.audience_type = 'ALL_FRIENDS'"), [
-      'user-1',
-      13,
-    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("ci.audience_type = 'ALL_FRIENDS'"),
+      ['user-1', 13],
+    );
   });
 
   it('filters to selected friend posts without leaking untargeted direct shares', async () => {

@@ -47,6 +47,13 @@ type CfnResource = {
     Policies?: CfnInlinePolicy[];
   };
 };
+type CfnTemplateResource = {
+  Type?: string;
+  Properties?: {
+    FunctionName?: string;
+    Role?: unknown;
+  };
+};
 type CfnPolicyStatementWithOwner = {
   logicalId: string;
   statement: CfnPolicyStatement;
@@ -75,6 +82,29 @@ const policyStatementsFromResources = (
       statement,
     }));
   });
+
+const stackResources = (template: Template) =>
+  ((template.toJSON() as { Resources?: Record<string, unknown> }).Resources ?? {});
+
+const resourceCountsByType = (resources: Record<string, unknown>) =>
+  Object.values(resources).reduce<Record<string, number>>((counts, resource) => {
+    const type = (resource as CfnTemplateResource).Type ?? 'Unknown';
+    counts[type] = (counts[type] ?? 0) + 1;
+    return counts;
+  }, {});
+
+const roleRefForFunctionName = (resources: Record<string, unknown>, functionName: string) => {
+  const resource = Object.values(resources).find((item) => {
+    const lambdaResource = item as CfnTemplateResource;
+    return (
+      lambdaResource.Type === 'AWS::Lambda::Function' &&
+      lambdaResource.Properties?.FunctionName === functionName
+    );
+  }) as CfnTemplateResource | undefined;
+
+  expect(resource).toBeDefined();
+  return resource?.Properties?.Role;
+};
 
 const stringValues = (value: CfnValue | CfnValue[] | undefined): string[] =>
   asArray(value).filter((item): item is string => typeof item === 'string');
@@ -120,7 +150,8 @@ const isAllowedWildcardStatement = ({
 
   // DynamoDB ListStreams is not resource-scoped; stream reads below remain scoped.
   if (
-    logicalId.startsWith('PublishFriendRealtimeEventFunctionServiceRoleDefaultPolicy') &&
+    (logicalId.startsWith('PublishFriendRealtimeEventFunctionServiceRoleDefaultPolicy') ||
+      logicalId.startsWith('PublishChatRealtimeEventFunctionServiceRoleDefaultPolicy')) &&
     hasOnlyActions(statement, ['dynamodb:ListStreams'])
   ) {
     return true;
@@ -147,7 +178,7 @@ describe('FideeStack', () => {
 
   it('creates core resources', () => {
     template.resourceCountIs('AWS::Cognito::UserPool', 1);
-    template.resourceCountIs('AWS::DynamoDB::Table', 3);
+    template.resourceCountIs('AWS::DynamoDB::Table', 5);
     template.resourceCountIs('AWS::S3::Bucket', 1);
     template.resourceCountIs('AWS::CloudFront::Distribution', 1);
     template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
@@ -162,6 +193,38 @@ describe('FideeStack', () => {
     });
     mediaTemplate.resourceCountIs('AWS::WAFv2::WebACL', 1);
     template.resourceCountIs('AWS::WAFv2::WebACL', 1);
+  });
+
+  it('keeps the main stack below the CloudFormation resource limit with deploy headroom', () => {
+    const resources = stackResources(template);
+    const counts = resourceCountsByType(resources);
+
+    expect(Object.keys(resources).length).toBeLessThanOrEqual(470);
+    expect(counts['AWS::IAM::Role'] ?? 0).toBeLessThanOrEqual(40);
+    expect(counts['AWS::IAM::Policy'] ?? 0).toBeLessThanOrEqual(35);
+  });
+
+  it('shares execution roles across high-volume API Lambda groups', () => {
+    const resources = stackResources(template);
+
+    expect(roleRefForFunctionName(resources, 'fidee-dev-get-friends')).toEqual(
+      roleRefForFunctionName(resources, 'fidee-dev-send-friend-request'),
+    );
+    expect(roleRefForFunctionName(resources, 'fidee-dev-list-conversations')).toEqual(
+      roleRefForFunctionName(resources, 'fidee-dev-send-chat-message'),
+    );
+    expect(roleRefForFunctionName(resources, 'fidee-dev-sync-revenuecat-customer')).toEqual(
+      roleRefForFunctionName(resources, 'fidee-dev-revenuecat-webhook'),
+    );
+    expect(roleRefForFunctionName(resources, 'fidee-dev-create-place-candidate')).toEqual(
+      roleRefForFunctionName(resources, 'fidee-dev-create-quick-place'),
+    );
+    expect(roleRefForFunctionName(resources, 'fidee-dev-get-map-feed')).toEqual(
+      roleRefForFunctionName(resources, 'fidee-dev-create-checkin'),
+    );
+    expect(roleRefForFunctionName(resources, 'fidee-dev-get-pending-places')).toEqual(
+      roleRefForFunctionName(resources, 'fidee-dev-request-info-candidate'),
+    );
   });
 
   it('creates Cognito groups for RBAC', () => {

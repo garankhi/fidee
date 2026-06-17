@@ -24,7 +24,7 @@ final userChatServiceProvider = Provider<UserChatService>.internal(
 // ignore: unused_element
 typedef UserChatServiceRef = ProviderRef<UserChatService>;
 String _$chatInboxControllerHash() =>
-    r'fab791bca0e109d02a00b48ec6e832f42caa9fa8';
+    r'e4354e91e07e86f0de0c1b80282fb61ee14d640d';
 
 /// See also [ChatInboxController].
 @ProviderFor(ChatInboxController)

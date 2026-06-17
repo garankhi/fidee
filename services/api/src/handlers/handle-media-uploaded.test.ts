@@ -99,6 +99,29 @@ describe('handle-media-uploaded handler', () => {
     });
   });
 
+  it('creates Media from a valid uploaded video event', async () => {
+    const { handler, putMedia, putRecords } = setup({
+      contentType: 'video/mp4',
+      contentLength: 1024,
+      metadata: {
+        ...validMetadata,
+        source: 'IN_APP_CAMERA_VIDEO',
+        'media-type': 'VIDEO',
+        'duration-ms': '2800',
+      },
+    });
+
+    await handler(sqsEvent(eventBody('uploads/media-1.mp4')));
+
+    expect(putMedia).toHaveBeenCalledOnce();
+    expect(putRecords[0]).toMatchObject({
+      contentType: 'video/mp4',
+      source: 'IN_APP_CAMERA_VIDEO',
+      mediaType: 'VIDEO',
+      durationMs: 2800,
+    });
+  });
+
   it('treats duplicate Media writes as idempotent success', async () => {
     const { handler, putMedia } = setup({ putResult: 'duplicate' });
 

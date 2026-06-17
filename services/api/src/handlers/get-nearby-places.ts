@@ -120,11 +120,18 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           WHERE user_id = $4 AND status = 'ACCEPTED'
           UNION ALL SELECT $4
         )
+        AND (pc.visibility = 'FRIENDS' OR pc.created_by = $4)
         AND ($5::text IS NULL OR pc.name ILIKE $5)
       ORDER BY distance_meters ASC
       LIMIT 10;
     `;
-    const friendResult = await query(friendCandidatesSql, [lng, lat, radius, userId, searchPattern]);
+    const friendResult = await query(friendCandidatesSql, [
+      lng,
+      lat,
+      radius,
+      userId,
+      searchPattern,
+    ]);
 
     // 5. Merge, deduplicate by name similarity, sort by distance
     const allResults = [

@@ -36,6 +36,12 @@ import 'send_image_screen.dart';
 
 List<CameraDescription>? globalCameras;
 
+const int cameraVideoMaxDurationMs = 3000;
+
+bool canRecordVideo({required bool isPro, required bool cameraReady}) {
+  return isPro && cameraReady;
+}
+
 class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
 
@@ -59,6 +65,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       GalleryPermissionStatus.notDetermined;
   CameraCheckinFeedItem? _activeFeedItem;
   bool _showFeedAudienceSelector = false;
+  Timer? _recordingTimer;
+  bool _isRecordingVideo = false;
+  DateTime? _recordingStartedAt;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -187,8 +196,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final isPro = authState?.tier == UserTier.pro;
 
     if (!isPro) {
-      _showProFeatureDialog();
-      return;
+      final upgraded = await _showProFeatureDialog();
+      if (!mounted || !upgraded) return;
     }
 
     final hasGalleryAccess = await _ensureGalleryPermissionForUpload();
@@ -207,36 +216,38 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
 
     if (!mounted) return;
-    final selectedImagePath = await showModalBottomSheet<String>(
+    final selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => GalleryAssetPickerSheet(
         loadAssets: () => GalleryAssetPickerService(
           permissionService: _galleryPermissionService,
-        ).loadRecentImages(),
+        ).loadRecentMedia(),
       ),
     );
 
     if (mounted) unawaited(_loadGalleryPreview());
-    if (selectedImagePath == null) return;
+    if (selectedAsset == null) return;
 
-    _setLoading(true); // Bật loading khi bắt đầu xử lý ảnh
+    await _handleGallerySelection(selectedAsset);
+  }
+
+  Future<void> _handleGallerySelection(
+    GalleryAssetPickerSelection selectedAsset,
+  ) async {
+    _setLoading(true);
     try {
-      final exif = await Exif.fromPath(selectedImagePath);
-      final latLong = await exif.getLatLong();
-      await exif.close();
+      final gpsCoordinates = selectedAsset.mediaType == GalleryAssetMediaType.video
+          ? selectedAsset.gpsCoordinates?.toList()
+          : await _gpsCoordinatesFromImageExif(selectedAsset.path);
 
-      if (latLong == null) {
+      if (gpsCoordinates == null) {
         _setLoading(false);
-        debugPrint('Missing EXIF GPS data');
+        debugPrint('Missing gallery GPS data');
         if (mounted) ErrorDialogs.showMissingGpsError(context);
         return;
       }
-
-      debugPrint(
-        'Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}',
-      );
 
       _setLoading(false);
       if (!mounted) return;
@@ -246,10 +257,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           transitionDuration: const Duration(milliseconds: 300),
           pageBuilder: (context, animation, secondaryAnimation) =>
               SendImageScreen(
-                imagePath: selectedImagePath,
-                source: 'EXIF_GALLERY',
-                // AC2: pass EXIF GPS to preview screen
-                gpsCoordinates: [latLong.latitude, latLong.longitude],
+                imagePath: selectedAsset.path,
+                source: selectedAsset.source,
+                gpsCoordinates: gpsCoordinates,
+                durationMs: selectedAsset.durationMs,
               ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
@@ -258,8 +269,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
     } catch (e) {
       _setLoading(false);
-      debugPrint('Lỗi đọc EXIF: $e');
+      debugPrint('Lỗi đọc metadata media: $e');
       if (mounted) ErrorDialogs.showMissingGpsError(context);
+    }
+  }
+
+  Future<List<double>?> _gpsCoordinatesFromImageExif(String imagePath) async {
+    final exif = await Exif.fromPath(imagePath);
+    try {
+      final latLong = await exif.getLatLong();
+      if (latLong == null) return null;
+      debugPrint(
+        'Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}',
+      );
+      return [latLong.latitude, latLong.longitude];
+    } finally {
+      await exif.close();
     }
   }
 
@@ -309,13 +334,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     return status.hasAccess;
   }
 
-  void _showProFeatureDialog() {
-    showModalBottomSheet<void>(
+  Future<bool> _showProFeatureDialog() async {
+    final upgraded = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const PremiumUpgradeSheet(),
     );
+    return upgraded == true;
   }
 
   void _switchCamera() {
@@ -333,7 +359,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _handleCapture() async {
-    if (!_controller!.value.isInitialized || _animationController.isAnimating) {
+    if (_isRecordingVideo ||
+        !_controller!.value.isInitialized ||
+        _animationController.isAnimating) {
       return;
     }
 
@@ -363,8 +391,92 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
+  Future<void> _startVideoRecording() async {
+    var isPro = ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
+    final controller = _controller;
+    final cameraReady = controller?.value.isInitialized ?? false;
+
+    if (!isPro) {
+      final upgraded = await _showProFeatureDialog();
+      if (!mounted || !upgraded) return;
+      isPro = true;
+    }
+    if (!canRecordVideo(isPro: isPro, cameraReady: cameraReady) ||
+        controller == null ||
+        _isRecordingVideo) {
+      return;
+    }
+
+    try {
+      await controller.startVideoRecording();
+      if (!mounted) return;
+      setState(() {
+        _isRecordingVideo = true;
+        _recordingStartedAt = DateTime.now();
+      });
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer(
+        const Duration(milliseconds: cameraVideoMaxDurationMs),
+        () => unawaited(_stopVideoRecording()),
+      );
+    } catch (error) {
+      debugPrint('Start video recording failed: $error');
+    }
+  }
+
+  Future<void> _stopVideoRecording() async {
+    final controller = _controller;
+    if (!_isRecordingVideo || controller == null) return;
+
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+
+    final startedAt = _recordingStartedAt;
+    final durationMs = startedAt == null
+        ? cameraVideoMaxDurationMs
+        : math.max(
+            1,
+            math.min(
+              cameraVideoMaxDurationMs,
+              DateTime.now().difference(startedAt).inMilliseconds,
+            ),
+          );
+
+    try {
+      final video = await controller.stopVideoRecording();
+      if (!mounted) return;
+      setState(() {
+        _isRecordingVideo = false;
+        _recordingStartedAt = null;
+      });
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder<void>(
+          transitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              SendImageScreen(
+                imagePath: video.path,
+                source: 'IN_APP_CAMERA_VIDEO',
+                durationMs: durationMs,
+              ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    } catch (error) {
+      debugPrint('Stop video recording failed: $error');
+      if (!mounted) return;
+      setState(() {
+        _isRecordingVideo = false;
+        _recordingStartedAt = null;
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _recordingTimer?.cancel();
     _animationController.dispose();
     _controller?.dispose();
     super.dispose();
@@ -438,6 +550,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                             shrinkAnimation: _shrinkAnimation,
                             onGalleryTap: _pickFromGallery,
                             onCapture: _handleCapture,
+                            onStartVideoRecording: _startVideoRecording,
+                            onStopVideoRecording: _stopVideoRecording,
+                            isRecordingVideo: _isRecordingVideo,
                             onSwitchCamera: _switchCamera,
                           ),
                           feedItems: feedState.items,
@@ -666,6 +781,9 @@ class _CameraCaptureControls extends StatelessWidget {
   final Animation<double> shrinkAnimation;
   final VoidCallback onGalleryTap;
   final Future<void> Function() onCapture;
+  final Future<void> Function() onStartVideoRecording;
+  final Future<void> Function() onStopVideoRecording;
+  final bool isRecordingVideo;
   final VoidCallback onSwitchCamera;
 
   const _CameraCaptureControls({
@@ -674,6 +792,9 @@ class _CameraCaptureControls extends StatelessWidget {
     required this.shrinkAnimation,
     required this.onGalleryTap,
     required this.onCapture,
+    required this.onStartVideoRecording,
+    required this.onStopVideoRecording,
+    required this.isRecordingVideo,
     required this.onSwitchCamera,
   });
 
@@ -690,10 +811,12 @@ class _CameraCaptureControls extends StatelessWidget {
             animation: animationController,
             builder: (context, child) {
               final shrinkValue = shrinkAnimation.value;
-              final currentInnerSize = 68.0 * shrinkValue;
+              final currentInnerSize = isRecordingVideo ? 48.0 : 68.0 * shrinkValue;
 
               return GestureDetector(
                 onTap: () => unawaited(onCapture()),
+                onLongPressStart: (_) => unawaited(onStartVideoRecording()),
+                onLongPressEnd: (_) => unawaited(onStopVideoRecording()),
                 child: Container(
                   width: 86,
                   height: 86,
@@ -708,8 +831,10 @@ class _CameraCaptureControls extends StatelessWidget {
                     child: Container(
                       width: currentInnerSize,
                       height: currentInnerSize,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: isRecordingVideo
+                            ? const Color(0xFFEF484F)
+                            : Colors.white,
                         shape: BoxShape.circle,
                       ),
                     ),

@@ -9,7 +9,8 @@ import { randomUUID } from 'crypto';
 import { extractAuth } from '../middleware/auth';
 import {
   buildObjectKey,
-  MAX_UPLOAD_BYTES,
+  maxUploadBytesForContentType,
+  SupportedContentType,
   UPLOAD_EXPIRY_SECONDS,
   ValidatedUploadRequest,
   ValidationError,
@@ -20,7 +21,7 @@ import { getUserPlan, UserPlan } from '../repositories/user-profiles';
 interface CreateUploadPostInput {
   bucket: string;
   key: string;
-  contentType: string;
+  contentType: SupportedContentType;
   metadata: Record<string, string>;
   expiresInSeconds: number;
 }
@@ -66,6 +67,7 @@ function buildUploadMetadata(
     'media-id': mediaId,
     'owner-user-id': ownerUserId,
     source: uploadRequest.source,
+    'media-type': uploadRequest.mediaType,
     'gps-latitude': String(uploadRequest.gpsProof.latitude),
     'gps-longitude': String(uploadRequest.gpsProof.longitude),
   };
@@ -75,6 +77,9 @@ function buildUploadMetadata(
   }
   if (uploadRequest.gpsProof.accuracyMeters !== undefined) {
     metadata['gps-accuracy-meters'] = String(uploadRequest.gpsProof.accuracyMeters);
+  }
+  if (uploadRequest.durationMs !== undefined) {
+    metadata['duration-ms'] = String(uploadRequest.durationMs);
   }
 
   return metadata;
@@ -91,7 +96,7 @@ async function createS3UploadPost(input: CreateUploadPostInput): Promise<Presign
   const conditions: NonNullable<PresignedPostOptions['Conditions']> = [
     ['eq', '$key', input.key],
     ['eq', '$Content-Type', input.contentType],
-    ['content-length-range', 1, MAX_UPLOAD_BYTES],
+    ['content-length-range', 1, maxUploadBytesForContentType(input.contentType)],
     ...Object.entries(metadataFields).map(
       ([field, value]) => ['eq', `$${field}`, value] as ['eq', string, string],
     ),
@@ -142,8 +147,11 @@ export function createMediaUploadHandler(deps: CreateMediaUploadDeps) {
       const uploadRequest = validateUploadRequest(parseJsonBody(event));
       const plan = await deps.getPlan(auth.sub);
 
-      if (uploadRequest.source === 'EXIF_GALLERY' && plan !== 'PRO') {
-        return jsonResponse(403, { error: 'Gallery uploads require Pro plan' });
+      const requiresPro =
+        uploadRequest.source === 'EXIF_GALLERY' || uploadRequest.mediaType === 'VIDEO';
+
+      if (requiresPro && plan !== 'PRO') {
+        return jsonResponse(403, { error: 'This upload requires Pro plan' });
       }
 
       const mediaId = deps.mediaIdFactory();

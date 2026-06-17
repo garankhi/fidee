@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'pro_plan_picker_sheet.dart';
+
 class PremiumUpgradeSheet extends StatelessWidget {
   const PremiumUpgradeSheet({super.key});
 
@@ -84,44 +86,19 @@ class PremiumUpgradeSheet extends StatelessWidget {
                   const SizedBox(height: 36),
 
                   _buildFeatureItem(
-                    '🚫',
-                    'Tắt quảng cáo',
-                    'Không hiện quảng cáo trong ứng dụng!',
+                    '🤖',
+                    'AI search nhiều hơn',
+                    '50 lượt input mỗi ngày cho tài khoản Pro',
                   ),
                   _buildFeatureItem(
                     '🎥',
-                    'FIDEE Videos',
-                    'Quay video check-in ngắn',
+                    'Video check-in',
+                    'Quay video tối đa 3 giây trên camera',
                   ),
                   _buildFeatureItem(
                     '🖼️',
-                    'Đăng ảnh từ thư viện',
-                    'Chia sẻ khoảnh khắc từ thư viện của bạn',
-                  ),
-                  _buildFeatureItem(
-                    '🗺️',
-                    'Bản đồ nhóm',
-                    'Tạo bản đồ riêng cho nhóm bạn bè',
-                  ),
-                  _buildFeatureItem(
-                    '🤖',
-                    'Thêm số lượt hỏi AI',
-                    '20 lượt hỏi AI mỗi ngày!',
-                  ),
-                  _buildFeatureItem(
-                    '👥',
-                    'Kết nối nhiều bạn hơn',
-                    'Không giới hạn số lượng bạn bè',
-                  ),
-                  _buildFeatureItem(
-                    '💬',
-                    'Viết mô tả dài hơn',
-                    'Câu mô tả dài hơn cho ảnh check-in!',
-                  ),
-                  _buildFeatureItem(
-                    '✨',
-                    'Tùy chỉnh biểu tượng ứng dụng',
-                    'Trang trí Màn hình chính của bạn',
+                    'Upload từ thư viện',
+                    'Gửi ảnh và video hợp lệ từ thư viện của bạn',
                   ),
                 ],
               ),
@@ -148,10 +125,13 @@ class PremiumUpgradeSheet extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Nút "Nâng cấp ngay!"
                 GestureDetector(
-                  onTap: () {
-                    //
+                  onTap: () async {
+                    final upgraded = await showProPlanPickerSheet(context);
+                    if (!context.mounted) return;
+                    if (upgraded == true) {
+                      Navigator.pop(context, true);
+                    }
                   },
                   child: Container(
                     width: double.infinity,
@@ -175,7 +155,7 @@ class PremiumUpgradeSheet extends StatelessWidget {
                 const SizedBox(height: 15),
 
                 GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () => Navigator.pop(context, false),
                   child: Container(
                     width: double.infinity,
                     height: 55,

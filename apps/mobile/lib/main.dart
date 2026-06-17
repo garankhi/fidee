@@ -15,11 +15,17 @@ import 'screens/home_screen.dart';
 import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
+import 'services/revenuecat_service.dart';
 
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await dotenv.load(fileName: 'assets/env/mobile.env', isOptional: true);
+  try {
+    await const RevenueCatService().configure();
+  } catch (error) {
+    debugPrint('RevenueCat is not configured for this runtime: $error');
+  }
   runApp(const ProviderScope(child: FideeApp()));
 }
 

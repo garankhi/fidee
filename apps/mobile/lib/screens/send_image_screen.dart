@@ -27,7 +27,8 @@ import 'send_image_preview_widgets.dart';
 
 class SendImageScreen extends ConsumerStatefulWidget {
   final String imagePath;
-  final String source; // 'IN_APP_CAMERA' or 'EXIF_GALLERY'
+  final String source; // Camera/gallery image or video upload source.
+  final int? durationMs;
 
   /// GPS coordinates supplied by the image source when available.
   /// Gallery images may provide [latitude, longitude] from EXIF data.
@@ -39,6 +40,7 @@ class SendImageScreen extends ConsumerStatefulWidget {
     super.key,
     required this.imagePath,
     required this.source,
+    this.durationMs,
     this.gpsCoordinates,
   });
 
@@ -245,6 +247,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
         selectedPlace: selectedPlace,
         audience: _shareAudience,
         caption: _captionForCheckin(),
+        durationMs: widget.durationMs,
       );
 
       ref.invalidate(cameraCheckinFeedControllerProvider);

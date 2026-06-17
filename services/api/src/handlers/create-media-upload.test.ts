@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { describe, expect, it, vi } from 'vitest';
 import { createMediaUploadHandler } from './create-media-upload';
-import { MAX_UPLOAD_BYTES } from '../media/validation';
+import { MAX_IMAGE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES } from '../media/validation';
 import { normalizeUserPlan, UserPlan } from '../repositories/user-profiles';
 
 const claims = {
@@ -145,7 +145,77 @@ describe('create-media-upload handler', () => {
     const result = await handler(
       mockEvent({
         ...validBody,
-        contentLength: MAX_UPLOAD_BYTES + 1,
+        contentLength: MAX_IMAGE_UPLOAD_BYTES + 1,
+      }),
+    );
+
+    expect(result.statusCode).toBe(400);
+  });
+
+  it('rejects video upload for free users', async () => {
+    const { handler, createUploadPost } = setup('FREE');
+
+    const result = await handler(
+      mockEvent({
+        ...validBody,
+        source: 'EXIF_GALLERY_VIDEO',
+        contentType: 'video/mp4',
+        contentLength: 1024,
+        durationMs: 3000,
+      }),
+    );
+
+    expect(result.statusCode).toBe(403);
+    expect(createUploadPost).not.toHaveBeenCalled();
+  });
+
+  it('accepts short video upload metadata for pro users under 20MB', async () => {
+    const { handler, createUploadPost, uploadInputs } = setup('PRO');
+
+    const result = await handler(
+      mockEvent({
+        ...validBody,
+        source: 'EXIF_GALLERY_VIDEO',
+        contentType: 'video/mp4',
+        contentLength: 10 * 1024 * 1024,
+        durationMs: 3000,
+      }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    expect(createUploadPost).toHaveBeenCalledOnce();
+    expect(uploadInputs[0]).toMatchObject({
+      key: 'uploads/media-1.mp4',
+      contentType: 'video/mp4',
+    });
+  });
+
+  it('rejects video upload over 20MB', async () => {
+    const { handler } = setup('PRO');
+
+    const result = await handler(
+      mockEvent({
+        ...validBody,
+        source: 'EXIF_GALLERY_VIDEO',
+        contentType: 'video/mp4',
+        contentLength: MAX_VIDEO_UPLOAD_BYTES + 1,
+        durationMs: 3000,
+      }),
+    );
+
+    expect(result.statusCode).toBe(400);
+  });
+
+  it('rejects video upload over 3 seconds', async () => {
+    const { handler } = setup('PRO');
+
+    const result = await handler(
+      mockEvent({
+        ...validBody,
+        source: 'IN_APP_CAMERA_VIDEO',
+        contentType: 'video/mp4',
+        contentLength: 1024,
+        durationMs: 3001,
       }),
     );
 

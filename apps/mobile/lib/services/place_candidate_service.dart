@@ -24,6 +24,14 @@ class PlaceCandidateResponse {
   bool get isQuotaExceeded => error?.code == 'QUOTA_EXCEEDED';
 }
 
+class PlaceCandidateServiceException implements Exception {
+  final String message;
+  const PlaceCandidateServiceException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class PlaceCandidateData {
   final String candidateId;
   final String name;
@@ -98,8 +106,10 @@ class ConflictCandidate {
 
 class PlaceCandidateService {
   final AuthService _authService;
+  final http.Client _client;
 
-  const PlaceCandidateService(this._authService);
+  PlaceCandidateService(this._authService, {http.Client? client})
+    : _client = client ?? http.Client();
 
   Future<PlaceCandidateResponse> createCandidate({
     required String name,
@@ -115,6 +125,7 @@ class PlaceCandidateService {
     int? priceMax,
     String? phoneNumber,
     String? description,
+    String visibility = 'FRIENDS',
   }) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
@@ -139,12 +150,13 @@ class PlaceCandidateService {
       'priceMax': ?priceMax,
       'phoneNumber': ?phoneNumber,
       'description': ?description,
+      'visibility': visibility,
     };
     if (mediaId != null) {
       payload['mediaId'] = mediaId;
     }
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${Config.apiBaseUrl}/place-candidates'),
       headers: {'Authorization': token, 'Content-Type': 'application/json'},
       body: jsonEncode(payload),
@@ -179,6 +191,53 @@ class PlaceCandidateService {
         decoded['error'] as Map<String, dynamic>,
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> updateCandidate({
+    required String candidateId,
+    String? address,
+    String? openTime,
+    String? closeTime,
+    int? priceMin,
+    int? priceMax,
+    String? phoneNumber,
+    String? description,
+    String? visibility,
+    String? mediaId,
+  }) async {
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
+      throw const PlaceCandidateServiceException('Bạn cần đăng nhập lại');
+    }
+
+    final payload = {
+      'address': ?address,
+      'openTime': ?openTime,
+      'closeTime': ?closeTime,
+      'priceMin': ?priceMin,
+      'priceMax': ?priceMax,
+      'phoneNumber': ?phoneNumber,
+      'description': ?description,
+      'visibility': ?visibility,
+      'mediaId': ?mediaId,
+    };
+
+    final response = await _client.patch(
+      Uri.parse('${Config.apiBaseUrl}/place-candidates/$candidateId'),
+      headers: {'Authorization': token, 'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final error = decoded['error'];
+      final message = error is Map<String, dynamic>
+          ? error['message'] as String? ?? 'Không cập nhật được địa điểm'
+          : 'Không cập nhật được địa điểm';
+      throw PlaceCandidateServiceException(message);
+    }
+
+    return decoded;
   }
 
   /// Reset mock state (for testing)

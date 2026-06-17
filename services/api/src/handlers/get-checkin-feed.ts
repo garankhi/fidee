@@ -120,6 +120,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         ci.rating,
         ci.created_at as "createdAt",
         ci.media_id as "mediaId",
+        ci.media_type as "mediaType",
         u.id as "userId",
         u.display_name as "userName",
         u.avatar_url as "userAvatar",
