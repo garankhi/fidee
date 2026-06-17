@@ -66,8 +66,8 @@ class BottomNav extends StatelessWidget {
       child: InkWell(
         onTap: () => onTap(index),
         borderRadius: _kPillRadius,
-        splashColor: _kActiveColor.withOpacity(0.15),
-        highlightColor: _kActiveColor.withOpacity(0.08),
+        splashColor: _kActiveColor.withValues(alpha: 0.15),
+        highlightColor: _kActiveColor.withValues(alpha: 0.08),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: AnimatedContainer(

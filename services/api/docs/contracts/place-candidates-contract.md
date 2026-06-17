@@ -3,7 +3,7 @@
 > **Ticket**: MAP-15 / MAP-41
 > **Owner**: ty ty (Backend), Nguyễn Thế Minh (Mobile)
 > **Context**: Camera-first check-in flow — custom place creation
-> **Provider**: Internal (DynamoDB → future PostgreSQL migration)
+> **Provider**: Internal PostgreSQL/PostGIS
 
 ---
 
@@ -48,6 +48,7 @@ Content-Type: application/json
     "lat": 10.771597,
     "lng": 106.704416
   },
+  "visibility": "FRIENDS",
   "force": false
 }
 ```
@@ -61,6 +62,7 @@ Content-Type: application/json
 | `mediaId` | String | No | ID ảnh đã upload. Nếu gửi lên, backend verify GPS proof; nếu bỏ trống, candidate dùng `coordinates` request |
 | `coordinates.lat` | Float | ✅ Yes | Vĩ độ (-90 to 90) |
 | `coordinates.lng` | Float | ✅ Yes | Kinh độ (-180 to 180) |
+| `visibility` | String | No | `FRIENDS` mặc định; `PRIVATE` chỉ creator thấy |
 | `force` | Boolean | No | `true` = tạo dù có near-duplicate |
 
 ### Categories
@@ -173,7 +175,7 @@ Content-Type: application/json
 | Plan | Daily Limit |
 |------|-------------|
 | FREE | 5 |
-| PRO | 15 |
+| PRO | 50 |
 
 ### GPS Proof Validation
 - Nếu request có `mediaId`, backend verify S3 object và GPS metadata bằng HeadObject
@@ -194,16 +196,42 @@ GSI2PK: GEO#{geohash4}    GSI2SK: CANDIDATE#{normalizedName}#{candidateId}
 ## 5. Default Behavior
 
 - Status: `PENDING_REVIEW` (không public cho đến khi admin approve)
-- Visibility: `FRIENDS` (chỉ bạn bè thấy)
-- Candidates không xuất hiện trong public search
+- Visibility: `FRIENDS` by default.
+- `PRIVATE` candidates are returned only to their creator.
+- Candidates không xuất hiện trong public search.
 
 ---
 
-## 6. Out of Scope (MVP)
+## 6. PATCH /place-candidates/{id}
 
-- ❌ Admin approval/rejection endpoint
-- ❌ Edit/delete candidate
-- ❌ Image moderation (Rekognition)
-- ❌ AI categorization (Bedrock)
-- ❌ PostgreSQL migration (Phase 3)
+Authenticated by Cognito. Only the creator can update a candidate.
+
+```json
+{
+  "address": "12 Nguyen Hue",
+  "openTime": "08:00",
+  "closeTime": "22:00",
+  "priceMin": 25000,
+  "priceMax": 70000,
+  "phoneNumber": "0900000000",
+  "description": "Yen tinh",
+  "visibility": "PRIVATE"
+}
+```
+
+Behavior:
+
+- Accepts partial updates for candidate detail fields.
+- Accepts only `FRIENDS` or `PRIVATE` visibility.
+- Returns 403 when requester is not `created_by`.
+- Updates `updated_at` and keeps candidate in `PENDING_REVIEW`.
+
+---
+
+## 7. Out of Scope (MVP)
+
+- Admin approval/rejection endpoint polish
+- Delete candidate
+- Image moderation (Rekognition)
+- AI categorization (Bedrock)
 

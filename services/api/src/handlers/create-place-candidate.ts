@@ -7,6 +7,7 @@ import { ValidationError } from '../media/validation';
 import { getUserPlan, UserPlan } from '../repositories/user-profiles';
 import {
   buildCandidateId,
+  CandidateVisibility,
   isPlaceCategory,
   PlaceCategory,
   QUOTA_LIMITS,
@@ -28,6 +29,7 @@ interface CandidateRequest {
   priceMax?: number;
   phoneNumber?: string;
   description?: string;
+  visibility: CandidateVisibility;
 }
 
 interface CreatePlaceCandidateDeps {
@@ -51,6 +53,12 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGat
     },
     body: JSON.stringify(body),
   };
+}
+
+function parseCandidateVisibility(value: unknown): CandidateVisibility {
+  if (value === undefined || value === null) return 'FRIENDS';
+  if (value === 'FRIENDS' || value === 'PRIVATE') return value;
+  throw new ValidationError('visibility must be FRIENDS or PRIVATE');
 }
 
 function validateCandidateRequest(value: unknown): CandidateRequest {
@@ -105,6 +113,7 @@ function validateCandidateRequest(value: unknown): CandidateRequest {
     priceMax: typeof body.priceMax === 'number' ? body.priceMax : undefined,
     phoneNumber: typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : undefined,
     description: typeof body.description === 'string' ? body.description.trim() : undefined,
+    visibility: parseCandidateVisibility(body.visibility),
   };
 }
 
@@ -250,8 +259,8 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
           address, open_time, close_time, price_min, price_max, phone_number, description
         ) VALUES (
           $1, $2, $3, $4, ST_MakePoint($5, $6)::geography, $7, 
-          'PENDING_REVIEW', 'FRIENDS', $8,
-          $9, $10, $11, $12, $13, $14, $15
+          'PENDING_REVIEW', $8, $9,
+          $10, $11, $12, $13, $14, $15, $16
         ) RETURNING created_at;
       `;
 
@@ -263,6 +272,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
         request.coordinates.lng,
         request.coordinates.lat,
         request.mediaId ?? null,
+        request.visibility,
         userId,
         request.address || null,
         request.openTime || null,
@@ -282,7 +292,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
           category: request.category,
           coordinates: { lat: request.coordinates.lat, lng: request.coordinates.lng },
           status: 'PENDING_REVIEW',
-          visibility: 'FRIENDS',
+          visibility: request.visibility,
           created_by: userId,
           created_at: insertRes.rows[0].created_at,
           address: request.address,

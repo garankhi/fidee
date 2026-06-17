@@ -123,6 +123,39 @@ void main() {
     expect(find.text('Nó vẫn chưa tha'), findsOneWidget);
   });
 
+  testWidgets('camera feed frame renders video media separately', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: CameraFeedPhotoFrame(
+              item: CameraCheckinFeedItem(
+                id: 'checkin-video-1',
+                caption: 'clip nè',
+                createdAt: '2026-06-09T14:48:00.000Z',
+                mediaId: 'video-1',
+                mediaType: CameraCheckinMediaType.video,
+                userId: 'friend-2',
+                userName: 'Tạ',
+                placeId: 'place-2',
+                placeName: 'Sân cầu lông',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('camera-feed-video-frame-checkin-video-1')),
+      findsOneWidget,
+    );
+    expect(find.byType(CachedNetworkImage), findsNothing);
+  });
+
   testWidgets('camera feed photo frame uses shared image cache manager', (
     tester,
   ) async {

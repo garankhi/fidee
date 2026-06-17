@@ -60,6 +60,9 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   maplibre_gl: ^0.26.1
   flutter_dotenv: ^6.0.1
+  purchases_flutter: ^10.2.3
+  purchases_ui_flutter: ^10.2.3
+  video_player: ^2.11.1
 
 dev_dependencies:
   flutter_test:

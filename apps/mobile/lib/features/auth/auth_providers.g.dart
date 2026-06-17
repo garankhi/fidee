@@ -24,7 +24,7 @@ final authServiceProvider = Provider<AuthService>.internal(
 // ignore: unused_element
 typedef AuthServiceRef = ProviderRef<AuthService>;
 String _$locationControllerHash() =>
-    r'ab87b1c2d7bb897cec9e1845b0ac07bd0a1a07c9';
+    r'dac7b58e7cf75655a05ae3ed41b46c0c7f124022';
 
 /// Khởi động LocationService song song với AuthController ngay từ lúc app start.
 /// keepAlive = true → không bị dispose, HomeScreen nhận instance đã sẵn sàng,

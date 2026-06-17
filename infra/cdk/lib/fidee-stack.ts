@@ -149,6 +149,27 @@ export class FideeStack extends cdk.Stack {
 
     const removalPolicy = isProd(stage) ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
 
+    const lambdaBasicExecutionPolicy = iam.ManagedPolicy.fromAwsManagedPolicyName(
+      'service-role/AWSLambdaBasicExecutionRole',
+    );
+    const lambdaVpcExecutionPolicy = iam.ManagedPolicy.fromAwsManagedPolicyName(
+      'service-role/AWSLambdaVPCAccessExecutionRole',
+    );
+
+    const createSharedLambdaRole = (
+      roleId: string,
+      roleNameSuffix: string,
+      options: { vpcAccess?: boolean } = {},
+    ) =>
+      new iam.Role(this, roleId, {
+        roleName: resourceName(stage, roleNameSuffix),
+        assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        managedPolicies: [
+          lambdaBasicExecutionPolicy,
+          ...(options.vpcAccess === false ? [] : [lambdaVpcExecutionPolicy]),
+        ],
+      });
+
     // ─── Auth Trigger Lambdas (Custom Auth OTP Flow) ────────────
     const authTriggerDefaults: Omit<
       nodejs.NodejsFunctionProps,
@@ -537,6 +558,53 @@ export class FideeStack extends cdk.Stack {
       webAclId: props.mediaWebAclArn,
     });
 
+    const friendsApiLambdaRole = createSharedLambdaRole('FriendsApiLambdaRole', 'friends-api-role');
+    dbCluster.secret!.grantRead(friendsApiLambdaRole);
+    friendRequestRealtimeEventsTable.grantWriteData(friendsApiLambdaRole);
+
+    const chatApiLambdaRole = createSharedLambdaRole('ChatApiLambdaRole', 'chat-api-role');
+    dbCluster.secret!.grantRead(chatApiLambdaRole);
+    chatRealtimeEventsTable.grantWriteData(chatApiLambdaRole);
+    chatPresenceTable.grantReadWriteData(chatApiLambdaRole);
+
+    const billingApiLambdaRole = createSharedLambdaRole('BillingApiLambdaRole', 'billing-api-role');
+    dbCluster.secret!.grantRead(billingApiLambdaRole);
+    userProfilesTable.grantReadWriteData(billingApiLambdaRole);
+
+    const placeCandidateApiLambdaRole = createSharedLambdaRole(
+      'PlaceCandidateApiLambdaRole',
+      'place-candidate-api-role',
+    );
+    dbCluster.secret!.grantRead(placeCandidateApiLambdaRole);
+    placesTable.grantReadWriteData(placeCandidateApiLambdaRole);
+    userProfilesTable.grantReadWriteData(placeCandidateApiLambdaRole);
+    mediaBucket.grantRead(placeCandidateApiLambdaRole, 'uploads/*');
+
+    const placesApiLambdaRole = createSharedLambdaRole('PlacesApiLambdaRole', 'places-api-role');
+    dbCluster.secret!.grantRead(placesApiLambdaRole);
+
+    const adminPlacesApiLambdaRole = createSharedLambdaRole(
+      'AdminPlacesApiLambdaRole',
+      'admin-places-api-role',
+    );
+    dbCluster.secret!.grantRead(adminPlacesApiLambdaRole);
+
+    const adminUsersApiLambdaRole = createSharedLambdaRole(
+      'AdminUsersApiLambdaRole',
+      'admin-users-api-role',
+    );
+    dbCluster.secret!.grantRead(adminUsersApiLambdaRole);
+    userProfilesTable.grantReadWriteData(adminUsersApiLambdaRole);
+
+    const mediaUploadApiLambdaRole = createSharedLambdaRole(
+      'MediaUploadApiLambdaRole',
+      'media-upload-api-role',
+    );
+    dbCluster.secret!.grantRead(mediaUploadApiLambdaRole);
+    userProfilesTable.grantReadWriteData(mediaUploadApiLambdaRole);
+    mediaBucket.grantPut(mediaUploadApiLambdaRole, 'uploads/*');
+    mediaBucket.grantPut(mediaUploadApiLambdaRole, 'avatars/*');
+
     const searchFunctionName = resourceName(stage, 'search');
     const searchLogGroup = new logs.LogGroup(this, 'SearchLogGroup', {
       logGroupName: `/aws/lambda/${searchFunctionName}`,
@@ -547,6 +615,7 @@ export class FideeStack extends cdk.Stack {
     const searchRole = new iam.Role(this, 'SearchFunctionRole', {
       roleName: resourceName(stage, 'search-role'),
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [lambdaBasicExecutionPolicy, lambdaVpcExecutionPolicy],
       inlinePolicies: {
         SearchFunctionPolicy: new iam.PolicyDocument({
           statements: [
@@ -579,13 +648,21 @@ export class FideeStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       logGroup: searchLogGroup,
       role: searchRole,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
       environment: {
         STAGE: stage,
         PLACES_TABLE: placesTable.tableName,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
         MEDIA_BUCKET: mediaBucket.bucketName,
         MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
       },
     });
+    dbCluster.secret!.grantRead(searchFn);
+    userProfilesTable.grantReadData(searchFn);
 
     const createMediaUploadFn = new nodejs.NodejsFunction(this, 'CreateMediaUploadFunction', {
       functionName: resourceName(stage, 'create-media-upload'),
@@ -594,6 +671,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: mediaUploadApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -609,9 +687,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(createMediaUploadFn);
-    userProfilesTable.grantReadWriteData(createMediaUploadFn);
-    mediaBucket.grantPut(createMediaUploadFn, 'uploads/*');
 
     // === POST /media/avatar (no GPS upload) ===
     const createAvatarUploadFn = new nodejs.NodejsFunction(this, 'CreateAvatarUploadFunction', {
@@ -621,6 +696,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: mediaUploadApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -631,7 +707,6 @@ export class FideeStack extends cdk.Stack {
         MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
       },
     });
-    mediaBucket.grantPut(createAvatarUploadFn, 'avatars/*');
 
     const getMediaFn = new nodejs.NodejsFunction(this, 'GetMediaFunction', {
       functionName: resourceName(stage, 'get-media'),
@@ -653,6 +728,7 @@ export class FideeStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: friendsApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -672,7 +748,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'getFriends',
     });
-    dbCluster.secret!.grantRead(getFriendsFn);
 
     const getFriendRequestsFn = new nodejs.NodejsFunction(this, 'GetFriendRequestsFunction', {
       ...friendsLambdaProps,
@@ -680,7 +755,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'getFriendRequests',
     });
-    dbCluster.secret!.grantRead(getFriendRequestsFn);
 
     const getSentFriendRequestsFn = new nodejs.NodejsFunction(
       this,
@@ -692,7 +766,6 @@ export class FideeStack extends cdk.Stack {
         handler: 'getSentFriendRequests',
       },
     );
-    dbCluster.secret!.grantRead(getSentFriendRequestsFn);
 
     const sendFriendRequestFn = new nodejs.NodejsFunction(this, 'SendFriendRequestFunction', {
       ...friendsLambdaProps,
@@ -704,8 +777,6 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(sendFriendRequestFn);
-    friendRequestRealtimeEventsTable.grantWriteData(sendFriendRequestFn);
 
     const cancelFriendRequestFn = new nodejs.NodejsFunction(this, 'CancelFriendRequestFunction', {
       ...friendsLambdaProps,
@@ -717,8 +788,6 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(cancelFriendRequestFn);
-    friendRequestRealtimeEventsTable.grantWriteData(cancelFriendRequestFn);
 
     const acceptFriendFn = new nodejs.NodejsFunction(this, 'AcceptFriendFunction', {
       ...friendsLambdaProps,
@@ -730,8 +799,6 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(acceptFriendFn);
-    friendRequestRealtimeEventsTable.grantWriteData(acceptFriendFn);
 
     const declineFriendFn = new nodejs.NodejsFunction(this, 'DeclineFriendFunction', {
       ...friendsLambdaProps,
@@ -743,8 +810,6 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(declineFriendFn);
-    friendRequestRealtimeEventsTable.grantWriteData(declineFriendFn);
 
     const unfriendFn = new nodejs.NodejsFunction(this, 'UnfriendFunction', {
       ...friendsLambdaProps,
@@ -756,15 +821,12 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(unfriendFn);
-    friendRequestRealtimeEventsTable.grantWriteData(unfriendFn);
     const searchFriendsFn = new nodejs.NodejsFunction(this, 'SearchFriendsFunction', {
       ...friendsLambdaProps,
       functionName: resourceName(stage, 'search-friends'),
       entry: '../../services/api/src/handlers/friends-handlers.ts',
       handler: 'searchUsersByUsername',
     });
-    dbCluster.secret!.grantRead(searchFriendsFn);
 
     const hideFriendFn = new nodejs.NodejsFunction(this, 'HideFriendFunction', {
       ...friendsLambdaProps,
@@ -776,8 +838,6 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(hideFriendFn);
-    friendRequestRealtimeEventsTable.grantWriteData(hideFriendFn);
 
     const blockFriendFn = new nodejs.NodejsFunction(this, 'BlockFriendFunction', {
       ...friendsLambdaProps,
@@ -789,8 +849,6 @@ export class FideeStack extends cdk.Stack {
         FRIEND_REQUEST_REALTIME_EVENTS_TABLE: friendRequestRealtimeEventsTable.tableName,
       },
     });
-    dbCluster.secret!.grantRead(blockFriendFn);
-    friendRequestRealtimeEventsTable.grantWriteData(blockFriendFn);
 
     const publishFriendRealtimeEventFn = new nodejs.NodejsFunction(
       this,
@@ -818,6 +876,7 @@ export class FideeStack extends cdk.Stack {
 
     const chatLambdaProps = {
       ...friendsLambdaProps,
+      role: chatApiLambdaRole,
       environment: {
         ...friendsLambdaProps.environment,
         CHAT_REALTIME_EVENTS_TABLE: chatRealtimeEventsTable.tableName,
@@ -835,7 +894,6 @@ export class FideeStack extends cdk.Stack {
         handler: 'createDirectConversation',
       },
     );
-    dbCluster.secret!.grantRead(createDirectConversationFn);
 
     const listConversationsFn = new nodejs.NodejsFunction(this, 'ListConversationsFunction', {
       ...chatLambdaProps,
@@ -843,7 +901,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'listConversations',
     });
-    dbCluster.secret!.grantRead(listConversationsFn);
 
     const listMessagesFn = new nodejs.NodejsFunction(this, 'ListMessagesFunction', {
       ...chatLambdaProps,
@@ -851,7 +908,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'listMessages',
     });
-    dbCluster.secret!.grantRead(listMessagesFn);
 
     const sendMessageFn = new nodejs.NodejsFunction(this, 'SendChatMessageFunction', {
       ...chatLambdaProps,
@@ -859,8 +915,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'sendMessage',
     });
-    dbCluster.secret!.grantRead(sendMessageFn);
-    chatRealtimeEventsTable.grantWriteData(sendMessageFn);
 
     const markChatReadFn = new nodejs.NodejsFunction(this, 'MarkChatReadFunction', {
       ...chatLambdaProps,
@@ -868,8 +922,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'markRead',
     });
-    dbCluster.secret!.grantRead(markChatReadFn);
-    chatRealtimeEventsTable.grantWriteData(markChatReadFn);
 
     const markChatDeliveredFn = new nodejs.NodejsFunction(this, 'MarkChatDeliveredFunction', {
       ...chatLambdaProps,
@@ -877,8 +929,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'markDelivered',
     });
-    dbCluster.secret!.grantRead(markChatDeliveredFn);
-    chatRealtimeEventsTable.grantWriteData(markChatDeliveredFn);
 
     const sendChatTypingFn = new nodejs.NodejsFunction(this, 'SendChatTypingFunction', {
       ...chatLambdaProps,
@@ -886,8 +936,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'sendTyping',
     });
-    dbCluster.secret!.grantRead(sendChatTypingFn);
-    chatRealtimeEventsTable.grantWriteData(sendChatTypingFn);
 
     const chatHeartbeatFn = new nodejs.NodejsFunction(this, 'ChatHeartbeatFunction', {
       ...chatLambdaProps,
@@ -895,9 +943,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'heartbeat',
     });
-    dbCluster.secret!.grantRead(chatHeartbeatFn);
-    chatRealtimeEventsTable.grantWriteData(chatHeartbeatFn);
-    chatPresenceTable.grantReadWriteData(chatHeartbeatFn);
 
     const publishChatRealtimeEventFn = new nodejs.NodejsFunction(
       this,
@@ -1016,7 +1061,10 @@ export class FideeStack extends cdk.Stack {
     });
 
     const searchResource = api.root.addResource('search');
-    searchResource.addMethod('POST', new apigateway.LambdaIntegration(searchFn));
+    searchResource.addMethod('POST', new apigateway.LambdaIntegration(searchFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     // ─── /profile (protected) ────────────────────────────────────
     const profileFn = new nodejs.NodejsFunction(this, 'GetProfileFunction', {
@@ -1122,6 +1170,82 @@ export class FideeStack extends cdk.Stack {
         authorizer: cognitoAuthorizer,
         authorizationType: apigateway.AuthorizationType.COGNITO,
       },
+    );
+
+    const billingLambdaProps = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      role: billingApiLambdaRole,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+        REVENUECAT_MODE: process.env.REVENUECAT_MODE || 'test',
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    };
+
+    const syncRevenueCatCustomerFn = new nodejs.NodejsFunction(
+      this,
+      'SyncRevenueCatCustomerFunction',
+      {
+        ...billingLambdaProps,
+        functionName: resourceName(stage, 'sync-revenuecat-customer'),
+        entry: '../../services/api/src/handlers/sync-revenuecat-customer.ts',
+        handler: 'handler',
+      },
+    );
+
+    const revenueCatWebhookFn = new nodejs.NodejsFunction(this, 'RevenueCatWebhookFunction', {
+      ...billingLambdaProps,
+      functionName: resourceName(stage, 'revenuecat-webhook'),
+      entry: '../../services/api/src/handlers/revenuecat-webhook.ts',
+      handler: 'handler',
+      environment: {
+        ...billingLambdaProps.environment,
+        REVENUECAT_WEBHOOK_SECRET: process.env.REVENUECAT_WEBHOOK_SECRET || '',
+      },
+    });
+
+    const billingResource = api.root.addResource('billing');
+    const billingRevenueCatResource = billingResource.addResource('revenuecat');
+    billingRevenueCatResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization', 'X-RevenueCat-Signature'],
+    });
+
+    const billingRevenueCatSyncResource = billingRevenueCatResource.addResource('sync');
+    billingRevenueCatSyncResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    billingRevenueCatSyncResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(syncRevenueCatCustomerFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
+    const billingRevenueCatWebhookResource = billingRevenueCatResource.addResource('webhook');
+    billingRevenueCatWebhookResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization', 'X-RevenueCat-Signature'],
+    });
+    billingRevenueCatWebhookResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(revenueCatWebhookFn),
     );
 
     const mediaResource = api.root.addResource('media');
@@ -1329,6 +1453,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(15),
+      role: placeCandidateApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1344,10 +1469,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(createPlaceCandidateFn);
-    placesTable.grantReadWriteData(createPlaceCandidateFn);
-    userProfilesTable.grantReadWriteData(createPlaceCandidateFn);
-    mediaBucket.grantRead(createPlaceCandidateFn, 'uploads/*');
 
     // ─── GET /place-candidates (protected) ──────────────────────
     const getPlaceCandidatesFn = new nodejs.NodejsFunction(this, 'GetPlaceCandidatesFunction', {
@@ -1357,6 +1478,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placeCandidateApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1367,12 +1489,30 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(getPlaceCandidatesFn);
+
+    const updatePlaceCandidateFn = new nodejs.NodejsFunction(this, 'UpdatePlaceCandidateFunction', {
+      functionName: resourceName(stage, 'update-place-candidate'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/update-place-candidate.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      role: placeCandidateApiLambdaRole,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
 
     const placeCandidatesResource = api.root.addResource('place-candidates');
     placeCandidatesResource.addCorsPreflight({
       allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
     });
     placeCandidatesResource.addMethod(
@@ -1392,6 +1532,21 @@ export class FideeStack extends cdk.Stack {
       },
     );
 
+    const placeCandidateResource = placeCandidatesResource.addResource('{id}');
+    placeCandidateResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['PATCH', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    placeCandidateResource.addMethod(
+      'PATCH',
+      new apigateway.LambdaIntegration(updatePlaceCandidateFn),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
+
     // ─── POST /place-candidates/quick (protected) ────────────────
     const createQuickPlaceFn = new nodejs.NodejsFunction(this, 'CreateQuickPlaceFunction', {
       functionName: resourceName(stage, 'create-quick-place'),
@@ -1400,6 +1555,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placeCandidateApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1411,8 +1567,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(createQuickPlaceFn);
-    userProfilesTable.grantReadWriteData(createQuickPlaceFn);
 
     const quickPlaceResource = placeCandidatesResource.addResource('quick');
     quickPlaceResource.addCorsPreflight({
@@ -1455,6 +1609,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1467,7 +1622,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(getMapFeedFn);
 
     const mapResource = api.root.addResource('map');
     const mapFeedResource = mapResource.addResource('feed');
@@ -1484,6 +1638,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1494,7 +1649,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(getHeatmapFn);
 
     const mapHeatmapResource = mapResource.addResource('heatmap');
     mapHeatmapResource.addCorsPreflight({
@@ -1515,6 +1669,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(15),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1525,7 +1680,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(getDiscoveryFeedFn);
 
     const discoveryResource = api.root.addResource('discovery');
     const discoveryFeedResource = discoveryResource.addResource('feed');
@@ -1547,6 +1701,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1559,7 +1714,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(getCheckinFeedFn);
 
     const globalFeedResource = api.root.getResource('feed') || api.root.addResource('feed');
     const checkinFeedResource = globalFeedResource.addResource('checkins');
@@ -1581,6 +1735,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1593,7 +1748,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(getNearbyPlacesFn);
 
     const placesResource = api.root.getResource('places') || api.root.addResource('places');
     const nearbyPlacesResource =
@@ -1611,6 +1765,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(15),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1621,7 +1776,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(getPlaceDetailFn);
 
     const placeIdResource = placesResource.addResource('{id}');
     placeIdResource.addCorsPreflight({
@@ -1642,6 +1796,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1652,7 +1807,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(getPlaceReviewsFn);
 
     const placeReviewsResource = placeIdResource.addResource('reviews');
     placeReviewsResource.addCorsPreflight({
@@ -1673,6 +1827,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1683,7 +1838,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(createReviewFn);
 
     const reviewsResource = api.root.addResource('reviews');
     reviewsResource.addCorsPreflight({
@@ -1704,6 +1858,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1714,7 +1869,6 @@ export class FideeStack extends cdk.Stack {
       },
       bundling: { nodeModules: ['pg'] },
     });
-    dbCluster.secret!.grantRead(createCheckinFn);
 
     const checkinsResource = api.root.addResource('check-ins');
     checkinsResource.addCorsPreflight({
@@ -1735,6 +1889,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1747,7 +1902,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(getJourneyCheckinsFn);
 
     const getJourneyReviewsFn = new nodejs.NodejsFunction(this, 'GetJourneyReviewsFunction', {
       functionName: resourceName(stage, 'get-journey-reviews'),
@@ -1756,6 +1910,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: placesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1768,7 +1923,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(getJourneyReviewsFn);
 
     const journeyResource = api.root.addResource('journey');
 
@@ -1806,6 +1960,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: adminUsersApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1818,7 +1973,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(getUsersFn);
 
     // ─── PUT /admin/users/{userId} (VPC, connects to Aurora) ────
     const updateUserFn = new nodejs.NodejsFunction(this, 'UpdateUserFunction', {
@@ -1828,6 +1982,7 @@ export class FideeStack extends cdk.Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: adminUsersApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1841,8 +1996,6 @@ export class FideeStack extends cdk.Stack {
         nodeModules: ['pg'],
       },
     });
-    dbCluster.secret!.grantRead(updateUserFn);
-    userProfilesTable.grantReadWriteData(updateUserFn);
 
     // ─── Admin Users Resources (protected) ──────────────────────
     const adminResource = api.root.addResource('admin');
@@ -1880,6 +2033,7 @@ export class FideeStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
+      role: adminPlacesApiLambdaRole,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [lambdaSecurityGroup],
@@ -1900,7 +2054,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/admin/get-pending-places.ts',
       handler: 'handler',
     });
-    dbCluster.secret!.grantRead(getPendingPlacesFn);
 
     // GET /admin/places/candidates/{id}
     const getCandidateDetailFn = new nodejs.NodejsFunction(this, 'GetCandidateDetailFunction', {
@@ -1909,7 +2062,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/admin/get-candidate-detail.ts',
       handler: 'handler',
     });
-    dbCluster.secret!.grantRead(getCandidateDetailFn);
 
     // POST /admin/places/candidates/{id}/approve
     const approveCandidateFn = new nodejs.NodejsFunction(this, 'ApproveCandidateFunction', {
@@ -1918,7 +2070,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/admin/approve-candidate.ts',
       handler: 'handler',
     });
-    dbCluster.secret!.grantRead(approveCandidateFn);
 
     // POST /admin/places/candidates/{id}/reject
     const rejectCandidateFn = new nodejs.NodejsFunction(this, 'RejectCandidateFunction', {
@@ -1927,7 +2078,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/admin/reject-candidate.ts',
       handler: 'handler',
     });
-    dbCluster.secret!.grantRead(rejectCandidateFn);
 
     // POST /admin/places/candidates/{id}/merge
     const mergeCandidateFn = new nodejs.NodejsFunction(this, 'MergeCandidateFunction', {
@@ -1936,7 +2086,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/admin/merge-candidate.ts',
       handler: 'handler',
     });
-    dbCluster.secret!.grantRead(mergeCandidateFn);
 
     // ─── Admin Places API Resources ─────────────────────────────
     const adminPlacesResource = adminResource.addResource('places');
@@ -2013,7 +2162,6 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/handlers/admin/request-info-candidate.ts',
       handler: 'handler',
     });
-    dbCluster.secret!.grantRead(requestInfoCandidateFn);
 
     const adminRequestInfoResource = adminCandidateDetailResource.addResource('request-info');
     adminRequestInfoResource.addCorsPreflight({

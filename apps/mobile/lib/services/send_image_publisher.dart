@@ -3,6 +3,10 @@ import '../models/selected_place_tag.dart';
 import 'checkin_service.dart';
 import 'upload_service.dart';
 
+String checkinMediaTypeForSource(String source) {
+  return source.endsWith('_VIDEO') ? 'VIDEO' : 'IMAGE';
+}
+
 class SendImagePublisher {
   final UploadService uploadService;
   final CheckinService checkinService;
@@ -18,18 +22,21 @@ class SendImagePublisher {
     required SelectedPlaceTag selectedPlace,
     required CameraShareAudience audience,
     String? caption,
+    int? durationMs,
   }) async {
     final mediaId = await uploadService.upload(
       imagePath: imagePath,
       latitude: selectedPlace.lat,
       longitude: selectedPlace.lng,
       source: source,
+      durationMs: durationMs,
     );
 
     return checkinService.createCheckin(
       placeId: _placeIdForCheckin(selectedPlace),
       candidateId: _candidateIdForCheckin(selectedPlace),
       mediaId: mediaId,
+      mediaType: checkinMediaTypeForSource(source),
       gpsLat: selectedPlace.lat,
       gpsLng: selectedPlace.lng,
       caption: caption,

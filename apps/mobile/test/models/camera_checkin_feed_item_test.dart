@@ -28,6 +28,38 @@ void main() {
       );
     });
 
+    test('parses video media type from API row', () {
+      final item = CameraCheckinFeedItem.fromJson(const <String, dynamic>{
+        'id': 'checkin-video-1',
+        'createdAt': '2026-06-09T08:30:00.000Z',
+        'mediaId': 'video-1',
+        'mediaType': 'VIDEO',
+        'userId': 'user-2',
+        'userName': 'Lan Tran',
+        'placeId': 'place-1',
+        'placeName': 'Cafe',
+      });
+
+      expect(item.mediaType, CameraCheckinMediaType.video);
+      expect(item.isVideo, isTrue);
+    });
+
+    test('defaults unknown media type to image', () {
+      final item = CameraCheckinFeedItem.fromJson(const <String, dynamic>{
+        'id': 'checkin-image-1',
+        'createdAt': '2026-06-09T08:30:00.000Z',
+        'mediaId': 'media-1',
+        'mediaType': 'GIF',
+        'userId': 'user-2',
+        'userName': 'Lan Tran',
+        'placeId': 'place-1',
+        'placeName': 'Cafe',
+      });
+
+      expect(item.mediaType, CameraCheckinMediaType.image);
+      expect(item.isVideo, isFalse);
+    });
+
     test('keeps empty image URL when mediaId is missing', () {
       final item = CameraCheckinFeedItem.fromJson(const <String, dynamic>{
         'id': 'checkin-2',

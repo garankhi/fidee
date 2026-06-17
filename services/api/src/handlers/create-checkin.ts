@@ -83,6 +83,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       place_id,
       candidate_id,
       media_id,
+      media_type = 'IMAGE',
       gps_lat,
       gps_lng,
       gps_accuracy,
@@ -112,6 +113,13 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         body: JSON.stringify({ error: 'media_id is required' }),
       };
     }
+    if (media_type !== 'IMAGE' && media_type !== 'VIDEO') {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'media_type must be IMAGE or VIDEO' }),
+      };
+    }
     if (gps_lat == null || gps_lng == null) {
       return {
         statusCode: 400,
@@ -133,10 +141,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const insertSql = `
       INSERT INTO check_ins (
-        user_id, place_id, candidate_id, media_id, gps_lat, gps_lng,
+        user_id, place_id, candidate_id, media_id, media_type, gps_lat, gps_lng,
         gps_accuracy, caption, rating, visibility, audience_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING id, created_at;
     `;
     const result = await query(insertSql, [
@@ -144,6 +152,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       place_id || null,
       candidate_id || null,
       media_id,
+      media_type,
       gps_lat,
       gps_lng,
       gps_accuracy || null,

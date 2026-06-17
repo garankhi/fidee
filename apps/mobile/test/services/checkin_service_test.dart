@@ -62,6 +62,31 @@ void main() {
     expect(result.createdAt, '2026-06-12T01:00:00.000Z');
   });
 
+  test('posts media type for video check-ins', () async {
+    final service = CheckinService(
+      _TokenAuthService('token-123'),
+      client: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['media_type'], 'VIDEO');
+        return http.Response(
+          '{"status":"success","data":{"id":"checkin-video","created_at":"2026-06-12T01:00:00.000Z"}}',
+          201,
+        );
+      }),
+    );
+
+    final result = await service.createCheckin(
+      placeId: 'place-1',
+      mediaId: 'media-video-1',
+      mediaType: 'VIDEO',
+      gpsLat: 10.7738,
+      gpsLng: 106.7035,
+      audience: CameraShareAudience.allFriends(),
+    );
+
+    expect(result.checkinId, 'checkin-video');
+  });
+
   test('throws without posting when auth token is missing', () async {
     var called = false;
     final service = CheckinService(

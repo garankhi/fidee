@@ -3,7 +3,12 @@ import { randomUUID } from 'crypto';
 import { query } from '../db/client';
 import { extractAuth } from '../middleware/auth';
 import { normalizeName } from '../utils/geo';
-import { isPlaceCategory, PlaceCategory, QUOTA_LIMITS } from '../repositories/place-candidates';
+import {
+  CandidateVisibility,
+  isPlaceCategory,
+  PlaceCategory,
+  QUOTA_LIMITS,
+} from '../repositories/place-candidates';
 import { getUserPlan } from '../repositories/user-profiles';
 
 const CORS_HEADERS = {
@@ -21,7 +26,7 @@ function json(statusCode: number, body: Record<string, unknown>): APIGatewayProx
  * Lightweight endpoint to create a place candidate with minimal info.
  * Only name + coordinates are required. Category is optional (defaults to 'other').
  *
- * Body: { name, lat, lng, category? }
+ * Body: { name, lat, lng, category?, visibility? }
  * Returns: created candidate with id, ready to be used in check-in.
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -49,6 +54,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       lat?: number;
       lng?: number;
       category?: string;
+      visibility?: unknown;
     };
 
     if (!name || typeof name !== 'string' || name.trim().length < 2) {
@@ -66,6 +72,13 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const resolvedCategory: PlaceCategory =
       category && isPlaceCategory(category) ? category : 'other';
+    let resolvedVisibility: CandidateVisibility = 'FRIENDS';
+    if (body.visibility !== undefined && body.visibility !== null) {
+      if (body.visibility !== 'FRIENDS' && body.visibility !== 'PRIVATE') {
+        return json(400, { error: 'visibility must be FRIENDS or PRIVATE' });
+      }
+      resolvedVisibility = body.visibility;
+    }
     const trimmedName = name.trim();
     const normalized = normalizeName(trimmedName);
 
@@ -116,9 +129,18 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const insertRes = await query(
       `INSERT INTO place_candidates (id, name, normalized_name, category, location, status, visibility, created_by)
-       VALUES ($1, $2, $3, $4, ST_MakePoint($5, $6)::geography, 'PENDING_REVIEW', 'FRIENDS', $7)
+       VALUES ($1, $2, $3, $4, ST_MakePoint($5, $6)::geography, 'PENDING_REVIEW', $7, $8)
        RETURNING created_at`,
-      [candidateId, trimmedName, normalized, resolvedCategory, lng, lat, userId],
+      [
+        candidateId,
+        trimmedName,
+        normalized,
+        resolvedCategory,
+        lng,
+        lat,
+        resolvedVisibility,
+        userId,
+      ],
     );
 
     return json(201, {
@@ -130,6 +152,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         lat,
         lng,
         status: 'PENDING_REVIEW',
+        visibility: resolvedVisibility,
         createdAt: insertRes.rows[0].created_at,
       },
     });

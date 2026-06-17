@@ -78,6 +78,7 @@ enum _ScreenState { input, loading, success, conflict, quotaExceeded, error }
 class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
   final _nameController = TextEditingController();
   String _selectedCategory = 'cafe';
+  bool _shareWithFriends = true;
   _ScreenState _state = _ScreenState.input;
   PlaceCandidateResponse? _response;
   String _errorMessage = '';
@@ -108,6 +109,7 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
             lat: widget.lat,
             lng: widget.lng,
             force: force,
+            visibility: _shareWithFriends ? 'FRIENDS' : 'PRIVATE',
           );
 
       _response = response;
@@ -231,7 +233,22 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
           ),
           const SizedBox(height: 12),
           _buildCategoryGrid(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
+          SwitchListTile(
+            value: _shareWithFriends,
+            onChanged: (value) => setState(() => _shareWithFriends = value),
+            title: const Text(
+              'Chia sẻ cho bạn bè',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151),
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            activeThumbColor: const Color(0xFF3B82F6),
+          ),
+          const SizedBox(height: 24),
 
           // Submit button
           SizedBox(
@@ -465,10 +482,12 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Địa điểm sẽ hiển thị với bạn bè.\nAdmin sẽ duyệt để công khai.',
+            Text(
+              _response?.data?.visibility == 'PRIVATE'
+                  ? 'Địa điểm chỉ hiển thị với bạn.\nBạn có thể bổ sung thông tin sau.'
+                  : 'Địa điểm sẽ hiển thị với bạn bè.\nBạn có thể bổ sung thông tin sau.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF6B7280),
                 height: 1.5,

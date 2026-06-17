@@ -60,6 +60,30 @@ void main() {
     ]);
   });
 
+  test('prefetch helpers skip video items', () {
+    final mixedItems = <CameraCheckinFeedItem>[
+      items[0],
+      const CameraCheckinFeedItem(
+        id: 'checkin-video',
+        createdAt: '2026-06-12T01:02:00.000Z',
+        mediaId: 'video-1',
+        mediaType: CameraCheckinMediaType.video,
+        userId: 'friend-video',
+        userName: 'Friend Video',
+        placeId: 'place-video',
+        placeName: 'Place Video',
+      ),
+      items[1],
+    ];
+
+    final nextItems = nextCameraFeedDiskPrefetchItems(
+      items: mixedItems,
+      activeItem: null,
+    );
+
+    expect(nextItems.map((item) => item.id), ['checkin-0', 'checkin-1']);
+  });
+
   test('memory precache is intentionally narrower than disk prefetch', () {
     final nextItems = nextCameraFeedMemoryPrecacheItems(
       items: items,

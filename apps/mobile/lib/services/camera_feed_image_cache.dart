@@ -53,5 +53,9 @@ List<CameraCheckinFeedItem> _nextCameraFeedItems({
   }
   if (startIndex >= items.length) return const <CameraCheckinFeedItem>[];
 
-  return items.skip(startIndex).take(limit).toList(growable: false);
+  return items
+      .skip(startIndex)
+      .where((item) => !item.isVideo)
+      .take(limit)
+      .toList(growable: false);
 }

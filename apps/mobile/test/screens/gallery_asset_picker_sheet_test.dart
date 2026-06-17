@@ -76,12 +76,13 @@ const _transparentPng = <int>[
 ];
 
 void main() {
-  testWidgets('returns selected asset path', (tester) async {
-    String? selectedPath;
+  testWidgets('returns selected asset metadata', (tester) async {
+    GalleryAssetPickerSelection? selectedAsset;
     final item = GalleryAssetPickerItem(
       id: 'asset-1',
       title: 'first.jpg',
       thumbnail: Uint8List.fromList(_transparentPng),
+      mediaType: GalleryAssetMediaType.image,
       loadPath: () async => 'D:/tmp/first.jpg',
     );
 
@@ -92,7 +93,7 @@ void main() {
             return Scaffold(
               body: ElevatedButton(
                 onPressed: () async {
-                  selectedPath = await showModalBottomSheet<String>(
+                  selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
@@ -114,10 +115,38 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('gallery-asset-asset-1')));
     await tester.pumpAndSettle();
 
-    expect(selectedPath, 'D:/tmp/first.jpg');
+    expect(selectedAsset?.path, 'D:/tmp/first.jpg');
+    expect(selectedAsset?.source, 'EXIF_GALLERY');
+    expect(selectedAsset?.mediaType, GalleryAssetMediaType.image);
   });
 
-  testWidgets('shows empty state when no accessible images exist', (
+  testWidgets('shows video overlay for gallery videos', (tester) async {
+    final item = GalleryAssetPickerItem(
+      id: 'asset-video-1',
+      title: 'clip.mp4',
+      thumbnail: Uint8List.fromList(_transparentPng),
+      mediaType: GalleryAssetMediaType.video,
+      durationMs: 2200,
+      gpsCoordinates: const GalleryAssetGps(latitude: 10.7, longitude: 106.6),
+      loadPath: () async => 'D:/tmp/clip.mp4',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GalleryAssetPickerSheet(
+            loadAssets: () async => <GalleryAssetPickerItem>[item],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+  });
+
+  testWidgets('shows empty state when no accessible media exists', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -132,6 +161,6 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Không có ảnh nào để chọn'), findsOneWidget);
+    expect(find.text('Không có ảnh hoặc video nào để chọn'), findsOneWidget);
   });
 }

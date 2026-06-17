@@ -17,6 +17,8 @@ class _FakeUploadService extends UploadService {
   double? uploadedLatitude;
   double? uploadedLongitude;
   String? uploadedSource;
+  String? uploadedContentTypeOverride;
+  int? uploadedDurationMs;
 
   @override
   Future<String> upload({
@@ -24,12 +26,16 @@ class _FakeUploadService extends UploadService {
     required double longitude,
     required double latitude,
     required String source,
+    String? contentTypeOverride,
+    int? durationMs,
     void Function(double progress)? onProgress,
   }) async {
     uploadedImagePath = imagePath;
     uploadedLatitude = latitude;
     uploadedLongitude = longitude;
     uploadedSource = source;
+    uploadedContentTypeOverride = contentTypeOverride;
+    uploadedDurationMs = durationMs;
     return 'media-1';
   }
 }
@@ -44,12 +50,14 @@ class _FakeCheckinService extends CheckinService {
   double? gpsLng;
   String? caption;
   CameraShareAudience? audience;
+  String? mediaType;
 
   @override
   Future<CheckinResult> createCheckin({
     String? placeId,
     String? candidateId,
     required String mediaId,
+    String? mediaType,
     required double gpsLat,
     required double gpsLng,
     double? gpsAccuracy,
@@ -60,6 +68,7 @@ class _FakeCheckinService extends CheckinService {
     this.placeId = placeId;
     this.candidateId = candidateId;
     this.mediaId = mediaId;
+    this.mediaType = mediaType;
     this.gpsLat = gpsLat;
     this.gpsLng = gpsLng;
     this.caption = caption;
@@ -111,6 +120,38 @@ void main() {
       expect(checkinService.gpsLng, 106.7035);
       expect(checkinService.caption, 'Hello');
       expect(checkinService.audience, same(audience));
+    },
+  );
+
+  test(
+    'passes video duration metadata to upload service',
+    () async {
+      final uploadService = _FakeUploadService();
+      final checkinService = _FakeCheckinService();
+      final publisher = SendImagePublisher(
+        uploadService: uploadService,
+        checkinService: checkinService,
+      );
+
+      await publisher.publish(
+        imagePath: 'clip.mp4',
+        source: 'IN_APP_CAMERA_VIDEO',
+        durationMs: 3000,
+        selectedPlace: const SelectedPlaceTag(
+          id: 'place-1',
+          placeId: 'place-1',
+          displayName: 'Cafe',
+          address: '123 Street',
+          lat: 10.7738,
+          lng: 106.7035,
+          source: 'internal',
+        ),
+        audience: CameraShareAudience.allFriends(),
+      );
+
+      expect(uploadService.uploadedSource, 'IN_APP_CAMERA_VIDEO');
+      expect(uploadService.uploadedDurationMs, 3000);
+      expect(checkinService.mediaType, 'VIDEO');
     },
   );
 

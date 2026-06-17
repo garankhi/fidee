@@ -3,7 +3,6 @@ import { SQSEvent, SQSRecord } from 'aws-lambda';
 import {
   buildObjectKey,
   MEDIA_STATUS_PENDING_MODERATION,
-  SupportedContentType,
   UPLOAD_PREFIX,
   ValidatedUploadRequest,
   ValidationError,
@@ -112,6 +111,7 @@ function uploadRequestFromObject(
   const longitude = Number(requireMetadata(metadata, 'gps-longitude'));
   const capturedAt = metadata['gps-captured-at'];
   const accuracyMeters = parseOptionalNumber(metadata['gps-accuracy-meters']);
+  const durationMs = parseOptionalNumber(metadata['duration-ms']);
 
   const uploadRequest = validateUploadRequest({
     source,
@@ -123,6 +123,7 @@ function uploadRequestFromObject(
       ...(capturedAt !== undefined ? { capturedAt } : {}),
       ...(accuracyMeters !== undefined ? { accuracyMeters } : {}),
     },
+    ...(durationMs !== undefined ? { durationMs } : {}),
   });
 
   return { mediaId, ownerUserId, uploadRequest };
@@ -144,7 +145,7 @@ function mediaRecordFromObject(
     headObject.metadata,
   );
 
-  const expectedKey = buildObjectKey(mediaId, uploadRequest.contentType as SupportedContentType);
+  const expectedKey = buildObjectKey(mediaId, uploadRequest.contentType);
   if (key !== expectedKey) {
     throw new ValidationError('Uploaded object key does not match media metadata');
   }
@@ -158,6 +159,8 @@ function mediaRecordFromObject(
     contentType: uploadRequest.contentType,
     contentLength: uploadRequest.contentLength,
     source: uploadRequest.source,
+    mediaType: uploadRequest.mediaType,
+    durationMs: uploadRequest.durationMs,
     gpsProof: uploadRequest.gpsProof,
     createdAt: now,
     updatedAt: now,

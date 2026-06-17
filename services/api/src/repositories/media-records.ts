@@ -1,6 +1,12 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { GpsProof, PhotoSource } from '../media/validation';
+import {
+  GpsProof,
+  MediaSource,
+  MediaType,
+  SupportedContentType,
+  mediaTypeForContentType,
+} from '../media/validation';
 
 export interface MediaRecord {
   mediaId: string;
@@ -8,9 +14,11 @@ export interface MediaRecord {
   status: 'PENDING_MODERATION';
   s3Bucket: string;
   s3Key: string;
-  contentType: string;
+  contentType: SupportedContentType;
   contentLength: number;
-  source: PhotoSource;
+  source: MediaSource;
+  mediaType: MediaType;
+  durationMs?: number;
   gpsProof: GpsProof;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +45,8 @@ export async function putMediaRecord(
     contentType: record.contentType,
     contentLength: record.contentLength,
     source: record.source,
+    mediaType: record.mediaType,
+    ...(record.durationMs !== undefined ? { durationMs: record.durationMs } : {}),
     gpsProof: record.gpsProof,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -62,15 +72,19 @@ export async function putMediaRecord(
 }
 
 function mediaRecordFromItem(item: Record<string, unknown>): MediaRecord {
+  const contentType = item.contentType as SupportedContentType;
+
   return {
     mediaId: item.mediaId as string,
     ownerUserId: item.ownerUserId as string,
     status: item.status as MediaRecord['status'],
     s3Bucket: item.s3Bucket as string,
     s3Key: item.s3Key as string,
-    contentType: item.contentType as string,
+    contentType,
     contentLength: item.contentLength as number,
-    source: item.source as PhotoSource,
+    source: item.source as MediaSource,
+    mediaType: (item.mediaType as MediaType | undefined) ?? mediaTypeForContentType(contentType),
+    durationMs: item.durationMs as number | undefined,
     gpsProof: item.gpsProof as GpsProof,
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,

@@ -85,6 +85,29 @@ describe('createPlaceCandidateHandler', () => {
     expect(mockQuery).toHaveBeenCalledTimes(3);
   });
 
+  it('stores PRIVATE visibility when requested', async () => {
+    mockSuccessfulQueries();
+    const deps = mockDeps();
+    const handler = createPlaceCandidateHandler(deps);
+    const result = await handler(mockEvent({ ...validBody, visibility: 'PRIVATE' }));
+
+    expect(result.statusCode).toBe(201);
+    const body = JSON.parse(result.body);
+    expect(body.data.visibility).toBe('PRIVATE');
+    expect(mockQuery.mock.calls[2][0]).toContain('visibility');
+    expect(mockQuery.mock.calls[2][1]).toContain('PRIVATE');
+  });
+
+  it('rejects unsupported candidate visibility', async () => {
+    const deps = mockDeps();
+    const handler = createPlaceCandidateHandler(deps);
+    const result = await handler(mockEvent({ ...validBody, visibility: 'PUBLIC' }));
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body).error.code).toBe('VALIDATION_ERROR');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('creates candidate without mediaId and skips media verification', async () => {
     mockSuccessfulQueries();
     const deps = mockDeps();
@@ -139,6 +162,20 @@ describe('createPlaceCandidateHandler', () => {
     const body = JSON.parse(result.body);
     expect(body.error.code).toBe('QUOTA_EXCEEDED');
     expect(body.error.daily_limit).toBe(5);
+  });
+
+  it('returns 429 at 50 candidates for PRO users', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '50' }] });
+    const deps = mockDeps({
+      getPlan: vi.fn().mockResolvedValue('PRO'),
+    });
+    const handler = createPlaceCandidateHandler(deps);
+    const result = await handler(mockEvent(validBody));
+
+    expect(result.statusCode).toBe(429);
+    const body = JSON.parse(result.body);
+    expect(body.error.daily_limit).toBe(50);
+    expect(body.error.used).toBe(50);
   });
 
   it('allows PRO user higher quota', async () => {

@@ -26,7 +26,7 @@ export function isPlaceCategory(value: unknown): value is PlaceCategory {
 }
 
 export type CandidateStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
-export type CandidateVisibility = 'FRIENDS' | 'PUBLIC';
+export type CandidateVisibility = 'FRIENDS' | 'PRIVATE';
 
 export interface PlaceCandidate {
   candidateId: string;
@@ -169,5 +169,5 @@ export async function findNearbyCandidates(
 /** Quota limits per user tier. */
 export const QUOTA_LIMITS = {
   FREE: 5,
-  PRO: 15,
+  PRO: 50,
 } as const;

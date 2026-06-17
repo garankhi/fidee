@@ -34,6 +34,7 @@ class CheckinService {
     String? placeId,
     String? candidateId,
     required String mediaId,
+    String? mediaType,
     required double gpsLat,
     required double gpsLng,
     double? gpsAccuracy,
@@ -52,6 +53,7 @@ class CheckinService {
       if (candidateId != null && candidateId.isNotEmpty)
         'candidate_id': candidateId,
       'media_id': mediaId,
+      if (mediaType != null && mediaType.isNotEmpty) 'media_type': mediaType,
       'gps_lat': gpsLat,
       'gps_lng': gpsLng,
       'visibility': 'FRIENDS',

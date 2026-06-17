@@ -28,6 +28,7 @@ const record = (overrides: Partial<MediaRecord> = {}): MediaRecord => ({
   contentType: 'image/jpeg',
   contentLength: 1024,
   source: 'IN_APP_CAMERA',
+  mediaType: 'IMAGE',
   gpsProof: { latitude: 10.7738, longitude: 106.7035 },
   createdAt: '2026-06-12T01:00:00.000Z',
   updatedAt: '2026-06-12T01:00:00.000Z',

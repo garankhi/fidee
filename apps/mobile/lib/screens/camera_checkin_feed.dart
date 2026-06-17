@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:video_player/video_player.dart';
 
 import '../features/auth/camera_checkin_feed_provider.dart';
 import '../models/camera_checkin_feed_item.dart';
@@ -228,27 +229,30 @@ class CameraFeedPhotoFrame extends StatelessWidget {
           key: ValueKey('camera-feed-photo-frame-${item.id}'),
           fit: StackFit.expand,
           children: [
-            CachedNetworkImage(
-              imageUrl: item.imageUrl,
-              cacheManager: CameraFeedImageCacheManager.instance,
-              cacheKey: cameraFeedImageCacheKey(item),
-              fit: BoxFit.cover,
-              placeholder: (context, url) {
-                return const ColoredBox(color: Color(0xFF171717));
-              },
-              errorWidget: (context, url, error) {
-                return const ColoredBox(
-                  color: Color(0xFF2A2A2A),
-                  child: Center(
-                    child: Icon(
-                      Icons.image_not_supported_outlined,
-                      color: Colors.white54,
-                      size: 36,
+            if (item.isVideo)
+              CameraFeedVideoFrame(item: item)
+            else
+              CachedNetworkImage(
+                imageUrl: item.imageUrl,
+                cacheManager: CameraFeedImageCacheManager.instance,
+                cacheKey: cameraFeedImageCacheKey(item),
+                fit: BoxFit.cover,
+                placeholder: (context, url) {
+                  return const ColoredBox(color: Color(0xFF171717));
+                },
+                errorWidget: (context, url, error) {
+                  return const ColoredBox(
+                    color: Color(0xFF2A2A2A),
+                    child: Center(
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Colors.white54,
+                        size: 36,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
             if (caption.isNotEmpty)
               Positioned(
                 left: 16,
@@ -279,6 +283,112 @@ class CameraFeedPhotoFrame extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class CameraFeedVideoFrame extends StatefulWidget {
+  final CameraCheckinFeedItem item;
+
+  const CameraFeedVideoFrame({super.key, required this.item});
+
+  @override
+  State<CameraFeedVideoFrame> createState() => _CameraFeedVideoFrameState();
+}
+
+class _CameraFeedVideoFrameState extends State<CameraFeedVideoFrame> {
+  VideoPlayerController? _controller;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(covariant CameraFeedVideoFrame oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.imageUrl != widget.item.imageUrl) {
+      _disposeController();
+      _hasError = false;
+      _createController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposeController();
+    super.dispose();
+  }
+
+  Future<void> _createController() async {
+    final url = widget.item.imageUrl;
+    if (url.isEmpty) {
+      if (mounted) setState(() => _hasError = true);
+      return;
+    }
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    _controller = controller;
+
+    try {
+      await controller.setLooping(true);
+      await controller.setVolume(0);
+      await controller.initialize();
+      await controller.play();
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) setState(() => _hasError = true);
+    }
+  }
+
+  void _disposeController() {
+    final controller = _controller;
+    _controller = null;
+    if (controller == null) return;
+    controller.pause();
+    controller.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    final isReady = controller != null && controller.value.isInitialized;
+
+    return ColoredBox(
+      key: ValueKey('camera-feed-video-frame-${widget.item.id}'),
+      color: const Color(0xFF111111),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (isReady)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            )
+          else
+            const Center(
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white54,
+                size: 42,
+              ),
+            ),
+          if (_hasError)
+            const Center(
+              child: Icon(
+                Icons.videocam_off_outlined,
+                color: Colors.white54,
+                size: 36,
+              ),
+            ),
+        ],
       ),
     );
   }

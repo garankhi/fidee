@@ -27,9 +27,12 @@ MVP vẫn giữ hướng AI search, nhưng bản đầu làm nhẹ bằng keywor
   - Fallback GOONG Places/Nearby/Autocomplete khi match yếu.
   - GOONG `place_id` chỉ là external reference, không là source of truth.
 - **Nguồn dữ liệu public:** Fidee DynamoDB.
-- **Custom place:** Friends-visible mặc định, không public ngay.
+- **Custom place:** Friends-visible mặc định, user có thể tắt `Chia sẻ cho bạn bè` để giữ `PRIVATE`, không public ngay.
 - **Public toggle:** "Đề xuất công khai", tạo admin review candidate, không publish trực tiếp.
-- **Giới hạn tạo custom place:** 5 địa điểm/người dùng/ngày.
+- **Giới hạn tạo custom place:** Free 5 địa điểm/ngày; Pro 50 địa điểm/ngày.
+- **Fidee Pro development mode:** RevenueCat Test Store, Cognito `sub` là App User ID, chỉ có monthly/yearly products.
+- **AI quota:** Free 5 lượt input/ngày; Pro 50 lượt input/ngày, reset theo ngày server.
+- **Customer Center:** Phase later trong Profile/Settings, không thuộc MVP development mode.
 - **Promotion:** Score + admin queue.
 - **External social signals:** Không nằm trong MVP.
 - **Bedrock AI search, AI summary, gamification:** Phase 2.
@@ -219,7 +222,7 @@ Daily plan chia thành 2 sprint ngắn để dễ quản lý scope và demo.
 ### 3.3 Business rules bắt buộc
 
 - Custom place không thành `Place` public ngay.
-- User tạo tối đa 5 custom places/ngày.
+- User tạo custom places theo quota plan: Free 5/ngày, Pro 50/ngày.
 - Custom place phải có GPS capture từ app.
 - Nếu tên normalized giống >=85% trong bán kính 100m, bắt user chọn/merge thay vì tạo mới.
 - Nếu GOONG `place_id` đã map với `Place`/`PlaceCandidate`, không tạo duplicate.
@@ -925,6 +928,10 @@ Lịch này bám scope đã chốt ngày 2026-05-26: web app vẫn theo hướng
 | MAP-EPIC-06 Seed, QA & Release | 0 | 3 | 0 | 3 | 11 |
 | **Total MVP** | **14** | **8** | **0** | **22** | **116** |
 
+### Phase Later: RevenueCat Customer Center
+
+Add a Customer Center entry point in Profile/Settings after store sandbox subscriptions are live. It should let users inspect active plan state, restore/manage subscriptions, and reach store management links. This is intentionally outside the development-mode MVP because custom bottom-sheet purchase and backend sync are the first priority.
+
 ### Delivery note
 
 116 SP là scope đầy đủ để backlog không thiếu việc. Với mục tiêu demo MVP trong 1 tháng, team cần cắt release theo "must-demo" nếu capacity thấp:
@@ -939,7 +946,7 @@ Lịch này bám scope đã chốt ngày 2026-05-26: web app vẫn theo hướng
 ### 8.1 Tạo địa điểm rác
 
 - **Risk:** User spam custom place.
-- **Mitigation:** 5/ngày/user, GPS proof, duplicate check 100m, admin approve trước public, trust score.
+- **Mitigation:** quota theo plan, GPS proof, duplicate check 100m, admin approve trước public, trust score.
 
 ### 8.2 Duplicate địa điểm
 

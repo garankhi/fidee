@@ -44,6 +44,15 @@ class CameraFeedAudience {
   }
 }
 
+enum CameraCheckinMediaType { image, video }
+
+CameraCheckinMediaType cameraCheckinMediaTypeFromJson(Object? value) {
+  final raw = value?.toString().trim().toUpperCase();
+  return raw == 'VIDEO'
+      ? CameraCheckinMediaType.video
+      : CameraCheckinMediaType.image;
+}
+
 class CameraCheckinFeedItem {
   final String id;
   final String? caption;
@@ -56,6 +65,7 @@ class CameraCheckinFeedItem {
   final String placeId;
   final String placeName;
   final String? category;
+  final CameraCheckinMediaType mediaType;
 
   const CameraCheckinFeedItem({
     required this.id,
@@ -69,6 +79,7 @@ class CameraCheckinFeedItem {
     required this.placeId,
     required this.placeName,
     this.category,
+    this.mediaType = CameraCheckinMediaType.image,
   });
 
   factory CameraCheckinFeedItem.fromJson(Map<String, dynamic> json) {
@@ -84,8 +95,13 @@ class CameraCheckinFeedItem {
       placeId: json['placeId'] as String? ?? '',
       placeName: json['placeName'] as String? ?? 'Địa điểm',
       category: json['category'] as String?,
+      mediaType: cameraCheckinMediaTypeFromJson(
+        json['mediaType'] ?? json['media_type'],
+      ),
     );
   }
+
+  bool get isVideo => mediaType == CameraCheckinMediaType.video;
 
   String get imageUrl {
     if (mediaId == null || mediaId!.isEmpty) return '';

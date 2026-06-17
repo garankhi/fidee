@@ -140,11 +140,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           pc.rating_count,
           pc.media_id,
           pc.status,
+          pc.visibility,
+          pc.created_by,
           (SELECT COUNT(*)::integer FROM check_ins c WHERE c.candidate_id = pc.id) AS checkin_count
         FROM place_candidates pc
         WHERE pc.id = $1
+          AND (pc.visibility = 'FRIENDS' OR pc.created_by = $2)
       `;
-      const candidateResult = await query(candidateSql, [placeId]);
+      const candidateResult = await query(candidateSql, [placeId, userId]);
       if (candidateResult.rows.length === 0) {
         return {
           statusCode: 404,
@@ -173,7 +176,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         isCandidate: true,
         avgRating: parseFloat(String(c.avg_rating || 0)),
         ratingCount: parseInt(String(c.rating_count || 0), 10),
-        visibility: 'FRIENDS',
+        visibility: c.visibility,
         status: c.status,
         isFeatured: false,
         isVerified: false,
@@ -191,6 +194,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         u.display_name AS "userName",
         u.avatar_url AS "userAvatar",
         ci.media_id AS "mediaId",
+        ci.media_type AS "mediaType",
         ci.caption,
         ci.rating,
         ci.created_at AS "createdAt"
@@ -259,6 +263,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const photosSql = `
       SELECT
         ci.media_id AS "mediaId",
+        ci.media_type AS "mediaType",
         ci.user_id AS "userId",
         u.display_name AS "userName",
         ci.caption,

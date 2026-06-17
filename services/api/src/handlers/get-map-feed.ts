@@ -40,6 +40,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         ci.caption,
         ci.created_at as "createdAt",
         ci.media_id as "mediaId",
+        ci.media_type as "mediaType",
         u.id as "userId",
         u.display_name as "userName",
         u.avatar_url as "userAvatar",
@@ -71,6 +72,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           )
         )
         AND COALESCE(p.location, pc.location) IS NOT NULL
+        AND (pc.id IS NULL OR pc.visibility = 'FRIENDS' OR pc.created_by = $1)
         AND ST_DWithin(COALESCE(p.location, pc.location), ST_MakePoint($2, $3)::geography, $4)
       ORDER BY ci.created_at DESC
       LIMIT 50;

@@ -11,6 +11,10 @@ class Config {
   static const String appSyncRealtimeUrl =
       'wss://3mweqov3bvfr5npo34mwyosdoy.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql';
 
+  static const String revenueCatEntitlementPro = 'pro';
+  static const String revenueCatMonthlyProductId = 'fidee_pro_monthly';
+  static const String revenueCatYearlyProductId = 'fidee_pro_yearly';
+
   static const String _defaultGoongStyleUrl =
       'https://tiles.goong.io/assets/goong_map_web.json';
   static const String _goongMaptilesKeyDefine = String.fromEnvironment(
@@ -18,6 +22,12 @@ class Config {
   );
   static const String _goongStyleUrlDefine = String.fromEnvironment(
     'GOONG_STYLE_URL',
+  );
+  static const String _revenueCatIosApiKeyDefine = String.fromEnvironment(
+    'REVENUECAT_IOS_API_KEY',
+  );
+  static const String _revenueCatAndroidApiKeyDefine = String.fromEnvironment(
+    'REVENUECAT_ANDROID_API_KEY',
   );
 
   static String get goongMaptilesKey {
@@ -29,6 +39,17 @@ class Config {
       'GOONG_STYLE_URL',
       _goongStyleUrlDefine,
       defaultValue: _defaultGoongStyleUrl,
+    );
+  }
+
+  static String get revenueCatIosApiKey {
+    return _envOrDefine('REVENUECAT_IOS_API_KEY', _revenueCatIosApiKeyDefine);
+  }
+
+  static String get revenueCatAndroidApiKey {
+    return _envOrDefine(
+      'REVENUECAT_ANDROID_API_KEY',
+      _revenueCatAndroidApiKeyDefine,
     );
   }
 

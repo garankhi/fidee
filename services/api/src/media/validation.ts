@@ -1,15 +1,26 @@
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_VIDEO_UPLOAD_BYTES = 20 * 1024 * 1024;
+export const MAX_VIDEO_DURATION_MS = 3000;
+export const MAX_UPLOAD_BYTES = MAX_IMAGE_UPLOAD_BYTES;
 export const UPLOAD_EXPIRY_SECONDS = 300;
 export const UPLOAD_PREFIX = 'uploads/';
 export const MEDIA_STATUS_PENDING_MODERATION = 'PENDING_MODERATION';
 
 export const PHOTO_SOURCES = ['IN_APP_CAMERA', 'EXIF_GALLERY'] as const;
+export const VIDEO_SOURCES = ['IN_APP_CAMERA_VIDEO', 'EXIF_GALLERY_VIDEO'] as const;
+export const MEDIA_SOURCES = [...PHOTO_SOURCES, ...VIDEO_SOURCES] as const;
+
 export type PhotoSource = (typeof PHOTO_SOURCES)[number];
+export type VideoSource = (typeof VIDEO_SOURCES)[number];
+export type MediaSource = (typeof MEDIA_SOURCES)[number];
+export type MediaType = 'IMAGE' | 'VIDEO';
 
 export const SUPPORTED_CONTENT_TYPES = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
 } as const;
 
 export type SupportedContentType = keyof typeof SUPPORTED_CONTENT_TYPES;
@@ -22,10 +33,12 @@ export interface GpsProof {
 }
 
 export interface ValidatedUploadRequest {
-  source: PhotoSource;
+  source: MediaSource;
   contentType: SupportedContentType;
   contentLength: number;
   gpsProof: GpsProof;
+  mediaType: MediaType;
+  durationMs?: number;
 }
 
 export class ValidationError extends Error {
@@ -42,8 +55,28 @@ export function isPhotoSource(value: unknown): value is PhotoSource {
   return PHOTO_SOURCES.includes(value as PhotoSource);
 }
 
+export function isVideoSource(value: unknown): value is VideoSource {
+  return VIDEO_SOURCES.includes(value as VideoSource);
+}
+
+export function isMediaSource(value: unknown): value is MediaSource {
+  return MEDIA_SOURCES.includes(value as MediaSource);
+}
+
 export function isSupportedContentType(value: unknown): value is SupportedContentType {
   return typeof value === 'string' && value in SUPPORTED_CONTENT_TYPES;
+}
+
+export function isVideoContentType(contentType: SupportedContentType): boolean {
+  return contentType.startsWith('video/');
+}
+
+export function mediaTypeForContentType(contentType: SupportedContentType): MediaType {
+  return isVideoContentType(contentType) ? 'VIDEO' : 'IMAGE';
+}
+
+export function maxUploadBytesForContentType(contentType: SupportedContentType): number {
+  return isVideoContentType(contentType) ? MAX_VIDEO_UPLOAD_BYTES : MAX_IMAGE_UPLOAD_BYTES;
 }
 
 export function extensionForContentType(contentType: SupportedContentType): string {
@@ -60,21 +93,55 @@ export function validateUploadRequest(value: unknown): ValidatedUploadRequest {
   }
 
   const source = value.source;
-  if (!isPhotoSource(source)) {
-    throw new ValidationError('source must be IN_APP_CAMERA or EXIF_GALLERY');
+  if (!isMediaSource(source)) {
+    throw new ValidationError(
+      'source must be IN_APP_CAMERA, EXIF_GALLERY, IN_APP_CAMERA_VIDEO, or EXIF_GALLERY_VIDEO',
+    );
   }
 
   const contentType = value.contentType;
   if (!isSupportedContentType(contentType)) {
-    throw new ValidationError('contentType must be image/jpeg, image/png, or image/webp');
+    throw new ValidationError(
+      'contentType must be image/jpeg, image/png, image/webp, video/mp4, or video/quicktime',
+    );
+  }
+
+  const mediaType = mediaTypeForContentType(contentType);
+  if (mediaType === 'VIDEO' && !isVideoSource(source)) {
+    throw new ValidationError('video uploads must use a video source');
+  }
+  if (mediaType === 'IMAGE' && !isPhotoSource(source)) {
+    throw new ValidationError('image uploads must use an image source');
   }
 
   const contentLength = value.contentLength;
   if (typeof contentLength !== 'number' || !Number.isInteger(contentLength) || contentLength <= 0) {
     throw new ValidationError('contentLength must be a positive integer');
   }
-  if (contentLength > MAX_UPLOAD_BYTES) {
-    throw new ValidationError('contentLength exceeds 5MB limit');
+
+  const maxBytes = maxUploadBytesForContentType(contentType);
+  if (contentLength > maxBytes) {
+    throw new ValidationError(
+      mediaType === 'VIDEO'
+        ? 'contentLength exceeds 20MB video limit'
+        : 'contentLength exceeds 5MB image limit',
+    );
+  }
+
+  let durationMs: number | undefined;
+  if (mediaType === 'VIDEO') {
+    const rawDurationMs = value.durationMs;
+    if (
+      typeof rawDurationMs !== 'number' ||
+      !Number.isInteger(rawDurationMs) ||
+      rawDurationMs <= 0
+    ) {
+      throw new ValidationError('durationMs is required for video uploads');
+    }
+    if (rawDurationMs > MAX_VIDEO_DURATION_MS) {
+      throw new ValidationError('durationMs exceeds 3000ms video limit');
+    }
+    durationMs = rawDurationMs;
   }
 
   const gpsProof = value.gpsProof;
@@ -128,5 +195,12 @@ export function validateUploadRequest(value: unknown): ValidatedUploadRequest {
     normalizedGpsProof.accuracyMeters = accuracyMeters;
   }
 
-  return { source, contentType, contentLength, gpsProof: normalizedGpsProof };
+  return {
+    source,
+    contentType,
+    contentLength,
+    gpsProof: normalizedGpsProof,
+    mediaType,
+    durationMs,
+  };
 }
