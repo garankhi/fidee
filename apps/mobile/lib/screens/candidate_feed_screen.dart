@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../features/auth/candidate_provider.dart';
 import 'place_details_friends.dart';
@@ -24,6 +25,32 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
           .read(candidateControllerProvider.notifier)
           .loadCandidates(status: _selectedStatus);
     });
+  }
+
+  String _formatCreatedAt(String? createdAtString) {
+    if (createdAtString == null || createdAtString.isEmpty) {
+      return 'Không rõ thời gian';
+    }
+
+    try {
+      final createdAt = DateTime.parse(createdAtString).toLocal();
+      final now = DateTime.now();
+      final difference = now.difference(createdAt);
+
+      if (difference.inSeconds < 60) {
+        return 'Vừa xong';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} phút trước';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} giờ trước';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} ngày trước';
+      } else {
+        return DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
+      }
+    } catch (e) {
+      return 'Thời gian không hợp lệ';
+    }
   }
 
   String _formatHours(String? open, String? close) {
@@ -162,9 +189,9 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        const Text(
-                          'Vừa xong',
-                          style: TextStyle(
+                        Text(
+                          _formatCreatedAt(place.createdAt),
+                          style: const TextStyle(
                             color: Color(0xFFEF484F),
                             fontSize: 11,
                             fontFamily: 'SF Pro',
