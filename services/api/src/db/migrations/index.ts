@@ -846,4 +846,10 @@ ALTER TABLE check_ins
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_plan ON user_subscriptions(plan);
 CREATE INDEX IF NOT EXISTS idx_ai_usage_daily_date ON ai_usage_daily(usage_date);
 `,
+
+  '017_review_media': `
+-- Add media_ids column to reviews table for photo attachments (max 5).
+ALTER TABLE reviews
+  ADD COLUMN IF NOT EXISTS media_ids TEXT[] DEFAULT '{}';
+`,
 };

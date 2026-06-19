@@ -9,14 +9,14 @@ const CORS_HEADERS = {
 
 const VIBES = [
   { id: 'hen_ho', name: 'Hẹn hò', icon: 'heart' },
-  { id: 'nhom', name: 'Nhóm', icon: 'group' },
-  { id: 'cafe', name: 'Cà phê', icon: 'coffee' },
-  { id: 'an_vat', name: 'Ăn vặt', icon: 'fastfood' },
-  { id: 'sang_trong', name: 'Sang trọng', icon: 'diamond' },
-  { id: 'yenbinh', name: 'Yên bình', icon: 'spa' },
-  { id: 'view_dep', name: 'View đẹp', icon: 'landscape' },
-  { id: 'tra_sua', name: 'Trà sữa', icon: 'local_cafe' },
-  { id: 'nhau', name: 'Nhậu', icon: 'sports_bar' },
+  { id: 'nhom_ban', name: 'Nhóm bạn', icon: 'group' },
+  { id: 'hoc_lam_viec', name: 'Học/Làm việc', icon: 'menu_book' },
+  { id: 'chill', name: 'Chill', icon: 'nightlight' },
+  { id: 'lang_man', name: 'Lãng mạn', icon: 'auto_awesome' },
+  { id: 'khong_gian_xanh', name: 'Không gian xanh', icon: 'eco' },
+  { id: 'acoustic', name: 'Acoustic', icon: 'music_note' },
+  { id: 'cafe', name: 'Cafe', icon: 'coffee' },
+  { id: 'ngot_ngao', name: 'Ngọt ngào', icon: 'cake' },
 ];
 
 /**

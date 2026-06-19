@@ -50,7 +50,6 @@ export class ChatApiStack extends cdk.NestedStack {
       'CreateDirectConversationFunction',
       {
         ...chatLambdaProps,
-        functionName: resourceName(stage, 'create-direct-conversation'),
         entry: '../../services/api/src/handlers/user-chat-handlers.ts',
         handler: 'createDirectConversation',
       },
@@ -59,7 +58,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const listConversationsFn = new nodejs.NodejsFunction(this, 'ListConversationsFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'list-conversations'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'listConversations',
     });
@@ -67,7 +65,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const listMessagesFn = new nodejs.NodejsFunction(this, 'ListMessagesFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'list-chat-messages'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'listMessages',
     });
@@ -75,7 +72,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const sendMessageFn = new nodejs.NodejsFunction(this, 'SendChatMessageFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'send-chat-message'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'sendMessage',
     });
@@ -84,7 +80,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const markChatReadFn = new nodejs.NodejsFunction(this, 'MarkChatReadFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'mark-chat-read'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'markRead',
     });
@@ -93,7 +88,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const markChatDeliveredFn = new nodejs.NodejsFunction(this, 'MarkChatDeliveredFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'mark-chat-delivered'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'markDelivered',
     });
@@ -102,7 +96,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const sendChatTypingFn = new nodejs.NodejsFunction(this, 'SendChatTypingFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'send-chat-typing'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'sendTyping',
     });
@@ -111,7 +104,6 @@ export class ChatApiStack extends cdk.NestedStack {
 
     const chatHeartbeatFn = new nodejs.NodejsFunction(this, 'ChatHeartbeatFunction', {
       ...chatLambdaProps,
-      functionName: resourceName(stage, 'chat-heartbeat'),
       entry: '../../services/api/src/handlers/user-chat-handlers.ts',
       handler: 'heartbeat',
     });

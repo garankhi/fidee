@@ -45,7 +45,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return jsonResponse(400, { error: 'Invalid JSON body' });
     }
 
-    const { placeId, candidateId, rating, content, visibility } = body;
+    const { placeId, candidateId, rating, content, visibility, mediaIds } = body;
 
     // Validate target
     if (placeId && candidateId) {
@@ -67,6 +67,23 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       }
       if (content.length > 500) {
         return jsonResponse(400, { error: 'content must be at most 500 characters' });
+      }
+    }
+
+    // Validate mediaIds
+    const validMediaIds: string[] = [];
+    if (mediaIds !== undefined && mediaIds !== null) {
+      if (!Array.isArray(mediaIds)) {
+        return jsonResponse(400, { error: 'mediaIds must be an array of strings' });
+      }
+      if (mediaIds.length > 5) {
+        return jsonResponse(400, { error: 'mediaIds can have at most 5 items' });
+      }
+      for (const id of mediaIds) {
+        if (typeof id !== 'string' || id.trim().length === 0) {
+          return jsonResponse(400, { error: 'Each mediaId must be a non-empty string' });
+        }
+        validMediaIds.push(id.trim());
       }
     }
 
@@ -95,18 +112,19 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     if (placeId) {
       const upsertSql = `
-        INSERT INTO reviews (place_id, user_id, rating, content, visibility)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO reviews (place_id, user_id, rating, content, visibility, media_ids)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (user_id, place_id) WHERE place_id IS NOT NULL
         DO UPDATE SET
           rating = EXCLUDED.rating,
           content = EXCLUDED.content,
           visibility = EXCLUDED.visibility,
+          media_ids = EXCLUDED.media_ids,
           updated_at = NOW()
-        RETURNING id, rating, content, created_at, updated_at,
+        RETURNING id, rating, content, media_ids, created_at, updated_at,
           (xmax = 0) AS is_new;
       `;
-      const result = await query(upsertSql, [placeId, userId, rating, reviewContent, vis]);
+      const result = await query(upsertSql, [placeId, userId, rating, reviewContent, vis, validMediaIds]);
       const row = result.rows[0];
       const isNew = row.is_new;
 
@@ -116,24 +134,26 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           id: row.id,
           rating: row.rating,
           content: row.content,
+          mediaIds: row.media_ids || [],
           createdAt: row.created_at,
           updatedAt: row.updated_at,
         },
       });
     } else {
       const upsertSql = `
-        INSERT INTO reviews (candidate_id, user_id, rating, content, visibility)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO reviews (candidate_id, user_id, rating, content, visibility, media_ids)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (user_id, candidate_id) WHERE candidate_id IS NOT NULL
         DO UPDATE SET
           rating = EXCLUDED.rating,
           content = EXCLUDED.content,
           visibility = EXCLUDED.visibility,
+          media_ids = EXCLUDED.media_ids,
           updated_at = NOW()
-        RETURNING id, rating, content, created_at, updated_at,
+        RETURNING id, rating, content, media_ids, created_at, updated_at,
           (xmax = 0) AS is_new;
       `;
-      const result = await query(upsertSql, [candidateId, userId, rating, reviewContent, vis]);
+      const result = await query(upsertSql, [candidateId, userId, rating, reviewContent, vis, validMediaIds]);
       const row = result.rows[0];
       const isNew = row.is_new;
 
@@ -143,6 +163,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           id: row.id,
           rating: row.rating,
           content: row.content,
+          mediaIds: row.media_ids || [],
           createdAt: row.created_at,
           updatedAt: row.updated_at,
         },

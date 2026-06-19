@@ -221,7 +221,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         r.rating,
         r.content,
         r.is_featured AS "isFeatured",
-        r.created_at AS "createdAt"
+        r.created_at AS "createdAt",
+        r.media_ids AS "mediaIds"
       FROM reviews r
       JOIN users u ON u.id = r.user_id
       WHERE r.${targetCol} = $1
@@ -245,7 +246,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         r.rating,
         r.content,
         r.is_featured AS "isFeatured",
-        r.created_at AS "createdAt"
+        r.created_at AS "createdAt",
+        r.media_ids AS "mediaIds"
       FROM reviews r
       JOIN users u ON u.id = r.user_id
       WHERE r.${targetCol} = $1
@@ -283,6 +285,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         r.id,
         r.rating,
         r.content,
+        r.media_ids AS "mediaIds",
         r.created_at AS "createdAt",
         r.updated_at AS "updatedAt"
       FROM reviews r

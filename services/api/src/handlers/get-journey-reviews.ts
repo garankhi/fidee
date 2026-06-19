@@ -46,6 +46,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         r.id,
         r.rating,
         r.content,
+        r.media_ids AS "mediaIds",
         r.created_at as "createdAt",
         COALESCE(p.id, pc.id)::text as "placeId",
         COALESCE(p.name, pc.name) as "placeName",

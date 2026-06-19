@@ -1487,6 +1487,37 @@ export class FideeStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── GET /discovery/search (protected) ───────────────────────
+    const discoverySearchFn = new nodejs.NodejsFunction(this, 'DiscoverySearchFunction', {
+      functionName: resourceName(stage, 'discovery-search'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/discovery-search.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(15),
+      role: placesApiLambdaRole,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+      },
+      bundling: { nodeModules: ['pg'] },
+    });
+
+    const discoverySearchResource = discoveryResource.addResource('search');
+    discoverySearchResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    discoverySearchResource.addMethod('GET', new apigateway.LambdaIntegration(discoverySearchFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // ─── GET /feed/checkins (protected) ─────────────────────────
     const getCheckinFeedFn = new nodejs.NodejsFunction(this, 'GetCheckinFeedFunction', {
       functionName: resourceName(stage, 'get-checkin-feed'),
