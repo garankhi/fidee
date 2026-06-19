@@ -47,7 +47,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // GET /admin/users
     const getUsersFn = new nodejs.NodejsFunction(this, 'GetUsersFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'get-users'),
       entry: '../../services/api/src/handlers/get-users.ts',
       handler: 'handler',
     });
@@ -56,7 +55,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // PUT /admin/users/{userId}
     const updateUserFn = new nodejs.NodejsFunction(this, 'UpdateUserFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'update-user'),
       entry: '../../services/api/src/handlers/update-user.ts',
       handler: 'handler',
       environment: {
@@ -70,7 +68,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // GET /admin/places/pending
     const getPendingPlacesFn = new nodejs.NodejsFunction(this, 'GetPendingPlacesFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'get-pending-places'),
       entry: '../../services/api/src/handlers/admin/get-pending-places.ts',
       handler: 'handler',
     });
@@ -79,7 +76,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // GET /admin/places/candidates/{id}
     const getCandidateDetailFn = new nodejs.NodejsFunction(this, 'GetCandidateDetailFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'get-candidate-detail'),
       entry: '../../services/api/src/handlers/admin/get-candidate-detail.ts',
       handler: 'handler',
     });
@@ -89,7 +85,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // Needs PRIVATE_WITH_EGRESS for Gemini embedding API call
     const approveCandidateFn = new nodejs.NodejsFunction(this, 'ApproveCandidateFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'approve-candidate'),
       entry: '../../services/api/src/handlers/admin/approve-candidate.ts',
       handler: 'handler',
       timeout: cdk.Duration.seconds(30),
@@ -107,7 +102,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // POST /admin/places/candidates/{id}/reject
     const rejectCandidateFn = new nodejs.NodejsFunction(this, 'RejectCandidateFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'reject-candidate'),
       entry: '../../services/api/src/handlers/admin/reject-candidate.ts',
       handler: 'handler',
     });
@@ -116,7 +110,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // POST /admin/places/candidates/{id}/merge
     const mergeCandidateFn = new nodejs.NodejsFunction(this, 'MergeCandidateFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'merge-candidate'),
       entry: '../../services/api/src/handlers/admin/merge-candidate.ts',
       handler: 'handler',
     });
@@ -125,7 +118,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // POST /admin/places/candidates/{id}/request-info
     const requestInfoCandidateFn = new nodejs.NodejsFunction(this, 'RequestInfoCandidateFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'request-info-candidate'),
       entry: '../../services/api/src/handlers/admin/request-info-candidate.ts',
       handler: 'handler',
     });
@@ -135,7 +127,6 @@ export class AdminApiStack extends cdk.NestedStack {
     // Needs PRIVATE_WITH_EGRESS for Gemini embedding API + DB access
     const backfillEmbeddingsFn = new nodejs.NodejsFunction(this, 'BackfillEmbeddingsFunction', {
       ...adminLambdaProps,
-      functionName: resourceName(stage, 'backfill-embeddings'),
       entry: '../../services/api/src/handlers/admin/backfill-embeddings.ts',
       handler: 'handler',
       memorySize: 512,

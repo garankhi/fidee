@@ -23,6 +23,8 @@ class DiscoveryPlace {
   final List<String> friendAvatars;
   final int? priceMin;
   final int? priceMax;
+  final List<String> vibes;
+  final List<String> services;
 
   const DiscoveryPlace({
     required this.placeId,
@@ -40,6 +42,8 @@ class DiscoveryPlace {
     this.friendAvatars = const [],
     this.priceMin,
     this.priceMax,
+    this.vibes = const <String>[],
+    this.services = const <String>[],
   });
 
   factory DiscoveryPlace.fromJson(Map<String, dynamic> json) {
@@ -63,6 +67,12 @@ class DiscoveryPlace {
           const [],
       priceMin: (json['priceMin'] as num?)?.toInt(),
       priceMax: (json['priceMax'] as num?)?.toInt(),
+      vibes:
+          (json['vibes'] as List<dynamic>?)?.whereType<String>().toList() ??
+          const <String>[],
+      services:
+          (json['services'] as List<dynamic>?)?.whereType<String>().toList() ??
+          const <String>[],
     );
   }
 
@@ -94,6 +104,23 @@ class DiscoveryPlace {
   }
 }
 
+class DiscoverySearchPage {
+  final List<DiscoveryPlace> places;
+  final String? nextCursor;
+  final bool hasMore;
+
+  const DiscoverySearchPage({
+    required this.places,
+    this.nextCursor,
+    this.hasMore = false,
+  });
+
+  const DiscoverySearchPage.empty()
+    : places = const <DiscoveryPlace>[],
+      nextCursor = null,
+      hasMore = false;
+}
+
 class DiscoveryFeedData {
   final List<DiscoveryPlace> hotPlaces;
   final List<DiscoveryPlace> recommendedPlaces;
@@ -114,8 +141,10 @@ class DiscoveryFeedData {
 
 class DiscoveryFeedService {
   final AuthService _authService;
+  final http.Client _client;
 
-  const DiscoveryFeedService(this._authService);
+  DiscoveryFeedService(this._authService, {http.Client? client})
+    : _client = client ?? http.Client();
 
   Future<DiscoveryFeedData> fetchFeed({
     required double lat,
@@ -130,7 +159,10 @@ class DiscoveryFeedService {
       final uri = Uri.parse(
         '${Config.apiBaseUrl}/discovery/feed?lat=$lat&lng=$lng',
       );
-      final response = await http.get(uri, headers: {'Authorization': token});
+      final response = await _client.get(
+        uri,
+        headers: {'Authorization': token},
+      );
 
       if (response.statusCode != 200) {
         debugPrint(
@@ -157,6 +189,72 @@ class DiscoveryFeedService {
     } catch (e) {
       debugPrint('[DiscoveryFeedService] Error: $e');
       return DiscoveryFeedData.empty();
+    }
+  }
+
+  Future<DiscoverySearchPage> searchPlaces({
+    required double lat,
+    required double lng,
+    String? query,
+    String? vibe,
+    String? category,
+    int? priceMax,
+    int? radius,
+    String? sortBy,
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
+      return const DiscoverySearchPage.empty();
+    }
+
+    final queryParameters = <String, String>{
+      'lat': lat.toString(),
+      'lng': lng.toString(),
+      'limit': limit.toString(),
+      if (radius != null) 'radius': radius.toString(),
+      if (sortBy != null && sortBy.isNotEmpty) 'sortBy': sortBy,
+      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      if (vibe != null && vibe.trim().isNotEmpty) 'vibe': vibe.trim(),
+      if (category != null && category.trim().isNotEmpty)
+        'category': category.trim(),
+      if (priceMax != null) 'priceMax': priceMax.toString(),
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    };
+
+    try {
+      final uri = Uri.parse(
+        '${Config.apiBaseUrl}/discovery/search',
+      ).replace(queryParameters: queryParameters);
+      final response = await _client.get(
+        uri,
+        headers: {'Authorization': token},
+      );
+      if (response.statusCode != 200) {
+        debugPrint(
+          '[DiscoveryFeedService] Search HTTP ${response.statusCode}: '
+          '${response.body}',
+        );
+        return const DiscoverySearchPage.empty();
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final pagination =
+          decoded['pagination'] as Map<String, dynamic>? ??
+          const <String, dynamic>{};
+      final places = ((decoded['data'] as List<dynamic>?) ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(DiscoveryPlace.fromJson)
+          .toList(growable: false);
+      return DiscoverySearchPage(
+        places: places,
+        nextCursor: pagination['nextCursor'] as String?,
+        hasMore: pagination['hasMore'] as bool? ?? false,
+      );
+    } catch (error) {
+      debugPrint('[DiscoveryFeedService] Search error: $error');
+      return const DiscoverySearchPage.empty();
     }
   }
 }

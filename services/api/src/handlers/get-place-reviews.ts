@@ -95,6 +95,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         r.content,
         r.is_featured AS "isFeatured",
         r.created_at AS "createdAt",
+        r.media_ids AS "mediaIds",
         CASE WHEN f.friend_id IS NOT NULL THEN true ELSE false END AS "isFriend"
       FROM reviews r
       JOIN users u ON u.id = r.user_id
@@ -117,6 +118,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         r.content,
         r.is_featured AS "isFeatured",
         r.created_at AS "createdAt",
+        r.media_ids AS "mediaIds",
         CASE WHEN EXISTS (
           SELECT 1 FROM friendships
           WHERE user_id = '${userId}' AND friend_id = r.user_id AND status = 'ACCEPTED'

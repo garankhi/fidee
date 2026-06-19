@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fidee_mobile/screens/ai_chat_screen.dart';
 import 'package:fidee_mobile/screens/candidate_feed_screen.dart';
 import 'package:fidee_mobile/screens/journey_screen.dart';
@@ -24,6 +26,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<NearbyPlace> _nearbySpots = [];
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   int _currentNavIndex = 0;
 
   @override
@@ -63,8 +66,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {});
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => ref.read(dashboardControllerProvider.notifier).search(query: value),
+    );
+  }
+
+  void _submitSearch(String value) {
+    _searchDebounce?.cancel();
+    ref.read(dashboardControllerProvider.notifier).search(query: value);
+  }
+
+  Future<void> _showFilters(DashboardState state) async {
+    final result = await showModalBottomSheet<_DashboardFilterSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (context) => _DashboardFilterSheet(state: state),
+    );
+    if (result == null || !mounted) return;
+    await ref
+        .read(dashboardControllerProvider.notifier)
+        .applyFilters(
+          category: result.category,
+          priceMax: result.priceMax,
+          radius: result.radius,
+          sortBy: result.sortBy,
+        );
   }
 
   @override
@@ -99,14 +135,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildDashboardBody(BuildContext context, dynamic dashboardState, String? userAvatarUrl) {
+  Widget _buildDashboardBody(
+    BuildContext context,
+    DashboardState dashboardState,
+    String? userAvatarUrl,
+  ) {
     final places = dashboardState.hotPlaces;
     final friendPlaces = dashboardState.friendActivities;
     final systemPadding = MediaQuery.of(context).padding;
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: 20, right: 20,
+        left: 20,
+        right: 20,
         top: systemPadding.top > 0 ? systemPadding.top + 10 : 20,
         bottom: systemPadding.bottom > 0 ? systemPadding.bottom + 100 : 110,
       ),
@@ -131,7 +172,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Expanded(
                 child: Text(
                   'Hôm nay ăn gì cho hợp “vibe”?',
-                  style: TextStyle(color: Colors.black.withValues(alpha: 0.85), fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.black.withValues(alpha: 0.85),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -139,7 +184,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          _buildHeaderSearchBar(),
+          _buildHeaderSearchBar(dashboardState),
           const SizedBox(height: 25),
           _buildAddPlaceBanner(),
           const SizedBox(height: 25),
@@ -154,31 +199,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildVibeGrid(dashboardState.selectedVibe as String?),
+          _buildVibeGrid(dashboardState.selectedVibe),
           const SizedBox(height: 28),
-
-          const Text(
-            'Đang “hot” 🔥',
-            style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 15),
-          _buildHotPlacesRow(places as List<DashboardPlace>),
-          const SizedBox(height: 28),
-
-          _buildSubSectionHeader('Dành riêng cho bạn'),
-          const SizedBox(height: 15),
-          _buildHotPlacesRow(dashboardState.recommendedPlaces as List<DashboardPlace>),
-          const SizedBox(height: 28),
-
-          _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
-          const SizedBox(height: 15),
-          _buildFriendsActivityList(friendPlaces as List<DashboardPlace>),
+          if (dashboardState.isSearchMode)
+            _buildSearchResults(dashboardState)
+          else ...[
+            const Text(
+              'Đang “hot” 🔥',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 15),
+            _buildHotPlacesRow(places),
+            const SizedBox(height: 28),
+            _buildSubSectionHeader('Dành riêng cho bạn'),
+            const SizedBox(height: 15),
+            _buildHotPlacesRow(dashboardState.recommendedPlaces),
+            const SizedBox(height: 28),
+            _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
+            const SizedBox(height: 15),
+            _buildFriendsActivityList(friendPlaces),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildHeaderSearchBar() {
+  Widget _buildHeaderSearchBar(DashboardState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -194,54 +244,143 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const AiChatScreen(),
-                            ),
-                          );
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AiChatScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF484F),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Text(
+                          'Hỏi AI',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        onSubmitted: _submitSearch,
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          hintText: 'Tìm nhà hàng, quán ăn..',
+                          hintStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Xóa tìm kiếm',
+                        onPressed: () {
+                          _searchController.clear();
+                          _submitSearch('');
+                          setState(() {});
                         },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF484F),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: const Text(
-                            'Hỏi AI',
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ),
+                        icon: const Icon(Icons.close, size: 18),
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Tìm nhà hàng, quán ăn..',
-                            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                            border: InputBorder.none,
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                    ]
+                  ],
                 ),
               ),
             ),
             const SizedBox(width: 10),
-            Container(
-              height: 36,
-              width: 46,
-              decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle, border: Border.all(color: Colors.grey[300]!)),
-              child: const Icon(Icons.tune, color: Color(0xFFEF484F), size: 20),
-            )
+            IconButton(
+              tooltip: 'Lọc địa điểm',
+              onPressed: () => _showFilters(state),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    state.category != null ||
+                        state.priceMax != null ||
+                        state.radius != null ||
+                        state.sortBy != null
+                    ? const Color(0xFFEF484F)
+                    : Colors.grey[100],
+                foregroundColor:
+                    state.category != null ||
+                        state.priceMax != null ||
+                        state.radius != null ||
+                        state.sortBy != null
+                    ? Colors.white
+                    : const Color(0xFFEF484F),
+              ),
+              icon: const Icon(Icons.tune, size: 20),
+            ),
           ],
         ),
+        if (_hasAdvancedFilters(state)) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.filter_alt_outlined,
+                size: 16,
+                color: Color(0xFFEF484F),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _activeFilterLabel(state),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF6E7E91),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => ref
+                    .read(dashboardControllerProvider.notifier)
+                    .applyFilters(radius: null, sortBy: null),
+                child: const Text('Bỏ bộ lọc'),
+              ),
+            ],
+          ),
+        ],
       ],
     );
+  }
+
+  bool _hasAdvancedFilters(DashboardState state) {
+    return state.category != null ||
+        state.priceMax != null ||
+        state.radius != null ||
+        state.sortBy != null;
+  }
+
+  String _activeFilterLabel(DashboardState state) {
+    final labels = <String>[
+      if (state.category != null) state.category!,
+      if (state.priceMax != null) '≤ ${_formatPrice(state.priceMax!)}đ',
+      if (state.radius != null) '${state.radius! ~/ 1000} km',
+      if (state.sortBy == 'distance') 'Gần nhất',
+      if (state.sortBy == 'rating') 'Đánh giá',
+      if (state.sortBy == 'popular') 'Phổ biến',
+    ];
+    return labels.join(' · ');
   }
 
   Widget _buildAddPlaceBanner() {
@@ -249,7 +388,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFF7C6C7), Color(0xFFEAE9E8)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF7C6C7), Color(0xFFEAE9E8)],
+        ),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -257,21 +398,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           const Text(
             'CHƯA TÌM ĐƯỢC QUÁN YÊU THÍCH?',
-            style: TextStyle(color: Color(0xFFC52128), fontSize: 22, fontFamily: 'Anton', fontWeight: FontWeight.w400),
+            style: TextStyle(
+              color: Color(0xFFC52128),
+              fontSize: 22,
+              fontFamily: 'Anton',
+              fontWeight: FontWeight.w400,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Hãy thêm địa điểm mới và chia sẻ với mọi người!',
-            style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Color(0xFFEF484F),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 18),
           GestureDetector(
             onTap: _onAddSpot,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color(0xFFEF4050),
                 borderRadius: BorderRadius.circular(999),
@@ -300,15 +447,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildVibeGrid(String? selectedVibe) {
     final vibes = [
-      {'title': 'Hẹn hò', 'icon': Icons.favorite},
-      {'title': 'Nhóm bạn', 'icon': Icons.groups},
-      {'title': 'Học/Làm việc', 'icon': Icons.menu_book},
-      {'title': 'Chill', 'icon': Icons.nightlight_round},
-      {'title': 'Lãng mạn', 'icon': Icons.auto_awesome},
-      {'title': 'Không gian xanh', 'icon': Icons.eco},
-      {'title': 'Acoustic', 'icon': Icons.music_note},
-      {'title': 'Cafe', 'icon': Icons.local_cafe},
-      {'title': 'Ngọt ngào', 'icon': Icons.cake},
+      {'id': 'hen_ho', 'title': 'Hẹn hò', 'icon': Icons.favorite},
+      {'id': 'nhom_ban', 'title': 'Nhóm bạn', 'icon': Icons.groups},
+      {'id': 'hoc_lam_viec', 'title': 'Học/Làm việc', 'icon': Icons.menu_book},
+      {'id': 'chill', 'title': 'Chill', 'icon': Icons.nightlight_round},
+      {'id': 'lang_man', 'title': 'Lãng mạn', 'icon': Icons.auto_awesome},
+      {'id': 'khong_gian_xanh', 'title': 'Không gian xanh', 'icon': Icons.eco},
+      {'id': 'acoustic', 'title': 'Acoustic', 'icon': Icons.music_note},
+      {'id': 'cafe', 'title': 'Cafe', 'icon': Icons.local_cafe},
+      {'id': 'ngot_ngao', 'title': 'Ngọt ngào', 'icon': Icons.cake},
     ];
 
     return Wrap(
@@ -316,29 +463,51 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       runSpacing: 12,
       children: vibes.map((vibe) {
         final title = vibe['title'] as String;
-        final isSelected = selectedVibe == title;
+        final id = vibe['id'] as String;
+        final isSelected = selectedVibe == id;
 
         return GestureDetector(
-          onTap: () => ref.read(dashboardControllerProvider.notifier).selectVibe(title),
+          onTap: () {
+            _searchDebounce?.cancel();
+            _searchController.clear();
+            setState(() {});
+            ref.read(dashboardControllerProvider.notifier).selectVibe(id);
+          },
           child: Container(
             width: (MediaQuery.of(context).size.width - 64) / 3,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               gradient: isSelected
-                  ? const LinearGradient(colors: [Color(0xFFEF484F), Color(0xCCFF1D27)])
-                  : const LinearGradient(colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)]),
+                  ? const LinearGradient(
+                      colors: [Color(0xFFEF484F), Color(0xCCFF1D27)],
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)],
+                    ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isSelected ? const Color(0xFFEF484F) : const Color(0xFFF7C6C7).withValues(alpha: 0.5)),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFFEF484F)
+                    : const Color(0xFFF7C6C7).withValues(alpha: 0.5),
+              ),
             ),
             child: Column(
               children: [
-                Icon(vibe['icon'] as IconData, color: isSelected ? Colors.white : const Color(0xFFEF484F), size: 26),
+                Icon(
+                  vibe['icon'] as IconData,
+                  color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                  size: 26,
+                ),
                 const SizedBox(height: 6),
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
-                )
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -347,11 +516,183 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  Widget _buildSearchResults(DashboardState state) {
+    final title = state.searchQuery.trim().isNotEmpty
+        ? 'Kết quả cho “${state.searchQuery.trim()}”'
+        : 'Địa điểm hợp vibe của bạn';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                _searchController.clear();
+                ref.read(dashboardControllerProvider.notifier).clearSearch();
+                setState(() {});
+              },
+              icon: const Icon(Icons.close, size: 17),
+              label: const Text('Xóa lọc'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (state.isSearching && state.searchResults.isEmpty)
+          const _DiscoverySearchSkeleton()
+        else if (state.searchResults.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 36),
+            child: Center(
+              child: Text(
+                'Không tìm thấy địa điểm phù hợp.',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+            ),
+          )
+        else
+          ...state.searchResults.map(_buildSearchPlaceRow),
+        if (state.hasMore)
+          Center(
+            child: TextButton.icon(
+              onPressed: state.isLoadingMore
+                  ? null
+                  : () => ref
+                        .read(dashboardControllerProvider.notifier)
+                        .loadMore(),
+              icon: state.isLoadingMore
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.expand_more),
+              label: const Text('Xem thêm'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSearchPlaceRow(DashboardPlace place) {
+    final tags = <String>[
+      place.category,
+      ...place.vibes.take(2),
+      if (place.priceMax != null) '≤ ${_formatPrice(place.priceMax!)}đ',
+    ];
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => PlaceDetailsFriends(placeId: place.id),
+        ),
+      ),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                place.imageUrl,
+                width: 92,
+                height: 92,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  width: 92,
+                  height: 92,
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.storefront),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    place.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '★ ${place.rating.toStringAsFixed(1)} · '
+                    '${place.distanceKm.toStringAsFixed(1)} km',
+                    style: const TextStyle(
+                      color: Color(0xFF6E7E91),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: tags
+                        .map(
+                          (tag) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFECEF),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tag,
+                              style: const TextStyle(
+                                color: Color(0xFFEF4050),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatPrice(int value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return '${(value / 1000).round()}k';
+    return value.toString();
+  }
+
   Widget _buildHotPlacesRow(List<DashboardPlace> places) {
     if (places.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
-        child: Text('Chưa có địa điểm nổi bật hôm nay.', style: TextStyle(color: Colors.grey)),
+        child: Text(
+          'Chưa có địa điểm nổi bật hôm nay.',
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 
@@ -377,7 +718,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               margin: const EdgeInsets.only(right: 15),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                image: DecorationImage(image: NetworkImage(place.imageUrl), fit: BoxFit.cover),
+                image: DecorationImage(
+                  image: NetworkImage(place.imageUrl),
+                  fit: BoxFit.cover,
+                ),
               ),
               child: Container(
                 padding: const EdgeInsets.all(12),
@@ -386,7 +730,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.85)],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.1),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
                   ),
                 ),
                 child: Column(
@@ -397,43 +744,97 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.star, color: Colors.amber, size: 12),
+                              const Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 12,
+                              ),
                               const SizedBox(width: 3),
-                              Text('${place.rating}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                              Text(
+                                '${place.rating}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         CircleAvatar(
                           backgroundColor: Colors.black.withValues(alpha: 0.5),
                           radius: 15,
-                          child: const Icon(Icons.favorite_border, color: Colors.white, size: 14),
-                        )
+                          child: const Icon(
+                            Icons.favorite_border,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(place.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          place.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text('${place.category} · ${place.distanceKm} km', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        Text(
+                          '${place.category} · ${place.distanceKm} km',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('${place.friendsCount} bạn đã check-in', style: const TextStyle(color: Colors.white70, fontSize: 11, fontStyle: FontStyle.italic)),
+                            Text(
+                              '${place.friendsCount} bạn đã check-in',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFFEF484F), borderRadius: BorderRadius.circular(12)),
-                              child: const Text('Check-in', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            )
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF484F),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Check-in',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ],
-                        )
+                        ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -448,7 +849,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (places.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 10),
-        child: Text('Chưa có hoạt động nào từ bạn bè.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+        child: Text(
+          'Chưa có hoạt động nào từ bạn bè.',
+          style: TextStyle(color: Colors.grey, fontSize: 13),
+        ),
       );
     }
 
@@ -461,7 +865,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(place.imageUrl, width: 75, height: 75, fit: BoxFit.cover),
+                child: Image.network(
+                  place.imageUrl,
+                  width: 75,
+                  height: 75,
+                  fit: BoxFit.cover,
+                ),
               ),
               const SizedBox(width: 15),
 
@@ -471,16 +880,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   children: [
                     Text(
                       place.name,
-                      style: const TextStyle(color: Color(0xFF1E1E1E), fontSize: 15, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Color(0xFF1E1E1E),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text('${place.category} · ${place.distanceKm}km', style: const TextStyle(color: Color(0xFF8B8B8B), fontSize: 12)),
+                    Text(
+                      '${place.category} · ${place.distanceKm}km',
+                      style: const TextStyle(
+                        color: Color(0xFF8B8B8B),
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       'Minh và ${place.friendsCount} người khác đã ở đây',
-                      style: const TextStyle(color: Color(0xFFEF484F), fontSize: 12, fontWeight: FontWeight.w600, fontStyle: FontStyle.italic),
+                      style: const TextStyle(
+                        color: Color(0xFFEF484F),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -491,15 +915,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(width: 10),
               Column(
                 children: [
-                  const Text('5-7 phút', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w600)),
+                  const Text(
+                    '5-7 phút',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFEF484F), borderRadius: BorderRadius.circular(8)),
-                    child: const Text('Đến quán', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  )
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF484F),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Đến quán',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
         );
@@ -511,9 +955,303 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-        TextButton(onPressed: () {}, child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFEF484F), fontSize: 13, fontWeight: FontWeight.w600)))
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        TextButton(
+          onPressed: () {},
+          child: const Text(
+            'Xem tất cả',
+            style: TextStyle(
+              color: Color(0xFFEF484F),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _DashboardFilterSelection {
+  final String? category;
+  final int? priceMax;
+  final int? radius;
+  final String? sortBy;
+
+  const _DashboardFilterSelection({
+    this.category,
+    this.priceMax,
+    this.radius,
+    this.sortBy,
+  });
+}
+
+class _DashboardFilterSheet extends StatefulWidget {
+  final DashboardState state;
+
+  const _DashboardFilterSheet({required this.state});
+
+  @override
+  State<_DashboardFilterSheet> createState() => _DashboardFilterSheetState();
+}
+
+class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
+  String? _category;
+  int? _priceMax;
+  int? _radius;
+  String? _sortBy;
+
+  @override
+  void initState() {
+    super.initState();
+    _category = widget.state.category;
+    _priceMax = widget.state.priceMax;
+    _radius = widget.state.radius;
+    _sortBy = widget.state.sortBy;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Lọc địa điểm',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _label('Loại quán'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Tất cả'),
+                  selected: _category == null,
+                  onSelected: (_) => setState(() => _category = null),
+                ),
+                ...const <(String, String)>[
+                  ('cafe', 'Cà phê'),
+                  ('restaurant', 'Nhà hàng'),
+                  ('shopping', 'Mua sắm'),
+                  ('tourist_attraction', 'Điểm tham quan'),
+                ].map((option) {
+                  return ChoiceChip(
+                    label: Text(option.$2),
+                    selected: _category == option.$1,
+                    onSelected: (selected) =>
+                        setState(() => _category = selected ? option.$1 : null),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _label('Mức giá tối đa'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Tất cả'),
+                  selected: _priceMax == null,
+                  onSelected: (_) => setState(() => _priceMax = null),
+                ),
+                ...const <(int, String)>[
+                  (50000, '50k'),
+                  (100000, '100k'),
+                  (200000, '200k'),
+                  (500000, '500k'),
+                ].map((option) {
+                  return ChoiceChip(
+                    label: Text(option.$2),
+                    selected: _priceMax == option.$1,
+                    onSelected: (selected) =>
+                        setState(() => _priceMax = selected ? option.$1 : null),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _label('Khoảng cách'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Tất cả'),
+                  selected: _radius == null,
+                  onSelected: (_) => setState(() => _radius = null),
+                ),
+                ...const <(int, String)>[
+                  (1000, '1 km'),
+                  (3000, '3 km'),
+                  (5000, '5 km'),
+                  (10000, '10 km'),
+                ].map((option) {
+                  return ChoiceChip(
+                    label: Text(option.$2),
+                    selected: _radius == option.$1,
+                    onSelected: (selected) =>
+                        setState(() => _radius = selected ? option.$1 : null),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _label('Sắp xếp'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Tất cả'),
+                  selected: _sortBy == null,
+                  onSelected: (_) => setState(() => _sortBy = null),
+                ),
+                ...const <(String, String)>[
+                  ('distance', 'Gần nhất'),
+                  ('rating', 'Đánh giá'),
+                  ('popular', 'Phổ biến'),
+                ].map((option) {
+                  return ChoiceChip(
+                    label: Text(option.$2),
+                    selected: _sortBy == option.$1,
+                    onSelected: (selected) =>
+                        setState(() => _sortBy = selected ? option.$1 : null),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      const _DashboardFilterSelection(),
+                    ),
+                    child: const Text('Đặt lại'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      _DashboardFilterSelection(
+                        category: _category,
+                        priceMax: _priceMax,
+                        radius: _radius,
+                        sortBy: _sortBy,
+                      ),
+                    ),
+                    icon: const Icon(Icons.tune),
+                    label: const Text('Áp dụng'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscoverySearchSkeleton extends StatelessWidget {
+  const _DiscoverySearchSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        4,
+        (index) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _line(double.infinity),
+                    const SizedBox(height: 10),
+                    _line(150),
+                    const SizedBox(height: 10),
+                    _line(110),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _line(double width) {
+    return Container(
+      width: width,
+      height: 12,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(4),
+      ),
     );
   }
 }

@@ -8,6 +8,10 @@ class DashboardPlace {
   final double distanceKm;
   final String imageUrl;
   final int friendsCount;
+  final int? priceMin;
+  final int? priceMax;
+  final List<String> vibes;
+  final List<String> services;
 
   const DashboardPlace({
     required this.id,
@@ -17,6 +21,10 @@ class DashboardPlace {
     required this.distanceKm,
     required this.imageUrl,
     required this.friendsCount,
+    this.priceMin,
+    this.priceMax,
+    this.vibes = const <String>[],
+    this.services = const <String>[],
   });
 
   factory DashboardPlace.fromJson(Map<String, dynamic> json) {
@@ -29,11 +37,20 @@ class DashboardPlace {
       category: json['category'] as String? ?? 'Restaurant',
       rating: double.tryParse(metadata['rating']?.toString() ?? '4.9') ?? 4.9,
       distanceKm:
-          double.tryParse(json['distance_meters']?.toString() ?? '300') ?? 0.3,
+          (double.tryParse(json['distance_meters']?.toString() ?? '') ?? 0) /
+          1000,
       imageUrl:
           metadata['image_url'] as String? ?? 'https://placehold.co/265x220',
       friendsCount:
           int.tryParse(json['checkin_count']?.toString() ?? '10') ?? 10,
+      priceMin: int.tryParse(json['price_min']?.toString() ?? ''),
+      priceMax: int.tryParse(json['price_max']?.toString() ?? ''),
+      vibes:
+          (json['vibes'] as List<dynamic>?)?.whereType<String>().toList() ??
+          const <String>[],
+      services:
+          (json['services'] as List<dynamic>?)?.whereType<String>().toList() ??
+          const <String>[],
     );
   }
 }

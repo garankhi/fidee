@@ -331,6 +331,16 @@ describe('FideeStack', () => {
     });
   });
 
+  it('creates protected discovery search infrastructure', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'fidee-dev-discovery-search',
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'GET',
+      AuthorizationType: 'COGNITO_USER_POOLS',
+    });
+  });
+
   it('enables DynamoDB TTL', () => {
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       TimeToLiveSpecification: {
