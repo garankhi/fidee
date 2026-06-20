@@ -840,6 +840,59 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
     _sortBy = widget.state.sortBy;
   }
 
+  // ==========================================
+  // BƯỚC 1: THÊM HÀM NÀY VÀO ĐÂY (Ngay trên hàm build)
+  // ==========================================
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onSelected,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onSelected(),
+
+      // Định cấu hình màu nền theo trạng thái dựa trên source code ChoiceChip
+      color: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+        if (states.contains(WidgetState.selected)) {
+          return const Color(0xFFEF484F); // Selected: Nền đỏ chủ đạo (hoặc màu tuỳ chọn)
+        }
+        return Colors.grey[200]; // Unselected: Nền xám
+      }),
+
+      // Xóa viền đen/xám mặc định của Material 3 để màu xám được phẳng đẹp
+      side: const BorderSide(color: Colors.transparent),
+
+      // Cấu hình màu chữ: Selected = Trắng, Unselected = Đen
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black,
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+
+      // Ẩn dấu check v (nếu muốn giao diện giống tab filter phẳng)
+      showCheckmark: false,
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // BƯỚC 2: SỬ DỤNG TRONG HÀM BUILD CỦA BẠN
+  // ==========================================
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -865,133 +918,21 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Lọc địa điểm',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 20),
-            _label('Loại quán'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('Tất cả'),
-                  selected: _category == null,
-                  onSelected: (_) => setState(() => _category = null),
-                ),
-                ...const <(String, String)>[
-                  ('cafe', 'Cà phê'),
-                  ('restaurant', 'Nhà hàng'),
-                  ('shopping', 'Mua sắm'),
-                  ('tourist_attraction', 'Điểm tham quan'),
-                ].map((option) {
-                  return ChoiceChip(
-                    label: Text(option.$2),
-                    selected: _category == option.$1,
-                    onSelected: (selected) =>
-                        setState(() => _category = selected ? option.$1 : null),
-                  );
-                }),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _label('Mức giá tối đa'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('Tất cả'),
-                  selected: _priceMax == null,
-                  onSelected: (_) => setState(() => _priceMax = null),
-                ),
-                ...const <(int, String)>[
-                  (50000, '50k'),
-                  (100000, '100k'),
-                  (200000, '200k'),
-                  (500000, '500k'),
-                ].map((option) {
-                  return ChoiceChip(
-                    label: Text(option.$2),
-                    selected: _priceMax == option.$1,
-                    onSelected: (selected) =>
-                        setState(() => _priceMax = selected ? option.$1 : null),
-                  );
-                }),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _label('Khoảng cách'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('Tất cả'),
-                  selected: _radius == null,
-                  onSelected: (_) => setState(() => _radius = null),
-                ),
-                ...const <(int, String)>[
-                  (1000, '1 km'),
-                  (3000, '3 km'),
-                  (5000, '5 km'),
-                  (10000, '10 km'),
-                ].map((option) {
-                  return ChoiceChip(
-                    label: Text(option.$2),
-                    selected: _radius == option.$1,
-                    onSelected: (selected) =>
-                        setState(() => _radius = selected ? option.$1 : null),
-                  );
-                }),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _label('Sắp xếp'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('Tất cả'),
-                  selected: _sortBy == null,
-                  onSelected: (_) => setState(() => _sortBy = null),
-                ),
-                ...const <(String, String)>[
-                  ('distance', 'Gần nhất'),
-                  ('rating', 'Đánh giá'),
-                  ('popular', 'Phổ biến'),
-                ].map((option) {
-                  return ChoiceChip(
-                    label: Text(option.$2),
-                    selected: _sortBy == option.$1,
-                    onSelected: (selected) =>
-                        setState(() => _sortBy = selected ? option.$1 : null),
-                  );
-                }),
-              ],
-            ),
-            const SizedBox(height: 24),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(
-                      context,
-                      const _DashboardFilterSelection(),
-                    ),
-                    child: const Text('Đặt lại'),
+                const Text(
+                  'Lọc địa điểm',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.pop(
+                TextButton(
+                  onPressed: () {
+                    // Trả kết quả lọc về màn hình chính
+                    Navigator.pop(
                       context,
                       _DashboardFilterSelection(
                         category: _category,
@@ -999,28 +940,126 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
                         radius: _radius,
                         sortBy: _sortBy,
                       ),
+                    );
+                  },
+                  child: const Text(
+                    'Áp dụng',
+                    style: TextStyle(
+                      color: Color(0xFFEF484F),
+                      fontWeight: FontWeight.bold,
                     ),
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Áp dụng'),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 20),
 
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
+            // 1. Loại quán
+            _label('Loại quán'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterChip(
+                  label: 'Tất cả',
+                  isSelected: _category == null,
+                  onSelected: () => setState(() => _category = null),
+                ),
+                ...const <(String, String)>[
+                  ('cafe', 'Cà phê'),
+                  ('restaurant', 'Nhà hàng'),
+                  ('shopping', 'Mua sắm'),
+                  ('tourist_attraction', 'Điểm tham quan'),
+                ].map((option) {
+                  return _buildFilterChip(
+                    label: option.$2,
+                    isSelected: _category == option.$1,
+                    onSelected: () => setState(() => _category = option.$1),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 2. Mức giá tối đa
+            _label('Mức giá tối đa'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterChip(
+                  label: 'Tất cả',
+                  isSelected: _priceMax == null,
+                  onSelected: () => setState(() => _priceMax = null),
+                ),
+                ...const <(int, String)>[
+                  (50000, '50k'),
+                  (100000, '100k'),
+                  (200000, '200k'),
+                  (500000, '500k'),
+                ].map((option) {
+                  return _buildFilterChip(
+                    label: option.$2,
+                    isSelected: _priceMax == option.$1,
+                    onSelected: () => setState(() => _priceMax = option.$1),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 3. Khoảng cách
+            _label('Khoảng cách'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterChip(
+                  label: 'Tất cả',
+                  isSelected: _radius == null,
+                  onSelected: () => setState(() => _radius = null),
+                ),
+                ...const <(int, String)>[
+                  (1000, '1 km'),
+                  (3000, '3 km'),
+                  (5000, '5 km'),
+                  (10000, '10 km'),
+                ].map((option) {
+                  return _buildFilterChip(
+                    label: option.$2,
+                    isSelected: _radius == option.$1,
+                    onSelected: () => setState(() => _radius = option.$1),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 4. Sắp xếp (Đã sửa lỗi gõ dở 'Choic' từ file cũ)
+            _label('Sắp xếp'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterChip(
+                  label: 'Mặc định',
+                  isSelected: _sortBy == null,
+                  onSelected: () => setState(() => _sortBy = null),
+                ),
+                ...const <(String, String)>[
+                  ('distance', 'Gần nhất'),
+                  ('rating', 'Đánh giá'),
+                  ('popular', 'Phổ biến'),
+                ].map((option) {
+                  return _buildFilterChip(
+                    label: option.$2,
+                    isSelected: _sortBy == option.$1,
+                    onSelected: () => setState(() => _sortBy = option.$1),
+                  );
+                }),
+              ],
+            ),
+          ],
         ),
       ),
     );
