@@ -5,6 +5,7 @@ import 'package:fidee_mobile/screens/candidate_feed_screen.dart';
 import 'package:fidee_mobile/screens/journey_screen.dart';
 import 'package:fidee_mobile/screens/place_details_friends.dart';
 import 'package:fidee_mobile/screens/profile_screen.dart';
+import 'package:fidee_mobile/screens/search_result_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,7 +27,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<NearbyPlace> _nearbySpots = [];
   final TextEditingController _searchController = TextEditingController();
-  Timer? _searchDebounce;
   int _currentNavIndex = 0;
 
   @override
@@ -48,7 +48,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
     } catch (_) {
-      // Nearby suggestions are optional for the dashboard entry point.
     }
   }
 
@@ -66,23 +65,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged(String value) {
-    setState(() {});
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(
-      const Duration(milliseconds: 350),
-      () => ref.read(dashboardControllerProvider.notifier).search(query: value),
-    );
-  }
-
   void _submitSearch(String value) {
-    _searchDebounce?.cancel();
-    ref.read(dashboardControllerProvider.notifier).search(query: value);
+    if (value.trim().isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => SearchResultScreen(initialQuery: value.trim()),
+      ),
+    );
   }
 
   Future<void> _showFilters(DashboardState state) async {
@@ -136,10 +131,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildDashboardBody(
-    BuildContext context,
-    DashboardState dashboardState,
-    String? userAvatarUrl,
-  ) {
+      BuildContext context,
+      DashboardState dashboardState,
+      String? userAvatarUrl,
+      ) {
     final places = dashboardState.hotPlaces;
     final friendPlaces = dashboardState.friendActivities;
     final systemPadding = MediaQuery.of(context).padding;
@@ -199,30 +194,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildVibeGrid(dashboardState.selectedVibe),
+          _buildVibeGrid(),
           const SizedBox(height: 28),
-          if (dashboardState.isSearchMode)
-            _buildSearchResults(dashboardState)
-          else ...[
-            const Text(
-              'Đang “hot” 🔥',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+
+          const Text(
+            'Đang “hot” 🔥',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 15),
-            _buildHotPlacesRow(places),
-            const SizedBox(height: 28),
-            _buildSubSectionHeader('Dành riêng cho bạn'),
-            const SizedBox(height: 15),
-            _buildHotPlacesRow(dashboardState.recommendedPlaces),
-            const SizedBox(height: 28),
-            _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
-            const SizedBox(height: 15),
-            _buildFriendsActivityList(friendPlaces),
-          ],
+          ),
+          const SizedBox(height: 15),
+          _buildHotPlacesRow(places),
+          const SizedBox(height: 28),
+          _buildSubSectionHeader('Dành riêng cho bạn'),
+          const SizedBox(height: 15),
+          _buildHotPlacesRow(dashboardState.recommendedPlaces),
+          const SizedBox(height: 28),
+          _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
+          const SizedBox(height: 15),
+          _buildFriendsActivityList(friendPlaces),
         ],
       ),
     );
@@ -277,9 +269,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        onChanged: _onSearchChanged,
                         onSubmitted: _submitSearch,
                         textInputAction: TextInputAction.search,
+                        style: const TextStyle(color: Colors.black, fontSize: 13),
                         decoration: const InputDecoration(
                           hintText: 'Tìm nhà hàng, quán ăn..',
                           hintStyle: TextStyle(
@@ -296,10 +288,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         tooltip: 'Xóa tìm kiếm',
                         onPressed: () {
                           _searchController.clear();
-                          _submitSearch('');
                           setState(() {});
                         },
-                        icon: const Icon(Icons.close, size: 18),
+                        icon: const Icon(Icons.close, size: 18, color: Colors.black,),
                       ),
                   ],
                 ),
@@ -466,7 +457,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildVibeGrid(String? selectedVibe) {
+  Widget _buildVibeGrid() {
     final vibes = [
       {'id': 'hen_ho', 'title': 'Hẹn hò', 'icon': Icons.favorite},
       {'id': 'nhom_ban', 'title': 'Nhóm bạn', 'icon': Icons.groups},
@@ -485,46 +476,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       children: vibes.map((vibe) {
         final title = vibe['title'] as String;
         final id = vibe['id'] as String;
-        final isSelected = selectedVibe == id;
 
         return GestureDetector(
           onTap: () {
-            _searchDebounce?.cancel();
-            _searchController.clear();
-            setState(() {});
-            ref.read(dashboardControllerProvider.notifier).selectVibe(id);
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => SearchResultScreen(initialVibe: id),
+              ),
+            );
           },
           child: Container(
             width: (MediaQuery.of(context).size.width - 64) / 3,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              gradient: isSelected
-                  ? const LinearGradient(
-                      colors: [Color(0xFFEF484F), Color(0xCCFF1D27)],
-                    )
-                  : const LinearGradient(
-                      colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)],
-                    ),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFDFBFB), Color(0xFFF7C6C7)],
+              ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected
-                    ? const Color(0xFFEF484F)
-                    : const Color(0xFFF7C6C7).withValues(alpha: 0.5),
+                color: const Color(0xFFF7C6C7).withValues(alpha: 0.5),
               ),
             ),
             child: Column(
               children: [
                 Icon(
                   vibe['icon'] as IconData,
-                  color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                  color: const Color(0xFFEF484F),
                   size: 26,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black87,
+                  style: const TextStyle(
+                    color: Colors.black87,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -534,169 +520,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildSearchResults(DashboardState state) {
-    final title = state.searchQuery.trim().isNotEmpty
-        ? 'Kết quả cho “${state.searchQuery.trim()}”'
-        : 'Địa điểm hợp vibe của bạn';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                _searchController.clear();
-                ref.read(dashboardControllerProvider.notifier).clearSearch();
-                setState(() {});
-              },
-              icon: const Icon(Icons.close, size: 17),
-              label: const Text('Xóa lọc'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        if (state.isSearching && state.searchResults.isEmpty)
-          const _DiscoverySearchSkeleton()
-        else if (state.searchResults.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 36),
-            child: Center(
-              child: Text(
-                'Không tìm thấy địa điểm phù hợp.',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-            ),
-          )
-        else
-          ...state.searchResults.map(_buildSearchPlaceRow),
-        if (state.hasMore)
-          Center(
-            child: TextButton.icon(
-              onPressed: state.isLoadingMore
-                  ? null
-                  : () => ref
-                        .read(dashboardControllerProvider.notifier)
-                        .loadMore(),
-              icon: state.isLoadingMore
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.expand_more),
-              label: const Text('Xem thêm'),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildSearchPlaceRow(DashboardPlace place) {
-    final tags = <String>[
-      place.category,
-      ...place.vibes.take(2),
-      if (place.priceMax != null) '≤ ${_formatPrice(place.priceMax!)}đ',
-    ];
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => PlaceDetailsFriends(placeId: place.id),
-        ),
-      ),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                place.imageUrl,
-                width: 92,
-                height: 92,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 92,
-                  height: 92,
-                  color: Colors.grey.shade200,
-                  child: const Icon(Icons.storefront),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    place.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '★ ${place.rating.toStringAsFixed(1)} · '
-                    '${place.distanceKm.toStringAsFixed(1)} km',
-                    style: const TextStyle(
-                      color: Color(0xFF6E7E91),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: tags
-                        .map(
-                          (tag) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFECEF),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              tag,
-                              style: const TextStyle(
-                                color: Color(0xFFEF4050),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1038,6 +861,59 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
     _sortOptions = widget.state.sortOptions.toList();
   }
 
+  // ==========================================
+  // BƯỚC 1: THÊM HÀM NÀY VÀO ĐÂY (Ngay trên hàm build)
+  // ==========================================
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onSelected,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onSelected(),
+
+      // Định cấu hình màu nền theo trạng thái dựa trên source code ChoiceChip
+      color: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+        if (states.contains(WidgetState.selected)) {
+          return const Color(0xFFEF484F); // Selected: Nền đỏ chủ đạo (hoặc màu tuỳ chọn)
+        }
+        return Colors.grey[200]; // Unselected: Nền xám
+      }),
+
+      // Xóa viền đen/xám mặc định của Material 3 để màu xám được phẳng đẹp
+      side: const BorderSide(color: Colors.transparent),
+
+      // Cấu hình màu chữ: Selected = Trắng, Unselected = Đen
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black,
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+
+      // Ẩn dấu check v (nếu muốn giao diện giống tab filter phẳng)
+      showCheckmark: false,
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // BƯỚC 2: SỬ DỤNG TRONG HÀM BUILD CỦA BẠN
+  // ==========================================
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -1063,15 +939,43 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Lọc địa điểm',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Lọc địa điểm',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // Trả kết quả lọc về màn hình chính
+                    Navigator.pop(
+                      context,
+                      _DashboardFilterSelection(
+                        category: _category,
+                        priceMax: _priceMax,
+                        radius: _radius,
+                        sortBy: _sortBy,
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Áp dụng',
+                    style: TextStyle(
+                      color: Color(0xFFEF484F),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
+
+            // 1. Loại quán
             _label('Loại quán'),
             Wrap(
               spacing: 8,
@@ -1134,6 +1038,8 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               ],
             ),
             const SizedBox(height: 20),
+
+            // 3. Khoảng cách
             _label('Khoảng cách'),
             Wrap(
               spacing: 8,
@@ -1164,6 +1070,8 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               ],
             ),
             const SizedBox(height: 20),
+
+            // 4. Sắp xếp (Đã sửa lỗi gõ dở 'Choic' từ file cũ)
             _label('Sắp xếp'),
             Wrap(
               spacing: 8,
@@ -1233,72 +1141,6 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _DiscoverySearchSkeleton extends StatelessWidget {
-  const _DiscoverySearchSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        4,
-        (index) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            children: [
-              Container(
-                width: 92,
-                height: 92,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _line(double.infinity),
-                    const SizedBox(height: 10),
-                    _line(150),
-                    const SizedBox(height: 10),
-                    _line(110),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _line(double width) {
-    return Container(
-      width: width,
-      height: 12,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(4),
       ),
     );
   }

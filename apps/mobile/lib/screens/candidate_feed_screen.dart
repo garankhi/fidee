@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../features/auth/candidate_provider.dart';
 import 'place_details_friends.dart';
@@ -24,26 +25,66 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
     });
   }
 
+  String _formatCreatedAt(String? createdAtString) {
+    if (createdAtString == null || createdAtString.isEmpty) {
+      return 'Không rõ thời gian';
+    }
+
+    try {
+      final createdAt = DateTime.parse(createdAtString).toLocal();
+      final now = DateTime.now();
+      final difference = now.difference(createdAt);
+
+      if (difference.inSeconds < 60) {
+        return 'Vừa xong';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} phút trước';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} giờ trước';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} ngày trước';
+      } else {
+        return DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
+      }
+    } catch (e) {
+      return 'Thời gian không hợp lệ';
+    }
+  }
+
+  String _formatHours(String? open, String? close) {
+    if (open == null || close == null) return 'Chưa cập nhật giờ';
+    final openFormatted = open.length > 5 ? open.substring(0, 5) : open;
+    final closeFormatted = close.length > 5 ? close.substring(0, 5) : close;
+    return '$openFormatted - $closeFormatted';
+  }
+
+  String _formatPrice(dynamic min, dynamic max) {
+    if (min == null && max == null) return 'Chưa cập nhật giá';
+    if (min != null && max == null) return 'Từ ${min}đ';
+    if (min == null && max != null) return 'Đến ${max}đ';
+    return '${min}đ - ${max}đ';
+  }
+
   @override
   Widget build(BuildContext context) {
     final candidatesAsync = ref.watch(candidateControllerProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
-
       appBar: AppBar(
         title: const Text(
-          'Địa điểm chờ duyệt',
+          'BẢNG TIN',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Color(0xFFEF484F),
+            fontFamily: 'Anton',
+            fontSize: 30,
           ),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
-
       body: candidatesAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator.adaptive()),
@@ -90,9 +131,8 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
   }
 
   Widget _buildCandidateCard(CandidatePlace place) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+    final String? avatarUrl = place.createdByAvatar;
+    final String? mediaId = place.mediaId;
 
       decoration: BoxDecoration(
         color: Colors.white,
@@ -112,26 +152,39 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
-                ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFCEDEE),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${place.distanceKm.toStringAsFixed(1)} km',
-                  style: const TextStyle(
-                    color: Color(0xFFEF484F),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          place.createdByName ?? place.createdByUsername ?? 'Người dùng',
+                          style: const TextStyle(
+                            color: Color(0xFF0E1B16),
+                            fontSize: 16,
+                            fontFamily: 'SF Pro',
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.32,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatCreatedAt(place.createdAt),
+                          style: const TextStyle(
+                            color: Color(0xFFEF484F),
+                            fontSize: 11,
+                            fontFamily: 'SF Pro',
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.22,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -160,6 +213,7 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 15),
 
           if (place.description != null && place.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -170,7 +224,7 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.black87, height: 1.4),
             ),
-          ],
+            const SizedBox(height: 15),
 
           const SizedBox(height: 14),
 
@@ -188,17 +242,82 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ),
+            const SizedBox(height: 20),
 
-              Text(
-                '${place.distanceMeters} m',
-                style: const TextStyle(
-                  color: Color(0xFFEF484F),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.favorite, color: Colors.red[400], size: 22),
+                      const SizedBox(width: 6),
+                      const Text(
+                        '',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'SF Pro',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 20),
+                  Row(
+                    children: [
+                      Icon(Icons.chat_bubble_outline, color: Colors.grey[700], size: 20),
+                      const SizedBox(width: 6),
+                      const Text(
+                        '',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'SF Pro',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 20),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(Icons.send_outlined, color: Colors.grey[700], size: 20),
+                    onPressed: () {},
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(Icons.bookmark_border_rounded, color: Colors.grey[700], size: 22),
+                    onPressed: () {},
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: 160,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 32),
+          SizedBox(height: 4),
+          Text(
+            'Không có ảnh',
+            style: TextStyle(color: Colors.grey, fontSize: 11),
+          )
         ],
       ),
     );
