@@ -18,10 +18,10 @@ class DashboardState {
   final List<DashboardPlace> searchResults;
   final String searchQuery;
   final String? selectedVibe;
-  final String? category;
-  final int? priceMax;
-  final int? radius;
-  final String? sortBy;
+  final List<String> categories;
+  final List<String> priceRanges;
+  final List<String> disRanges;
+  final List<String> sortOptions;
   final String? nextCursor;
   final bool hasMore;
   final bool isSearching;
@@ -35,10 +35,10 @@ class DashboardState {
     this.searchResults = const <DashboardPlace>[],
     this.searchQuery = '',
     this.selectedVibe,
-    this.category,
-    this.priceMax,
-    this.radius,
-    this.sortBy,
+    this.categories = const <String>[],
+    this.priceRanges = const <String>[],
+    this.disRanges = const <String>[],
+    this.sortOptions = const <String>[],
     this.nextCursor,
     this.hasMore = false,
     this.isSearching = false,
@@ -48,10 +48,10 @@ class DashboardState {
   bool get isSearchMode =>
       searchQuery.trim().isNotEmpty ||
       selectedVibe != null ||
-      category != null ||
-      priceMax != null ||
-      radius != null ||
-      sortBy != null;
+      categories.isNotEmpty ||
+      priceRanges.isNotEmpty ||
+      disRanges.isNotEmpty ||
+      sortOptions.isNotEmpty;
 
   DashboardState copyWith({
     List<DashboardPlace>? hotPlaces,
@@ -61,10 +61,10 @@ class DashboardState {
     List<DashboardPlace>? searchResults,
     String? searchQuery,
     Object? selectedVibe = _unset,
-    Object? category = _unset,
-    Object? priceMax = _unset,
-    Object? radius = _unset,
-    Object? sortBy = _unset,
+    List<String>? categories,
+    List<String>? priceRanges,
+    List<String>? disRanges,
+    List<String>? sortOptions,
     Object? nextCursor = _unset,
     bool? hasMore,
     bool? isSearching,
@@ -80,12 +80,10 @@ class DashboardState {
       selectedVibe: identical(selectedVibe, _unset)
           ? this.selectedVibe
           : selectedVibe as String?,
-      category: identical(category, _unset)
-          ? this.category
-          : category as String?,
-      priceMax: identical(priceMax, _unset) ? this.priceMax : priceMax as int?,
-      radius: identical(radius, _unset) ? this.radius : radius as int?,
-      sortBy: identical(sortBy, _unset) ? this.sortBy : sortBy as String?,
+      categories: categories ?? this.categories,
+      priceRanges: priceRanges ?? this.priceRanges,
+      disRanges: disRanges ?? this.disRanges,
+      sortOptions: sortOptions ?? this.sortOptions,
       nextCursor: identical(nextCursor, _unset)
           ? this.nextCursor
           : nextCursor as String?,
@@ -170,16 +168,16 @@ class DashboardController extends _$DashboardController {
   }
 
   Future<void> applyFilters({
-    String? category,
-    int? priceMax,
-    int? radius,
-    String? sortBy,
+    List<String> categories = const <String>[],
+    List<String> priceRanges = const <String>[],
+    List<String> disRanges = const <String>[],
+    List<String> sortOptions = const <String>[],
   }) async {
     state = state.copyWith(
-      category: category,
-      priceMax: priceMax,
-      radius: radius,
-      sortBy: sortBy,
+      categories: List<String>.unmodifiable(categories),
+      priceRanges: List<String>.unmodifiable(priceRanges),
+      disRanges: List<String>.unmodifiable(disRanges),
+      sortOptions: List<String>.unmodifiable(sortOptions),
     );
     await search();
   }
@@ -189,10 +187,10 @@ class DashboardController extends _$DashboardController {
     state = state.copyWith(
       searchQuery: '',
       selectedVibe: null,
-      category: null,
-      priceMax: null,
-      radius: null,
-      sortBy: null,
+      categories: const <String>[],
+      priceRanges: const <String>[],
+      disRanges: const <String>[],
+      sortOptions: const <String>[],
       searchResults: const <DashboardPlace>[],
       nextCursor: null,
       hasMore: false,
@@ -230,10 +228,10 @@ class DashboardController extends _$DashboardController {
       lng: location?.longitude ?? 106.7009,
       query: state.searchQuery,
       vibe: state.selectedVibe,
-      category: state.category,
-      priceMax: state.priceMax,
-      radius: state.radius,
-      sortBy: state.sortBy,
+      categories: state.categories,
+      priceRanges: state.priceRanges,
+      disRanges: state.disRanges,
+      sortOptions: state.sortOptions,
       cursor: cursor,
     );
   }

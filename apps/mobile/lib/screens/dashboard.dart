@@ -88,14 +88,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       builder: (context) => _DashboardFilterSheet(state: state),
     );
     if (result == null || !mounted) return;
-    await ref
+    final filterFuture = ref
         .read(dashboardControllerProvider.notifier)
         .applyFilters(
-      category: result.category,
-      priceMax: result.priceMax,
-      radius: result.radius,
-      sortBy: result.sortBy,
+      categories: result.categories,
+      priceRanges: result.priceRanges,
+      disRanges: result.disRanges,
+      sortOptions: result.sortOptions,
     );
+    if (result.isEmpty) {
+      await filterFuture;
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const SearchResultScreen()),
+    );
+    await filterFuture;
   }
 
   @override
@@ -302,17 +312,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onPressed: () => _showFilters(state),
               style: IconButton.styleFrom(
                 backgroundColor:
-                state.category != null ||
-                    state.priceMax != null ||
-                    state.radius != null ||
-                    state.sortBy != null
+                _hasAdvancedFilters(state)
                     ? const Color(0xFFEF484F)
                     : Colors.grey[100],
                 foregroundColor:
-                state.category != null ||
-                    state.priceMax != null ||
-                    state.radius != null ||
-                    state.sortBy != null
+                _hasAdvancedFilters(state)
                     ? Colors.white
                     : const Color(0xFFEF484F),
               ),
@@ -345,7 +349,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               TextButton(
                 onPressed: () => ref
                     .read(dashboardControllerProvider.notifier)
-                    .applyFilters(radius: null, sortBy: null),
+                    .applyFilters(),
                 child: const Text('Bỏ bộ lọc'),
               ),
             ],
@@ -356,20 +360,49 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   bool _hasAdvancedFilters(DashboardState state) {
-    return state.category != null ||
-        state.priceMax != null ||
-        state.radius != null ||
-        state.sortBy != null;
+    return state.categories.isNotEmpty ||
+        state.priceRanges.isNotEmpty ||
+        state.disRanges.isNotEmpty ||
+        state.sortOptions.isNotEmpty;
   }
 
   String _activeFilterLabel(DashboardState state) {
+    const categoryLabels = <String, String>{
+      'cafe': 'Cà phê',
+      'restaurant': 'Nhà hàng',
+      'hotel': 'Khách sạn',
+      'shopping': 'Mua sắm',
+      'tourist_attraction': 'Tham quan',
+      'office': 'Văn phòng',
+      'other': 'Khác',
+    };
+    const priceLabels = <String, String>{
+      '*-50000': 'Dưới 50k',
+      '50000-100000': '50k–100k',
+      '100000-200000': '100k–200k',
+      '200000-500000': '200k–500k',
+      '500000-*': 'Trên 500k',
+    };
+    const distanceLabels = <String, String>{
+      '*-1000': 'Dưới 1 km',
+      '1000-3000': '1–3 km',
+      '3000-5000': '3–5 km',
+      '5000-10000': '5–10 km',
+      '10000-*': 'Trên 10 km',
+    };
+    const sortLabels = <String, String>{
+      'distance': 'Gần nhất',
+      'rating': 'Đánh giá cao',
+      'popular': 'Phổ biến',
+      'price_asc': 'Giá thấp–cao',
+      'price_desc': 'Giá cao–thấp',
+      'newest': 'Mới nhất',
+    };
     final labels = <String>[
-      if (state.category != null) state.category!,
-      if (state.priceMax != null) '≤ ${_formatPrice(state.priceMax!)}đ',
-      if (state.radius != null) '${state.radius! ~/ 1000} km',
-      if (state.sortBy == 'distance') 'Gần nhất',
-      if (state.sortBy == 'rating') 'Đánh giá',
-      if (state.sortBy == 'popular') 'Phổ biến',
+      ...state.categories.map((value) => categoryLabels[value] ?? value),
+      ...state.priceRanges.map((value) => priceLabels[value] ?? value),
+      ...state.disRanges.map((value) => distanceLabels[value] ?? value),
+      ...state.sortOptions.map((value) => sortLabels[value] ?? value),
     ];
     return labels.join(' · ');
   }
@@ -803,17 +836,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 }
 
 class _DashboardFilterSelection {
-  final String? category;
-  final int? priceMax;
-  final int? radius;
-  final String? sortBy;
+  final List<String> categories;
+  final List<String> priceRanges;
+  final List<String> disRanges;
+  final List<String> sortOptions;
 
   const _DashboardFilterSelection({
-    this.category,
-    this.priceMax,
-    this.radius,
-    this.sortBy,
+    this.categories = const <String>[],
+    this.priceRanges = const <String>[],
+    this.disRanges = const <String>[],
+    this.sortOptions = const <String>[],
   });
+
+  bool get isEmpty =>
+      categories.isEmpty &&
+      priceRanges.isEmpty &&
+      disRanges.isEmpty &&
+      sortOptions.isEmpty;
 }
 
 class _DashboardFilterSheet extends StatefulWidget {
@@ -826,18 +865,18 @@ class _DashboardFilterSheet extends StatefulWidget {
 }
 
 class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
-  String? _category;
-  int? _priceMax;
-  int? _radius;
-  String? _sortBy;
+  late final Set<String> _categories;
+  late final Set<String> _priceRanges;
+  late final Set<String> _disRanges;
+  late final List<String> _sortOptions;
 
   @override
   void initState() {
     super.initState();
-    _category = widget.state.category;
-    _priceMax = widget.state.priceMax;
-    _radius = widget.state.radius;
-    _sortBy = widget.state.sortBy;
+    _categories = widget.state.categories.toSet();
+    _priceRanges = widget.state.priceRanges.toSet();
+    _disRanges = widget.state.disRanges.toSet();
+    _sortOptions = widget.state.sortOptions.toList();
   }
 
   // ==========================================
@@ -935,10 +974,10 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
                     Navigator.pop(
                       context,
                       _DashboardFilterSelection(
-                        category: _category,
-                        priceMax: _priceMax,
-                        radius: _radius,
-                        sortBy: _sortBy,
+                        categories: _categories.toList(growable: false),
+                        priceRanges: _priceRanges.toList(growable: false),
+                        disRanges: _disRanges.toList(growable: false),
+                        sortOptions: List<String>.unmodifiable(_sortOptions),
                       ),
                     );
                   },
@@ -962,46 +1001,58 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               children: [
                 _buildFilterChip(
                   label: 'Tất cả',
-                  isSelected: _category == null,
-                  onSelected: () => setState(() => _category = null),
+                  isSelected: _categories.isEmpty,
+                  onSelected: () => setState(_categories.clear),
                 ),
                 ...const <(String, String)>[
                   ('cafe', 'Cà phê'),
                   ('restaurant', 'Nhà hàng'),
+                  ('hotel', 'Khách sạn'),
                   ('shopping', 'Mua sắm'),
                   ('tourist_attraction', 'Điểm tham quan'),
+                  ('office', 'Văn phòng'),
+                  ('other', 'Khác'),
                 ].map((option) {
                   return _buildFilterChip(
                     label: option.$2,
-                    isSelected: _category == option.$1,
-                    onSelected: () => setState(() => _category = option.$1),
+                    isSelected: _categories.contains(option.$1),
+                    onSelected: () => setState(() {
+                      _categories.contains(option.$1)
+                          ? _categories.remove(option.$1)
+                          : _categories.add(option.$1);
+                    }),
                   );
                 }),
               ],
             ),
             const SizedBox(height: 20),
 
-            // 2. Mức giá tối đa
-            _label('Mức giá tối đa'),
+            // 2. Khoảng giá
+            _label('Khoảng giá'),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 _buildFilterChip(
                   label: 'Tất cả',
-                  isSelected: _priceMax == null,
-                  onSelected: () => setState(() => _priceMax = null),
+                  isSelected: _priceRanges.isEmpty,
+                  onSelected: () => setState(_priceRanges.clear),
                 ),
-                ...const <(int, String)>[
-                  (50000, '50k'),
-                  (100000, '100k'),
-                  (200000, '200k'),
-                  (500000, '500k'),
+                ...const <(String, String)>[
+                  ('*-50000', 'Dưới 50k'),
+                  ('50000-100000', '50k–100k'),
+                  ('100000-200000', '100k–200k'),
+                  ('200000-500000', '200k–500k'),
+                  ('500000-*', 'Trên 500k'),
                 ].map((option) {
                   return _buildFilterChip(
                     label: option.$2,
-                    isSelected: _priceMax == option.$1,
-                    onSelected: () => setState(() => _priceMax = option.$1),
+                    isSelected: _priceRanges.contains(option.$1),
+                    onSelected: () => setState(() {
+                      _priceRanges.contains(option.$1)
+                          ? _priceRanges.remove(option.$1)
+                          : _priceRanges.add(option.$1);
+                    }),
                   );
                 }),
               ],
@@ -1016,19 +1067,24 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               children: [
                 _buildFilterChip(
                   label: 'Tất cả',
-                  isSelected: _radius == null,
-                  onSelected: () => setState(() => _radius = null),
+                  isSelected: _disRanges.isEmpty,
+                  onSelected: () => setState(_disRanges.clear),
                 ),
-                ...const <(int, String)>[
-                  (1000, '1 km'),
-                  (3000, '3 km'),
-                  (5000, '5 km'),
-                  (10000, '10 km'),
+                ...const <(String, String)>[
+                  ('*-1000', 'Dưới 1 km'),
+                  ('1000-3000', '1–3 km'),
+                  ('3000-5000', '3–5 km'),
+                  ('5000-10000', '5–10 km'),
+                  ('10000-*', 'Trên 10 km'),
                 ].map((option) {
                   return _buildFilterChip(
                     label: option.$2,
-                    isSelected: _radius == option.$1,
-                    onSelected: () => setState(() => _radius = option.$1),
+                    isSelected: _disRanges.contains(option.$1),
+                    onSelected: () => setState(() {
+                      _disRanges.contains(option.$1)
+                          ? _disRanges.remove(option.$1)
+                          : _disRanges.add(option.$1);
+                    }),
                   );
                 }),
               ],
@@ -1043,18 +1099,32 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
               children: [
                 _buildFilterChip(
                   label: 'Mặc định',
-                  isSelected: _sortBy == null,
-                  onSelected: () => setState(() => _sortBy = null),
+                  isSelected: _sortOptions.isEmpty,
+                  onSelected: () => setState(_sortOptions.clear),
                 ),
                 ...const <(String, String)>[
                   ('distance', 'Gần nhất'),
-                  ('rating', 'Đánh giá'),
+                  ('rating', 'Đánh giá cao'),
                   ('popular', 'Phổ biến'),
+                  ('price_asc', 'Giá thấp–cao'),
+                  ('price_desc', 'Giá cao–thấp'),
+                  ('newest', 'Mới nhất'),
                 ].map((option) {
                   return _buildFilterChip(
                     label: option.$2,
-                    isSelected: _sortBy == option.$1,
-                    onSelected: () => setState(() => _sortBy = option.$1),
+                    isSelected: _sortOptions.contains(option.$1),
+                    onSelected: () => setState(() {
+                      if (_sortOptions.contains(option.$1)) {
+                        _sortOptions.remove(option.$1);
+                        return;
+                      }
+                      if (option.$1 == 'price_asc') {
+                        _sortOptions.remove('price_desc');
+                      } else if (option.$1 == 'price_desc') {
+                        _sortOptions.remove('price_asc');
+                      }
+                      _sortOptions.add(option.$1);
+                    }),
                   );
                 }),
               ],

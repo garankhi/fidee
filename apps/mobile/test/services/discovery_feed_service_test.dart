@@ -53,17 +53,32 @@ void main() {
       lng: 106.70,
       query: 'cà phê',
       vibe: 'hen_ho',
-      category: 'cafe',
-      priceMax: 100000,
-      radius: 3000,
-      sortBy: 'rating',
+      categories: const ['cafe', 'restaurant'],
+      priceRanges: const ['*-50000', '100000-200000'],
+      disRanges: const ['*-1000', '3000-5000'],
+      sortOptions: const ['rating', 'price_asc'],
     );
 
     expect(authorization, 'id-token');
     expect(requestedUri.path, '/discovery/search');
     expect(requestedUri.queryParameters, containsPair('q', 'cà phê'));
     expect(requestedUri.queryParameters, containsPair('vibe', 'hen_ho'));
-    expect(requestedUri.queryParameters, containsPair('priceMax', '100000'));
+    expect(
+      requestedUri.queryParameters,
+      containsPair('category', 'cafe,restaurant'),
+    );
+    expect(
+      requestedUri.queryParameters,
+      containsPair('priceRange', '*-50000,100000-200000'),
+    );
+    expect(
+      requestedUri.queryParameters,
+      containsPair('disRange', '*-1000,3000-5000'),
+    );
+    expect(
+      requestedUri.queryParameters,
+      containsPair('sortBy', 'rating,price_asc'),
+    );
     expect(page.places.single.vibes, ['Dating', 'Chill']);
     expect(page.places.single.services, ['Wifi']);
     expect(page.hasMore, isTrue);
