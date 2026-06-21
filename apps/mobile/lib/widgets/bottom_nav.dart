@@ -41,10 +41,34 @@ class BottomNav extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(child: _buildNavItem(index: 0, label: 'Khám phá', icon: Icons.explore)),
-                Expanded(child: _buildNavItem(index: 1, label: 'Bảng tin', icon: Icons.layers)),
-                Expanded(child: _buildNavItem(index: 2, label: 'Nhật ký', icon: Icons.move_to_inbox)),
-                Expanded(child: _buildNavItem(index: 3, label: 'Cá nhân', isAvatar: true)),
+                Expanded(
+                  child: _buildNavItem(
+                    index: 0,
+                    label: 'Khám phá',
+                    icon: Icons.explore,
+                  ),
+                ),
+                Expanded(
+                  child: _buildNavItem(
+                    index: 1,
+                    label: 'Bảng tin',
+                    icon: Icons.layers,
+                  ),
+                ),
+                Expanded(
+                  child: _buildNavItem(
+                    index: 2,
+                    label: 'Nhật ký',
+                    icon: Icons.move_to_inbox,
+                  ),
+                ),
+                Expanded(
+                  child: _buildNavItem(
+                    index: 3,
+                    label: 'Cá nhân',
+                    isAvatar: true,
+                  ),
+                ),
               ],
             ),
           ),
@@ -91,10 +115,14 @@ class BottomNav extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isActive ? Colors.white : Colors.transparent,
+                              color: isActive
+                                  ? Colors.white
+                                  : Colors.transparent,
                               width: 1.5,
                             ),
-                            image: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
+                            image:
+                                userAvatarUrl != null &&
+                                    userAvatarUrl!.isNotEmpty
                                 ? DecorationImage(
                                     image: NetworkImage(userAvatarUrl!),
                                     fit: BoxFit.cover,
@@ -106,7 +134,9 @@ class BottomNav extends StatelessWidget {
                                   child: Icon(
                                     Icons.person,
                                     size: 16,
-                                    color: isActive ? Colors.white : Colors.black54,
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.black54,
                                   ),
                                 )
                               : null,

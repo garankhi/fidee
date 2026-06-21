@@ -43,7 +43,19 @@ const CATEGORIES = new Set([
   'shopping',
   'other',
 ]);
-const SORT_OPTIONS = new Set(['distance', 'rating', 'popular']);
+const SORT_OPTIONS = new Set([
+  'distance',
+  'rating',
+  'popular',
+  'price_asc',
+  'price_desc',
+  'newest',
+]);
+
+type NumericRange = {
+  min: number | null;
+  max: number | null;
+};
 
 function json(statusCode: number, body: Record<string, unknown>): APIGatewayProxyResult {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) };
@@ -53,6 +65,29 @@ function parseNumber(value: string | undefined): number | null {
   if (value == null || value.trim() === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseList(value: string | undefined): string[] {
+  if (!value?.trim()) return [];
+  return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
+}
+
+function parseRanges(value: string | undefined): NumericRange[] | null {
+  const items = parseList(value);
+  if (items.length === 0) return [];
+
+  const ranges: NumericRange[] = [];
+  for (const item of items) {
+    const match = /^(\d+|\*)-(\d+|\*)$/.exec(item);
+    if (!match) return null;
+    const min = match[1] === '*' ? null : Number(match[1]);
+    const max = match[2] === '*' ? null : Number(match[2]);
+    if ((min == null && max == null) || (min != null && max != null && min > max)) {
+      return null;
+    }
+    ranges.push({ min, max });
+  }
+  return ranges;
 }
 
 function normalizeSearchText(value: string): string {
@@ -92,31 +127,42 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const keyword = params.q?.trim() || null;
     const vibeFilter = resolveVibe(params.vibe);
-    const category = params.category?.trim().toLowerCase() || null;
-    if (category && !CATEGORIES.has(category)) {
+    const categories = parseList(params.categories ?? params.category).map((item) =>
+      item.toLowerCase(),
+    );
+    if (categories.some((category) => !CATEGORIES.has(category))) {
       return json(400, { error: 'Invalid category' });
     }
 
-    const parsedPriceMax = parseNumber(params.priceMax);
-    if (params.priceMax && (parsedPriceMax == null || parsedPriceMax < 0)) {
-      return json(400, { error: 'Invalid priceMax' });
+    let priceRanges = parseRanges(params.priceRange);
+    if (priceRanges == null) {
+      return json(400, { error: 'Invalid priceRange' });
     }
-    const priceMax = parsedPriceMax == null ? null : Math.floor(parsedPriceMax);
-
-    const parsedRadius = parseNumber(params.radius);
-    if (params.radius && (parsedRadius == null || parsedRadius <= 0)) {
-      return json(400, { error: 'Invalid radius' });
+    if (priceRanges.length === 0 && params.priceMax) {
+      const parsedPriceMax = parseNumber(params.priceMax);
+      if (parsedPriceMax == null || parsedPriceMax < 0) {
+        return json(400, { error: 'Invalid priceMax' });
+      }
+      priceRanges = [{ min: null, max: Math.floor(parsedPriceMax) }];
     }
-    const radiusSource = parsedRadius;
-    const radius =
-      radiusSource == null
-        ? null
-        : Math.min(Math.max(Math.floor(radiusSource), 100), 50000);
 
-    const sortBy = params.sortBy?.trim().toLowerCase() || 'distance';
-    if (!SORT_OPTIONS.has(sortBy)) {
+    let distanceRanges = parseRanges(params.disRange);
+    if (distanceRanges == null) {
+      return json(400, { error: 'Invalid disRange' });
+    }
+    if (distanceRanges.length === 0 && params.radius) {
+      const parsedRadius = parseNumber(params.radius);
+      if (parsedRadius == null || parsedRadius <= 0) {
+        return json(400, { error: 'Invalid radius' });
+      }
+      distanceRanges = [{ min: null, max: Math.floor(parsedRadius) }];
+    }
+
+    const sortOptions = parseList(params.sortBy).map((item) => item.toLowerCase());
+    if (sortOptions.some((option) => !SORT_OPTIONS.has(option))) {
       return json(400, { error: 'Invalid sortBy' });
     }
+    if (sortOptions.length === 0) sortOptions.push('distance');
 
     const parsedLimit = parseNumber(params.limit);
     const limit = Math.min(Math.max(Math.floor(parsedLimit ?? 20), 1), 50);
@@ -127,11 +173,6 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const sqlParams: unknown[] = [lng, lat];
     const conditions = ["ps.status = 'APPROVED'", "ps.visibility = 'PUBLIC'"];
-
-    if (radius != null) {
-      sqlParams.push(radius);
-      conditions.push(`ST_DWithin(p.location, ST_MakePoint($1, $2)::geography, $3)`);
-    }
 
     const addCondition = (condition: (index: number) => string, value: unknown) => {
       sqlParams.push(value);
@@ -161,22 +202,63 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       }
       conditions.push(`(${vibeConditions.join(' OR ')})`);
     }
-    if (category) {
-      addCondition((index) => `p.category = $${index}`, category);
+    if (categories.length > 0) {
+      addCondition((index) => `p.category = ANY($${index}::text[])`, categories);
     }
-    if (priceMax != null) {
-      addCondition((index) => `p.price_max <= $${index}`, priceMax);
+    if (priceRanges.length > 0) {
+      const rangeConditions = priceRanges.map((range) => {
+        const parts: string[] = [];
+        if (range.min != null) {
+          sqlParams.push(range.min);
+          parts.push(`COALESCE(p.price_max, p.price_min) >= $${sqlParams.length}`);
+        }
+        if (range.max != null) {
+          sqlParams.push(range.max);
+          parts.push(`COALESCE(p.price_min, p.price_max) <= $${sqlParams.length}`);
+        }
+        return `(${parts.join(' AND ')})`;
+      });
+      conditions.push(
+        `((p.price_min IS NOT NULL OR p.price_max IS NOT NULL) AND (${rangeConditions.join(' OR ')}))`,
+      );
+    }
+    if (distanceRanges.length > 0) {
+      const distanceExpression = 'ST_Distance(p.location, ST_MakePoint($1, $2)::geography)';
+      const rangeConditions = distanceRanges.map((range) => {
+        const parts: string[] = [];
+        if (range.min != null) {
+          sqlParams.push(range.min);
+          parts.push(`${distanceExpression} >= $${sqlParams.length}`);
+        }
+        if (range.max != null) {
+          sqlParams.push(range.max);
+          parts.push(`${distanceExpression} < $${sqlParams.length}`);
+        }
+        return `(${parts.join(' AND ')})`;
+      });
+      conditions.push(`(${rangeConditions.join(' OR ')})`);
     }
     if (cursor) {
       addCondition((index) => `p.created_at < $${index}::timestamptz`, cursor);
     }
 
-    const orderClause =
-      sortBy === 'rating'
-        ? 'COALESCE(p.avg_rating, 0) DESC, p.created_at DESC, p.id ASC'
-        : sortBy === 'popular'
-          ? '"checkinCount" DESC, p.created_at DESC, p.id ASC'
-          : '"distanceMeters" ASC, p.created_at DESC, p.id ASC';
+    const sortClauses = sortOptions.map((option) => {
+      switch (option) {
+        case 'rating':
+          return 'COALESCE(p.avg_rating, 0) DESC';
+        case 'popular':
+          return '"checkinCount" DESC';
+        case 'price_asc':
+          return 'p.price_min ASC NULLS LAST';
+        case 'price_desc':
+          return 'p.price_max DESC NULLS LAST';
+        case 'newest':
+          return 'p.created_at DESC';
+        default:
+          return '"distanceMeters" ASC';
+      }
+    });
+    const orderClause = [...new Set([...sortClauses, 'p.created_at DESC', 'p.id ASC'])].join(', ');
 
     sqlParams.push(limit + 1);
     const sql = `

@@ -93,14 +93,17 @@ void main() {
             return Scaffold(
               body: ElevatedButton(
                 onPressed: () async {
-                  selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => GalleryAssetPickerSheet(
-                      loadAssets: () async => <GalleryAssetPickerItem>[item],
-                    ),
-                  );
+                  selectedAsset =
+                      await showModalBottomSheet<GalleryAssetPickerSelection>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => GalleryAssetPickerSheet(
+                          loadAssets: () async => <GalleryAssetPickerItem>[
+                            item,
+                          ],
+                        ),
+                      );
                 },
                 child: const Text('Open'),
               ),

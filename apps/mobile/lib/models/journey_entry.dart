@@ -41,16 +41,18 @@ class JourneyEntry {
       category: json['category'] as String?,
       createdAt: json['createdAt'] as String? ?? '',
       rating: (json['rating'] as num?)?.toInt(),
-      text: (type == JourneyEntryType.review
-          ? json['content']
-          : json['caption']) as String?,
-      mediaId: (type == JourneyEntryType.review
-          ? json['coverMediaId']
-          : json['mediaId']) as String?,
+      text:
+          (type == JourneyEntryType.review ? json['content'] : json['caption'])
+              as String?,
+      mediaId:
+          (type == JourneyEntryType.review
+                  ? json['coverMediaId']
+                  : json['mediaId'])
+              as String?,
       tags:
-          (json['tags'] as List<dynamic>?)
-              ?.whereType<String>()
-              .toList(growable: false) ??
+          (json['tags'] as List<dynamic>?)?.whereType<String>().toList(
+            growable: false,
+          ) ??
           const <String>[],
       friendsSavedCount: (json['friendsSavedCount'] as num?)?.toInt() ?? 0,
     );

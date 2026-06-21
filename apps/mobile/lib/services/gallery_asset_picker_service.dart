@@ -91,15 +91,11 @@ class GalleryAssetPickerService {
   final GalleryPermissionService permissionService;
   final GalleryAssetLoader _loadAssets;
 
-  Future<List<GalleryAssetPickerItem>> loadRecentImages({
-    int limit = 60,
-  }) {
+  Future<List<GalleryAssetPickerItem>> loadRecentImages({int limit = 60}) {
     return loadRecentMedia(limit: limit);
   }
 
-  Future<List<GalleryAssetPickerItem>> loadRecentMedia({
-    int limit = 60,
-  }) async {
+  Future<List<GalleryAssetPickerItem>> loadRecentMedia({int limit = 60}) async {
     if (limit <= 0) return const <GalleryAssetPickerItem>[];
 
     try {

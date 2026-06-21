@@ -44,11 +44,9 @@ class CandidatePlace {
   });
 
   factory CandidatePlace.fromJson(Map<String, dynamic> json) {
-    final coordinates =
-        json['coordinates'] as Map<String, dynamic>? ?? {};
+    final coordinates = json['coordinates'] as Map<String, dynamic>? ?? {};
 
-    final createdBy =
-        json['createdByInfo'] as Map<String, dynamic>? ?? {};
+    final createdBy = json['createdByInfo'] as Map<String, dynamic>? ?? {};
 
     return CandidatePlace(
       id: json['id'].toString(),
@@ -56,28 +54,17 @@ class CandidatePlace {
       category: json['category']?.toString(),
       address: json['address']?.toString(),
 
-      lat: double.tryParse(
-        coordinates['lat']?.toString() ?? '',
-      ) ??
-          0,
+      lat: double.tryParse(coordinates['lat']?.toString() ?? '') ?? 0,
 
-      lng: double.tryParse(
-        coordinates['lng']?.toString() ?? '',
-      ) ??
-          0,
+      lng: double.tryParse(coordinates['lng']?.toString() ?? '') ?? 0,
 
       description: json['description']?.toString(),
       mediaId: json['mediaId']?.toString(),
 
-      distanceKm:
-      double.tryParse(json['distanceKm']?.toString() ?? '') ??
-          0,
+      distanceKm: double.tryParse(json['distanceKm']?.toString() ?? '') ?? 0,
 
       distanceMeters:
-      int.tryParse(
-        json['distanceMeters']?.toString() ?? '',
-      ) ??
-          0,
+          int.tryParse(json['distanceMeters']?.toString() ?? '') ?? 0,
 
       createdByName: createdBy['displayName']?.toString(),
       createdByUsername: createdBy['username']?.toString(),
@@ -104,9 +91,7 @@ class CandidateController extends _$CandidateController {
       final authService = ref.read(authServiceProvider);
       final token = await authService.getToken();
 
-      final uri = Uri.parse(
-        'https://api.fidee.site/candidates',
-      ).replace(
+      final uri = Uri.parse('https://api.fidee.site/candidates').replace(
         queryParameters: {
           'lat': lat.toString(),
           'lng': lng.toString(),
@@ -130,18 +115,12 @@ class CandidateController extends _$CandidateController {
         );
       }
 
-      final jsonResult =
-      jsonDecode(response.body) as Map<String, dynamic>;
+      final jsonResult = jsonDecode(response.body) as Map<String, dynamic>;
 
-      final data =
-          jsonResult['data'] as List<dynamic>? ?? [];
+      final data = jsonResult['data'] as List<dynamic>? ?? [];
 
       return data
-          .map(
-            (e) => CandidatePlace.fromJson(
-          e as Map<String, dynamic>,
-        ),
-      )
+          .map((e) => CandidatePlace.fromJson(e as Map<String, dynamic>))
           .toList();
     });
   }
@@ -151,10 +130,6 @@ class CandidateController extends _$CandidateController {
     required double lng,
     double radiusKm = 20,
   }) async {
-    await loadCandidates(
-      lat: lat,
-      lng: lng,
-      radiusKm: radiusKm,
-    );
+    await loadCandidates(lat: lat, lng: lng, radiusKm: radiusKm);
   }
 }

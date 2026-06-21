@@ -28,11 +28,9 @@ class BillingSyncService {
   final AuthService _authService;
   final http.Client _client;
 
-  BillingSyncService({
-    required AuthService authService,
-    http.Client? client,
-  })  : _authService = authService,
-        _client = client ?? http.Client();
+  BillingSyncService({required AuthService authService, http.Client? client})
+    : _authService = authService,
+      _client = client ?? http.Client();
 
   Future<void> syncRevenueCat({
     required String appUserId,

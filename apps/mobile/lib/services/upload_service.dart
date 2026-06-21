@@ -117,8 +117,12 @@ class UploadService {
     }
 
     final stat = await file.stat();
-    final contentType = contentTypeOverride ?? detectUploadContentType(imagePath);
-    if (isVideoUploadTooLarge(contentType: contentType, byteLength: stat.size)) {
+    final contentType =
+        contentTypeOverride ?? detectUploadContentType(imagePath);
+    if (isVideoUploadTooLarge(
+      contentType: contentType,
+      byteLength: stat.size,
+    )) {
       throw UploadException('Video phải nhỏ hơn 20MB');
     }
 

@@ -20,9 +20,13 @@ List<String> visibleProPackageIds(List<String> productIds) {
 
 List<Package> visibleProPackages(Offerings? offerings) {
   final packages = offerings?.current?.availablePackages ?? const <Package>[];
-  return packages.where((package) {
-    return visibleProPackageIds([package.storeProduct.identifier]).isNotEmpty;
-  }).toList(growable: false);
+  return packages
+      .where((package) {
+        return visibleProPackageIds([
+          package.storeProduct.identifier,
+        ]).isNotEmpty;
+      })
+      .toList(growable: false);
 }
 
 void logRevenueCatCustomerInfo(String event, CustomerInfo customerInfo) {
@@ -105,7 +109,9 @@ class BillingController extends _$BillingController {
   Future<void> loadCustomerInfo() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final customerInfo = await ref.read(revenueCatServiceProvider).getCustomerInfo();
+      final customerInfo = await ref
+          .read(revenueCatServiceProvider)
+          .getCustomerInfo();
       logRevenueCatCustomerInfo('loadCustomerInfo', customerInfo);
       state = state.copyWith(isLoading: false, customerInfo: customerInfo);
     } catch (error, stackTrace) {
@@ -121,8 +127,11 @@ class BillingController extends _$BillingController {
   Future<void> loadOfferings() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final offerings = await ref.read(revenueCatServiceProvider).getOfferings();
-      final packages = offerings.current?.availablePackages ?? const <Package>[];
+      final offerings = await ref
+          .read(revenueCatServiceProvider)
+          .getOfferings();
+      final packages =
+          offerings.current?.availablePackages ?? const <Package>[];
       debugPrint(
         '[RevenueCat] loadOfferings current=${offerings.current?.identifier} '
         'packages=${packages.map((package) => '${package.identifier}:${package.storeProduct.identifier}').toList()} '
@@ -150,7 +159,9 @@ class BillingController extends _$BillingController {
         '[RevenueCat] purchase start package=${package.identifier} '
         'product=${package.storeProduct.identifier} appUserId=$appUserId',
       );
-      final result = await ref.read(revenueCatServiceProvider).purchase(package);
+      final result = await ref
+          .read(revenueCatServiceProvider)
+          .purchase(package);
       final customerInfo = result.customerInfo;
       logRevenueCatCustomerInfo('purchase success', customerInfo);
       await _syncCustomerInfo(
@@ -211,7 +222,9 @@ class BillingController extends _$BillingController {
       return;
     }
     if (billingSyncService == null) {
-      debugPrint('[RevenueCat] backend sync skipped: missing BillingSyncService');
+      debugPrint(
+        '[RevenueCat] backend sync skipped: missing BillingSyncService',
+      );
       return;
     }
 

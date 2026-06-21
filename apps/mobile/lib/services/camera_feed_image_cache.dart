@@ -26,7 +26,11 @@ List<CameraCheckinFeedItem> nextCameraFeedDiskPrefetchItems({
   required CameraCheckinFeedItem? activeItem,
   int limit = 3,
 }) {
-  return _nextCameraFeedItems(items: items, activeItem: activeItem, limit: limit);
+  return _nextCameraFeedItems(
+    items: items,
+    activeItem: activeItem,
+    limit: limit,
+  );
 }
 
 List<CameraCheckinFeedItem> nextCameraFeedMemoryPrecacheItems({
@@ -34,7 +38,11 @@ List<CameraCheckinFeedItem> nextCameraFeedMemoryPrecacheItems({
   required CameraCheckinFeedItem? activeItem,
   int limit = 1,
 }) {
-  return _nextCameraFeedItems(items: items, activeItem: activeItem, limit: limit);
+  return _nextCameraFeedItems(
+    items: items,
+    activeItem: activeItem,
+    limit: limit,
+  );
 }
 
 List<CameraCheckinFeedItem> _nextCameraFeedItems({

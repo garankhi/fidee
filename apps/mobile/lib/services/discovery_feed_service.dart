@@ -197,10 +197,10 @@ class DiscoveryFeedService {
     required double lng,
     String? query,
     String? vibe,
-    String? category,
-    int? priceMax,
-    int? radius,
-    String? sortBy,
+    List<String> categories = const <String>[],
+    List<String> priceRanges = const <String>[],
+    List<String> disRanges = const <String>[],
+    List<String> sortOptions = const <String>[],
     String? cursor,
     int limit = 20,
   }) async {
@@ -213,13 +213,12 @@ class DiscoveryFeedService {
       'lat': lat.toString(),
       'lng': lng.toString(),
       'limit': limit.toString(),
-      if (radius != null) 'radius': radius.toString(),
-      if (sortBy != null && sortBy.isNotEmpty) 'sortBy': sortBy,
+      if (disRanges.isNotEmpty) 'disRange': disRanges.join(','),
+      if (sortOptions.isNotEmpty) 'sortBy': sortOptions.join(','),
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       if (vibe != null && vibe.trim().isNotEmpty) 'vibe': vibe.trim(),
-      if (category != null && category.trim().isNotEmpty)
-        'category': category.trim(),
-      if (priceMax != null) 'priceMax': priceMax.toString(),
+      if (categories.isNotEmpty) 'category': categories.join(','),
+      if (priceRanges.isNotEmpty) 'priceRange': priceRanges.join(','),
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     };
 

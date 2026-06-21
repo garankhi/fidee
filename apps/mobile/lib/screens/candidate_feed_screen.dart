@@ -12,9 +12,7 @@ class CandidateFeedScreen extends ConsumerStatefulWidget {
       _CandidateFeedScreenState();
 }
 
-class _CandidateFeedScreenState
-    extends ConsumerState<CandidateFeedScreen> {
-
+class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
   @override
   void initState() {
     super.initState();
@@ -22,18 +20,13 @@ class _CandidateFeedScreenState
     Future.microtask(() {
       ref
           .read(candidateControllerProvider.notifier)
-          .loadCandidates(
-        lat: 10.762622,
-        lng: 106.660172,
-        radiusKm: 20,
-      );
+          .loadCandidates(lat: 10.762622, lng: 106.660172, radiusKm: 20);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final candidatesAsync =
-    ref.watch(candidateControllerProvider);
+    final candidatesAsync = ref.watch(candidateControllerProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
@@ -52,20 +45,15 @@ class _CandidateFeedScreenState
       ),
 
       body: candidatesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator.adaptive(),
-        ),
+        loading: () =>
+            const Center(child: CircularProgressIndicator.adaptive()),
 
-        error: (err, _) => Center(
-          child: Text('Đã xảy ra lỗi: $err'),
-        ),
+        error: (err, _) => Center(child: Text('Đã xảy ra lỗi: $err')),
 
         data: (candidates) {
           if (candidates.isEmpty) {
             return const Center(
-              child: Text(
-                'Không có địa điểm nào trong bán kính 20km',
-              ),
+              child: Text('Không có địa điểm nào trong bán kính 20km'),
             );
           }
 
@@ -73,17 +61,10 @@ class _CandidateFeedScreenState
             onRefresh: () async {
               await ref
                   .read(candidateControllerProvider.notifier)
-                  .refresh(
-                lat: 10.762622,
-                lng: 106.660172,
-                radiusKm: 20,
-              );
+                  .refresh(lat: 10.762622, lng: 106.660172, radiusKm: 20);
             },
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               itemCount: candidates.length,
               itemBuilder: (context, index) {
                 final candidate = candidates[index];
@@ -93,9 +74,8 @@ class _CandidateFeedScreenState
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (_) => PlaceDetailsFriends(
-                          placeId: candidate.id,
-                        ),
+                        builder: (_) =>
+                            PlaceDetailsFriends(placeId: candidate.id),
                       ),
                     );
                   },
@@ -117,15 +97,12 @@ class _CandidateFeedScreenState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFEAEAEA),
-        ),
+        border: Border.all(color: const Color(0xFFEAEAEA)),
       ),
 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Row(
             children: [
               Expanded(
@@ -163,20 +140,14 @@ class _CandidateFeedScreenState
 
           Text(
             place.address ?? 'Chưa có địa chỉ',
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
           ),
 
           const SizedBox(height: 12),
 
           if (place.category != null)
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 5,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: const Color(0xFFF6F6F6),
                 borderRadius: BorderRadius.circular(12),
@@ -190,18 +161,14 @@ class _CandidateFeedScreenState
               ),
             ),
 
-          if (place.description != null &&
-              place.description!.isNotEmpty) ...[
+          if (place.description != null && place.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
 
             Text(
               place.description!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.black87,
-                height: 1.4,
-              ),
+              style: const TextStyle(color: Colors.black87, height: 1.4),
             ),
           ],
 
@@ -209,11 +176,7 @@ class _CandidateFeedScreenState
 
           Row(
             children: [
-              const Icon(
-                Icons.person_outline,
-                size: 16,
-                color: Colors.grey,
-              ),
+              const Icon(Icons.person_outline, size: 16, color: Colors.grey),
 
               const SizedBox(width: 6),
 
@@ -222,10 +185,7 @@ class _CandidateFeedScreenState
                   place.createdByName ??
                       place.createdByUsername ??
                       'Người dùng',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ),
 

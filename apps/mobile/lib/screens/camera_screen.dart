@@ -216,16 +216,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
 
     if (!mounted) return;
-    final selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => GalleryAssetPickerSheet(
-        loadAssets: () => GalleryAssetPickerService(
-          permissionService: _galleryPermissionService,
-        ).loadRecentMedia(),
-      ),
-    );
+    final selectedAsset =
+        await showModalBottomSheet<GalleryAssetPickerSelection>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => GalleryAssetPickerSheet(
+            loadAssets: () => GalleryAssetPickerService(
+              permissionService: _galleryPermissionService,
+            ).loadRecentMedia(),
+          ),
+        );
 
     if (mounted) unawaited(_loadGalleryPreview());
     if (selectedAsset == null) return;
@@ -238,7 +239,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   ) async {
     _setLoading(true);
     try {
-      final gpsCoordinates = selectedAsset.mediaType == GalleryAssetMediaType.video
+      final gpsCoordinates =
+          selectedAsset.mediaType == GalleryAssetMediaType.video
           ? selectedAsset.gpsCoordinates?.toList()
           : await _gpsCoordinatesFromImageExif(selectedAsset.path);
 
@@ -392,7 +394,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _startVideoRecording() async {
-    var isPro = ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
+    var isPro =
+        ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
     final controller = _controller;
     final cameraReady = controller?.value.isInitialized ?? false;
 
@@ -811,7 +814,9 @@ class _CameraCaptureControls extends StatelessWidget {
             animation: animationController,
             builder: (context, child) {
               final shrinkValue = shrinkAnimation.value;
-              final currentInnerSize = isRecordingVideo ? 48.0 : 68.0 * shrinkValue;
+              final currentInnerSize = isRecordingVideo
+                  ? 48.0
+                  : 68.0 * shrinkValue;
 
               return GestureDetector(
                 onTap: () => unawaited(onCapture()),

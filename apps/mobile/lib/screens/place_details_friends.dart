@@ -45,7 +45,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Row(
             children: [
               Icon(Icons.check_circle, color: Colors.green, size: 28),
@@ -61,7 +63,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 'Đóng',
-                style: TextStyle(color: Color(0xFFEF484F), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Color(0xFFEF484F),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -127,10 +132,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   centerTitle: true,
                   actions: [
                     Padding(
-                      padding: const EdgeInsets.only(
-                        right: 8,
-                        top: 10,
-                      ),
+                      padding: const EdgeInsets.only(right: 8, top: 10),
                       child: Center(
                         child: CircleAvatar(
                           backgroundColor: const Color(0x19EF484F),
@@ -196,7 +198,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                               ),
                             );
                           },
-                          child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
+                          child: _buildBottomButton(
+                            Icons.camera_alt,
+                            'Check-in',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 15),
@@ -259,7 +264,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               top: 15,
               left: 15,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
@@ -270,7 +278,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     const SizedBox(width: 4),
                     Text(
                       place.avgRating.toStringAsFixed(1),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -538,75 +549,93 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         SizedBox(
           height: 165,
           child: checkins.isEmpty
-              ? const Center(child: Text('Chưa có check-in nào', style: TextStyle(color: Colors.grey, fontSize: 13)))
-              : ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: checkins.length,
-            itemBuilder: (context, index) {
-              final item = checkins[index] as Map<String, dynamic>;
-
-              final String checkinPhoto = _getFullImageUrl(
-                item['mediaId'] ?? item['url'],
-              );
-
-              return Container(
-                width: 130,
-                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+              ? const Center(
+                  child: Text(
+                    'Chưa có check-in nào',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                )
+              : ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: checkins.length,
+                  itemBuilder: (context, index) {
+                    final item = checkins[index] as Map<String, dynamic>;
+
+                    final String checkinPhoto = _getFullImageUrl(
+                      item['mediaId'] ?? item['url'],
+                    );
+
+                    return Container(
+                      width: 130,
+                      margin: const EdgeInsets.only(
+                        right: 12,
+                        bottom: 5,
+                        top: 5,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: checkinPhoto.isNotEmpty
-                            ? Image.network(
-                          checkinPhoto,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (_, _, _) => Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image, color: Colors.white),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['userName']?.toString() ??
+                                item['name']?.toString() ??
+                                'Bạn bè',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        )
-                            : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image, color: Colors.white),
-                        ),
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: checkinPhoto.isNotEmpty
+                                  ? Image.network(
+                                      checkinPhoto,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder: (_, _, _) => Container(
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.image,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Text(
+                              item['createdAt']?.toString().split('T').first ??
+                                  '',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        item['createdAt']?.toString().split('T').first ?? '',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -689,7 +718,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     Row(
                       children: List.generate(
                         (review['rating'] ?? 0) as int,
-                            (index) => const Icon(
+                        (index) => const Icon(
                           Icons.star,
                           color: Colors.amber,
                           size: 12,
@@ -757,57 +786,72 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               child: SizedBox(
                 height: 100,
                 child: photos.isEmpty
-                    ? const Center(child: Text('Chưa có ảnh', style: TextStyle(color: Colors.grey)))
+                    ? const Center(
+                        child: Text(
+                          'Chưa có ảnh',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      )
                     : ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: photos.length,
-                  itemBuilder: (context, index) {
-                    final photoItem = photos[index] as Map<String, dynamic>;
-                    final String galleryPhotoUrl = _getFullImageUrl(
-                      photoItem['mediaId'] ?? photoItem['url'],
-                    );
-                    return Container(
-                      width: 100,
-                      margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: const Color(0xFF303E42),
-                        image: galleryPhotoUrl.isNotEmpty
-                            ? DecorationImage(
-                          image: NetworkImage(galleryPhotoUrl),
-                          fit: BoxFit.cover,
-                        )
-                            : null,
-                      ),
-                      child: Stack(
-                        children: [
-                          if (galleryPhotoUrl.isEmpty)
-                            const Center(child: Icon(Icons.image, color: Colors.white24)),
-                          Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(15),
-                                  bottomRight: Radius.circular(15),
-                                ),
-                              ),
-                              child: Text(
-                                photoItem['userName']?.toString() ?? 'Ẩn danh',
-                                style: const TextStyle(color: Colors.white, fontSize: 10),
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                              ),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: photos.length,
+                        itemBuilder: (context, index) {
+                          final photoItem =
+                              photos[index] as Map<String, dynamic>;
+                          final String galleryPhotoUrl = _getFullImageUrl(
+                            photoItem['mediaId'] ?? photoItem['url'],
+                          );
+                          return Container(
+                            width: 100,
+                            margin: const EdgeInsets.only(right: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              color: const Color(0xFF303E42),
+                              image: galleryPhotoUrl.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(galleryPhotoUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                             ),
-                          ),
-                        ],
+                            child: Stack(
+                              children: [
+                                if (galleryPhotoUrl.isEmpty)
+                                  const Center(
+                                    child: Icon(
+                                      Icons.image,
+                                      color: Colors.white24,
+                                    ),
+                                  ),
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(15),
+                                        bottomRight: Radius.circular(15),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      photoItem['userName']?.toString() ??
+                                          'Ẩn danh',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ),
           ],
@@ -902,7 +946,8 @@ class NewRatingBottomSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<NewRatingBottomSheet> createState() => _NewRatingBottomSheetState();
+  ConsumerState<NewRatingBottomSheet> createState() =>
+      _NewRatingBottomSheetState();
 }
 
 class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
@@ -933,7 +978,12 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 24, left: 20, right: 20, bottom: 20),
+        padding: const EdgeInsets.only(
+          top: 24,
+          left: 20,
+          right: 20,
+          bottom: 20,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1012,14 +1062,20 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
                 return IconButton(
-                  onPressed: isLoading ? null : () {
-                    setState(() {
-                      _rating = index + 1;
-                    });
-                  },
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _rating = index + 1;
+                          });
+                        },
                   icon: Icon(
-                    index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                    color: index < _rating ? Colors.amber : const Color(0xFFD9D9D9),
+                    index < _rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    color: index < _rating
+                        ? Colors.amber
+                        : const Color(0xFFD9D9D9),
                     size: 40,
                   ),
                 );
@@ -1035,21 +1091,28 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               children: _tags.map((tag) {
                 final isSelected = _selectedTags.contains(tag);
                 return InkWell(
-                  onTap: isLoading ? null : () {
-                    setState(() {
-                      if (isSelected) {
-                        _selectedTags.remove(tag);
-                      } else {
-                        _selectedTags.add(tag);
-                      }
-                    });
-                  },
+                  onTap: isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedTags.remove(tag);
+                            } else {
+                              _selectedTags.add(tag);
+                            }
+                          });
+                        },
                   borderRadius: BorderRadius.circular(20),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFEF484F) : const Color(0x19FF9296),
+                      color: isSelected
+                          ? const Color(0xFFEF484F)
+                          : const Color(0x19FF9296),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -1058,7 +1121,9 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                         Text(
                           isSelected ? '✓ ' : '+ ',
                           style: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFFEF484F),
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1066,7 +1131,9 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                         Text(
                           tag,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFFEF484F),
                             fontSize: 14,
                             fontFamily: 'SF Pro',
                             fontWeight: FontWeight.w700,
@@ -1095,7 +1162,10 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
 
               decoration: InputDecoration(
                 hintText: 'Chia sẻ cảm nhận của bạn...',
-                hintStyle: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 15),
+                hintStyle: const TextStyle(
+                  color: Color(0xFFA6A6A6),
+                  fontSize: 15,
+                ),
                 fillColor: const Color(0x7FEFEFEF),
                 filled: true,
                 contentPadding: const EdgeInsets.all(16),
@@ -1131,11 +1201,13 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 Switch.adaptive(
                   value: _isPrivate,
                   activeThumbColor: const Color(0xFFEF484F),
-                  onChanged: isLoading ? null : (value) {
-                    setState(() {
-                      _isPrivate = value;
-                    });
-                  },
+                  onChanged: isLoading
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _isPrivate = value;
+                          });
+                        },
                 ),
               ],
             ),
@@ -1149,35 +1221,41 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 onPressed: (_rating == 0 || isLoading)
                     ? null
                     : () async {
-                  String finalContent = _commentController.text.trim();
-                  if (_selectedTags.isNotEmpty) {
-                    final String tagsString = _selectedTags.map((e) => '#$e').join(' ');
-                    finalContent = finalContent.isEmpty
-                        ? tagsString
-                        : '$finalContent\n$tagsString';
-                  }
+                        String finalContent = _commentController.text.trim();
+                        if (_selectedTags.isNotEmpty) {
+                          final String tagsString = _selectedTags
+                              .map((e) => '#$e')
+                              .join(' ');
+                          finalContent = finalContent.isEmpty
+                              ? tagsString
+                              : '$finalContent\n$tagsString';
+                        }
 
-                  final String visibilityParam = _isPrivate ? 'PRIVATE' : 'FRIENDS';
+                        final String visibilityParam = _isPrivate
+                            ? 'PRIVATE'
+                            : 'FRIENDS';
 
-                  final Map<String, dynamic> apiPayload = {
-                    'placeId': widget.placeId,
-                    'candidateId': null,
-                    'rating': _rating,
-                    'content': finalContent.isEmpty ? null : finalContent,
-                    'visibility': visibilityParam,
-                  };
+                        final Map<String, dynamic> apiPayload = {
+                          'placeId': widget.placeId,
+                          'candidateId': null,
+                          'rating': _rating,
+                          'content': finalContent.isEmpty ? null : finalContent,
+                          'visibility': visibilityParam,
+                        };
 
-                  final isSuccess = await ref
-                      .read(reviewControllerProvider.notifier)
-                      .submitReview(apiPayload);
+                        final isSuccess = await ref
+                            .read(reviewControllerProvider.notifier)
+                            .submitReview(apiPayload);
 
-                  if (isSuccess && context.mounted) {
-                    Navigator.pop(context);
-                    widget.onSuccess(_rating, finalContent);
+                        if (isSuccess && context.mounted) {
+                          Navigator.pop(context);
+                          widget.onSuccess(_rating, finalContent);
 
-                    ref.read(reviewControllerProvider.notifier).resetState();
-                  }
-                },
+                          ref
+                              .read(reviewControllerProvider.notifier)
+                              .resetState();
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEF484F),
                   shape: RoundedRectangleBorder(
@@ -1187,19 +1265,22 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 ),
                 child: isLoading
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                  'Xác nhận',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                        'Xác nhận',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ],

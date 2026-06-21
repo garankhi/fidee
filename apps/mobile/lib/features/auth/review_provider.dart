@@ -30,7 +30,8 @@ class ReviewState {
   }) {
     return ReviewState(
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage, // Sẽ lấy giá trị mới truyền vào (hoặc null nếu reset)
+      errorMessage:
+          errorMessage, // Sẽ lấy giá trị mới truyền vào (hoặc null nếu reset)
       submittedData: submittedData ?? this.submittedData,
       isSuccess: isSuccess ?? this.isSuccess,
     );
@@ -49,7 +50,11 @@ class ReviewController extends _$ReviewController {
   /// Hàm xử lý gửi đánh giá lên API POST /reviews bằng cách nhận full payload Map
   Future<bool> submitReview(Map<String, dynamic> payload) async {
     // Bật trạng thái loading và clear error cũ nếu có
-    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    state = state.copyWith(
+      isLoading: true,
+      isSuccess: false,
+      errorMessage: null,
+    );
 
     final authService = ref.read(authServiceProvider);
     final token = await authService.getToken();
@@ -65,14 +70,24 @@ class ReviewController extends _$ReviewController {
       );
 
       // Log để debug khi dev (có thể comment khi deploy production)
-      developer.log('Payload sent: ${jsonEncode(payload)}', name: 'ReviewController');
-      developer.log('Response status: ${response.statusCode}', name: 'ReviewController');
-      developer.log('Response body: ${response.body}', name: 'ReviewController');
+      developer.log(
+        'Payload sent: ${jsonEncode(payload)}',
+        name: 'ReviewController',
+      );
+      developer.log(
+        'Response status: ${response.statusCode}',
+        name: 'ReviewController',
+      );
+      developer.log(
+        'Response body: ${response.body}',
+        name: 'ReviewController',
+      );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Gửi đánh giá thất bại (Mã lỗi: ${response.statusCode})',
+          errorMessage:
+              'Gửi đánh giá thất bại (Mã lỗi: ${response.statusCode})',
         );
         return false;
       }
@@ -81,8 +96,11 @@ class ReviewController extends _$ReviewController {
 
       // Tùy theo response format của backend:
       // Nếu backend trả về trực tiếp object hoặc bọc trong 'status' / 'success'
-      if (jsonResult['status'] == 'success' || jsonResult['success'] == true || response.statusCode == 201) {
-        final rawData = jsonResult['data'] as Map<String, dynamic>? ?? jsonResult;
+      if (jsonResult['status'] == 'success' ||
+          jsonResult['success'] == true ||
+          response.statusCode == 201) {
+        final rawData =
+            jsonResult['data'] as Map<String, dynamic>? ?? jsonResult;
 
         state = state.copyWith(
           isLoading: false,
@@ -105,10 +123,7 @@ class ReviewController extends _$ReviewController {
         stackTrace: stackTrace,
       );
 
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: error.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: error.toString());
       return false;
     }
   }

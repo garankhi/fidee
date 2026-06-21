@@ -31,26 +31,66 @@ describe('discovery search handler', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('combines keyword, mapped vibe, category and price filters', async () => {
+  it('combines keyword, mapped vibe and multi-select filters', async () => {
     const result = await handler(
       event({
         lat: '10.77',
         lng: '106.70',
         q: 'Cà phê',
         vibe: 'hen_ho',
-        category: 'cafe',
-        priceMax: '70000',
-        radius: '3000',
-        sortBy: 'rating',
+        category: 'cafe,restaurant',
+        priceRange: '*-50000,100000-200000',
+        disRange: '*-1000,3000-5000',
+        sortBy: 'rating,price_asc',
       }),
     );
 
     expect(result.statusCode).toBe(200);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("COALESCE(p.metadata->'vibes', '[]'::jsonb) ?| $5::text[]"),
-      [106.7, 10.77, 3000, '%ca phe%', ['Dating'], 'cafe', 70000, 21],
+    const [sql, values] = mockQuery.mock.calls[0];
+    expect(sql).toContain("COALESCE(p.metadata->'vibes', '[]'::jsonb) ?| $4::text[]");
+    expect(sql).toContain('p.category = ANY($5::text[])');
+    expect(sql).toContain('COALESCE(p.price_min, p.price_max) <= $6');
+    expect(sql).toContain('COALESCE(p.price_max, p.price_min) >= $7');
+    expect(sql).toContain('ST_Distance(p.location, ST_MakePoint($1, $2)::geography)');
+    expect(sql).toContain(
+      'COALESCE(p.avg_rating, 0) DESC, p.price_min ASC NULLS LAST',
     );
-    expect(mockQuery.mock.calls[0][0]).toContain('COALESCE(p.avg_rating, 0) DESC');
+    expect(values).toEqual([
+      106.7,
+      10.77,
+      '%ca phe%',
+      ['Dating'],
+      ['cafe', 'restaurant'],
+      50000,
+      100000,
+      200000,
+      1000,
+      3000,
+      5000,
+      21,
+    ]);
+  });
+
+  it('supports legacy priceMax and radius parameters', async () => {
+    const result = await handler(
+      event({ lat: '10.77', lng: '106.70', priceMax: '70000', radius: '3000' }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    expect(mockQuery.mock.calls[0][1]).toEqual([106.7, 10.77, 70000, 3000, 21]);
+  });
+
+  it('rejects malformed ranges and unknown sort options', async () => {
+    const invalidRange = await handler(
+      event({ lat: '10.77', lng: '106.70', priceRange: '100000-50000' }),
+    );
+    const invalidSort = await handler(
+      event({ lat: '10.77', lng: '106.70', sortBy: 'cheapest' }),
+    );
+
+    expect(invalidRange.statusCode).toBe(400);
+    expect(invalidSort.statusCode).toBe(400);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('matches cafe vibe by metadata or place category', async () => {

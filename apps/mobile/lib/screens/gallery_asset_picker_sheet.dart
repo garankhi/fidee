@@ -30,9 +30,9 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
   Future<void> _selectAsset(GalleryAssetPickerItem item) async {
     final validationError = galleryAssetUploadError(item);
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(validationError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(validationError)));
       return;
     }
 

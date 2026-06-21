@@ -26,7 +26,9 @@ class RevenueCatService {
     );
     await Purchases.setLogLevel(LogLevel.debug);
     await Purchases.configure(PurchasesConfiguration(apiKey));
-    debugPrint('[RevenueCat] configured appUserId=${await Purchases.appUserID}');
+    debugPrint(
+      '[RevenueCat] configured appUserId=${await Purchases.appUserID}',
+    );
   }
 
   Future<void> logIn(String appUserId) async {
@@ -44,7 +46,9 @@ class RevenueCatService {
   }
 
   Future<void> logOut() async {
-    debugPrint('[RevenueCat] logOut currentAppUserId=${await Purchases.appUserID}');
+    debugPrint(
+      '[RevenueCat] logOut currentAppUserId=${await Purchases.appUserID}',
+    );
     await Purchases.logOut();
   }
 
@@ -65,7 +69,9 @@ class RevenueCatService {
   }
 
   bool hasPro(CustomerInfo info) {
-    return info.entitlements.active.containsKey(Config.revenueCatEntitlementPro);
+    return info.entitlements.active.containsKey(
+      Config.revenueCatEntitlementPro,
+    );
   }
 
   String _apiKeyForPlatform() {

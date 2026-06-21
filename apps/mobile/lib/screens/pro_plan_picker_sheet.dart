@@ -77,14 +77,17 @@ class _ProPlanPickerSheetState extends ConsumerState<ProPlanPickerSheet> {
   Future<void> _purchaseSelected(Package package) async {
     final authService = ref.read(authServiceProvider);
     final appUserId = await authService.getCurrentUserSub();
-    final customerInfo = await ref.read(billingControllerProvider.notifier).purchasePackage(
+    final customerInfo = await ref
+        .read(billingControllerProvider.notifier)
+        .purchasePackage(
           package,
           appUserId: appUserId,
           billingSyncService: BillingSyncService(authService: authService),
         );
     if (!mounted) return;
 
-    final hasPro = customerInfo?.entitlements.active.containsKey(
+    final hasPro =
+        customerInfo?.entitlements.active.containsKey(
           Config.revenueCatEntitlementPro,
         ) ??
         false;
@@ -96,13 +99,16 @@ class _ProPlanPickerSheetState extends ConsumerState<ProPlanPickerSheet> {
   Future<void> _restore() async {
     final authService = ref.read(authServiceProvider);
     final appUserId = await authService.getCurrentUserSub();
-    final customerInfo = await ref.read(billingControllerProvider.notifier).restorePurchases(
+    final customerInfo = await ref
+        .read(billingControllerProvider.notifier)
+        .restorePurchases(
           appUserId: appUserId,
           billingSyncService: BillingSyncService(authService: authService),
         );
     if (!mounted) return;
 
-    final hasPro = customerInfo?.entitlements.active.containsKey(
+    final hasPro =
+        customerInfo?.entitlements.active.containsKey(
           Config.revenueCatEntitlementPro,
         ) ??
         false;
@@ -345,7 +351,9 @@ class _PlanOption extends StatelessWidget {
           color: isSelected ? const Color(0x33EF484F) : _softSurface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? _primaryRed : Colors.white.withValues(alpha: 0.1),
+            color: isSelected
+                ? _primaryRed
+                : Colors.white.withValues(alpha: 0.1),
             width: 1.4,
           ),
         ),

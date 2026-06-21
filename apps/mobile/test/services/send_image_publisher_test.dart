@@ -123,37 +123,34 @@ void main() {
     },
   );
 
-  test(
-    'passes video duration metadata to upload service',
-    () async {
-      final uploadService = _FakeUploadService();
-      final checkinService = _FakeCheckinService();
-      final publisher = SendImagePublisher(
-        uploadService: uploadService,
-        checkinService: checkinService,
-      );
+  test('passes video duration metadata to upload service', () async {
+    final uploadService = _FakeUploadService();
+    final checkinService = _FakeCheckinService();
+    final publisher = SendImagePublisher(
+      uploadService: uploadService,
+      checkinService: checkinService,
+    );
 
-      await publisher.publish(
-        imagePath: 'clip.mp4',
-        source: 'IN_APP_CAMERA_VIDEO',
-        durationMs: 3000,
-        selectedPlace: const SelectedPlaceTag(
-          id: 'place-1',
-          placeId: 'place-1',
-          displayName: 'Cafe',
-          address: '123 Street',
-          lat: 10.7738,
-          lng: 106.7035,
-          source: 'internal',
-        ),
-        audience: CameraShareAudience.allFriends(),
-      );
+    await publisher.publish(
+      imagePath: 'clip.mp4',
+      source: 'IN_APP_CAMERA_VIDEO',
+      durationMs: 3000,
+      selectedPlace: const SelectedPlaceTag(
+        id: 'place-1',
+        placeId: 'place-1',
+        displayName: 'Cafe',
+        address: '123 Street',
+        lat: 10.7738,
+        lng: 106.7035,
+        source: 'internal',
+      ),
+      audience: CameraShareAudience.allFriends(),
+    );
 
-      expect(uploadService.uploadedSource, 'IN_APP_CAMERA_VIDEO');
-      expect(uploadService.uploadedDurationMs, 3000);
-      expect(checkinService.mediaType, 'VIDEO');
-    },
-  );
+    expect(uploadService.uploadedSource, 'IN_APP_CAMERA_VIDEO');
+    expect(uploadService.uploadedDurationMs, 3000);
+    expect(checkinService.mediaType, 'VIDEO');
+  });
 
   test(
     'uses candidate id when selected place has no canonical place id',

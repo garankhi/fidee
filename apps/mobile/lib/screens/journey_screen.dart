@@ -103,10 +103,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
     }
   }
 
-  Future<JourneyPage> _fetchPage(
-    JourneyEntryType type, {
-    String? cursor,
-  }) {
+  Future<JourneyPage> _fetchPage(JourneyEntryType type, {String? cursor}) {
     return switch (type) {
       JourneyEntryType.checkin => _service.fetchCheckins(cursor: cursor),
       JourneyEntryType.review => _service.fetchReviews(cursor: cursor),
@@ -114,9 +111,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   }
 
   Future<void> _loadMore() async {
-    if (_isLoading ||
-        _isLoadingMore ||
-        !(_hasMore[_selectedType] ?? false)) {
+    if (_isLoading || _isLoadingMore || !(_hasMore[_selectedType] ?? false)) {
       return;
     }
     setState(() => _isLoadingMore = true);
@@ -139,16 +134,18 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   List<JourneyEntry> get _visibleEntries {
     final entries = _entries[_selectedType] ?? const <JourneyEntry>[];
     final now = DateTime.now();
-    return entries.where((entry) {
-      final created = entry.createdDate;
-      if (created == null || _period == _JourneyPeriod.all) return true;
-      final cutoff = switch (_period) {
-        _JourneyPeriod.week => now.subtract(const Duration(days: 7)),
-        _JourneyPeriod.month => now.subtract(const Duration(days: 30)),
-        _JourneyPeriod.all => now,
-      };
-      return created.isAfter(cutoff);
-    }).toList(growable: false);
+    return entries
+        .where((entry) {
+          final created = entry.createdDate;
+          if (created == null || _period == _JourneyPeriod.all) return true;
+          final cutoff = switch (_period) {
+            _JourneyPeriod.week => now.subtract(const Duration(days: 7)),
+            _JourneyPeriod.month => now.subtract(const Duration(days: 30)),
+            _JourneyPeriod.all => now,
+          };
+          return created.isAfter(cutoff);
+        })
+        .toList(growable: false);
   }
 
   void _openSpot(JourneyEntry entry) {
@@ -164,10 +161,10 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider).valueOrNull;
-    final displayName = <String?>[authState?.firstName, authState?.lastName]
-        .whereType<String>()
-        .where((value) => value.trim().isNotEmpty)
-        .join(' ');
+    final displayName = <String?>[
+      authState?.firstName,
+      authState?.lastName,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' ');
     final userName = displayName.isEmpty ? 'Bạn' : displayName;
 
     return Scaffold(
@@ -296,33 +293,39 @@ class _JourneyTabs extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
-        children: JourneyEntryType.values.map((type) {
-          final isSelected = selected == type;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onSelected(type),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFFE4E7) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(27),
-                ),
-                child: Text(
-                  type == JourneyEntryType.checkin ? 'ĐÃ CHECK-IN' : 'BÀI ĐÁNH GIÁ',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isSelected
-                        ? const Color(0xFFEF4050)
-                        : const Color(0xFF222222),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+        children: JourneyEntryType.values
+            .map((type) {
+              final isSelected = selected == type;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onSelected(type),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFFFE4E7)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(27),
+                    ),
+                    child: Text(
+                      type == JourneyEntryType.checkin
+                          ? 'ĐÃ CHECK-IN'
+                          : 'BÀI ĐÁNH GIÁ',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFFEF4050)
+                            : const Color(0xFF222222),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        }).toList(growable: false),
+              );
+            })
+            .toList(growable: false),
       ),
     );
   }
@@ -652,10 +655,7 @@ class _JourneyMessage extends StatelessWidget {
         if (actionLabel != null && onAction != null) ...[
           const SizedBox(height: 16),
           Center(
-            child: TextButton(
-              onPressed: onAction,
-              child: Text(actionLabel!),
-            ),
+            child: TextButton(onPressed: onAction, child: Text(actionLabel!)),
           ),
         ],
       ],
