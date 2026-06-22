@@ -25,6 +25,7 @@ import '../utils/error.dart';
 import 'camera_audience_selector.dart';
 import 'camera_bottom_section.dart';
 import 'camera_chat_inbox.dart';
+import 'camera_checkin_feed.dart';
 import 'camera_feed_message_composer.dart';
 import 'camera_friends_sheet.dart';
 import 'camera_viewfinder_pager.dart';
@@ -51,6 +52,7 @@ class CameraScreen extends ConsumerStatefulWidget {
 
 class _CameraScreenState extends ConsumerState<CameraScreen>
     with SingleTickerProviderStateMixin {
+  final PageController _pageController = PageController();
   CameraController? _controller;
   List<CameraDescription>? _cameras;
   int _selectedCameraIndex = 0;
@@ -65,6 +67,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       GalleryPermissionStatus.notDetermined;
   CameraCheckinFeedItem? _activeFeedItem;
   bool _showFeedAudienceSelector = false;
+  bool _showHistoryGrid = false;
   Timer? _recordingTimer;
   bool _isRecordingVideo = false;
   DateTime? _recordingStartedAt;
@@ -103,10 +106,53 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   void _handleFeedModeChanged(bool isViewingFeed) {
+    if (_showHistoryGrid && !isViewingFeed) return;
     if (!mounted || _showFeedAudienceSelector == isViewingFeed) return;
     setState(() {
       _showFeedAudienceSelector = isViewingFeed;
     });
+  }
+
+  void _openHistoryGrid() {
+    if (!mounted) return;
+    setState(() {
+      _showHistoryGrid = true;
+      _showFeedAudienceSelector = true;
+      _activeFeedItem = null;
+    });
+  }
+
+  Future<void> _scrollToFirstStory() async {
+    if (_showHistoryGrid) {
+      setState(() {
+        _showHistoryGrid = false;
+        _showFeedAudienceSelector = true;
+      });
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
+    if (!_pageController.hasClients) return;
+    await _pageController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _openHistoryItem(int index) async {
+    if (!mounted) return;
+    setState(() {
+      _showHistoryGrid = false;
+      _showFeedAudienceSelector = true;
+    });
+
+    await WidgetsBinding.instance.endOfFrame;
+    if (!_pageController.hasClients) return;
+    await _pageController.animateToPage(
+      index + 1,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<void> _selectFeedAudience(CameraFeedAudience audience) async {
@@ -193,12 +239,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   Future<void> _pickFromGallery() async {
     final authState = ref.read(authControllerProvider).valueOrNull;
-    final isPro = authState?.tier == UserTier.pro;
-
-    if (!isPro) {
-      final upgraded = await _showProFeatureDialog();
-      if (!mounted || !upgraded) return;
-    }
+    var isPro = authState?.tier == UserTier.pro;
 
     final hasGalleryAccess = await _ensureGalleryPermissionForUpload();
     if (!hasGalleryAccess) return;
@@ -229,6 +270,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     if (mounted) unawaited(_loadGalleryPreview());
     if (selectedAsset == null) return;
+
+    if (selectedAsset.mediaType == GalleryAssetMediaType.video && !isPro) {
+      final upgraded = await _showProFeatureDialog();
+      if (!mounted || !upgraded) return;
+    }
 
     await _handleGallerySelection(selectedAsset);
   }
@@ -479,6 +525,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _recordingTimer?.cancel();
     _animationController.dispose();
     _controller?.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -537,42 +584,86 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     ),
                     Expanded(
                       child: SizedBox(
-                        width: deckWidth,
-                        child: CameraViewfinderPager(
-                          cameraPreview: CameraPreview(_controller!),
-                          cameraOverlay: _CameraPreviewControls(
-                            isFlashOn: _isFlashOn,
-                            onToggleFlash: _toggleFlash,
-                          ),
-                          cameraControls: _CameraCaptureControls(
-                            thumbnails: _galleryThumbnails,
-                            animationController: _animationController,
-                            shrinkAnimation: _shrinkAnimation,
-                            onGalleryTap: _pickFromGallery,
-                            onCapture: _handleCapture,
-                            onStartVideoRecording: _startVideoRecording,
-                            onStopVideoRecording: _stopVideoRecording,
-                            isRecordingVideo: _isRecordingVideo,
-                            onSwitchCamera: _switchCamera,
-                          ),
-                          feedItems: feedState.items,
-                          isFeedLoading: feedState.isLoading,
-                          isFeedLoadingMore: feedState.isLoadingMore,
-                          hasMore: feedState.hasMore,
-                          onLoadMore: feedController.loadMore,
-                          onFeedItemChanged: _handleFeedItemChanged,
-                          onFeedModeChanged: _handleFeedModeChanged,
-                          feedMessageComposerBuilder: (item) =>
-                              CameraFeedMessageComposer(
-                                onSend: _recordFeedMessage,
-                                onReaction: _recordFeedReaction,
-                              ),
+                        width: _showHistoryGrid
+                            ? MediaQuery.sizeOf(context).width
+                            : deckWidth,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: _showHistoryGrid
+                              ? NotificationListener<ScrollNotification>(
+                                  key: const ValueKey('camera-history-grid'),
+                                  onNotification: (notification) {
+                                    if (notification.metrics.pixels >=
+                                            notification
+                                                    .metrics
+                                                    .maxScrollExtent -
+                                                280 &&
+                                        feedState.hasMore &&
+                                        !feedState.isLoadingMore) {
+                                      unawaited(feedController.loadMore());
+                                    }
+                                    return false;
+                                  },
+                                  child: CameraStoryHistoryGrid(
+                                    items: feedState.items,
+                                    isLoading: feedState.isLoading,
+                                    onItemTap: (index) =>
+                                        unawaited(_openHistoryItem(index)),
+                                  ),
+                                )
+                              : CameraViewfinderPager(
+                                  key: const ValueKey(
+                                    'camera-viewfinder-pager-shell',
+                                  ),
+                                  pageController: _pageController,
+                                  cameraPreview: CameraPreview(_controller!),
+                                  cameraOverlay: _CameraPreviewControls(
+                                    isFlashOn: _isFlashOn,
+                                    onToggleFlash: _toggleFlash,
+                                  ),
+                                  cameraControls: _CameraCaptureControls(
+                                    thumbnails: _galleryThumbnails,
+                                    animationController: _animationController,
+                                    shrinkAnimation: _shrinkAnimation,
+                                    onGalleryTap: _pickFromGallery,
+                                    onCapture: _handleCapture,
+                                    onStartVideoRecording: _startVideoRecording,
+                                    onStopVideoRecording: _stopVideoRecording,
+                                    isRecordingVideo: _isRecordingVideo,
+                                    onSwitchCamera: _switchCamera,
+                                  ),
+                                  feedItems: feedState.items,
+                                  isFeedLoading: feedState.isLoading,
+                                  isFeedLoadingMore: feedState.isLoadingMore,
+                                  hasMore: feedState.hasMore,
+                                  onLoadMore: feedController.loadMore,
+                                  onFeedItemChanged: _handleFeedItemChanged,
+                                  onFeedModeChanged: _handleFeedModeChanged,
+                                  feedMessageComposerBuilder: (item) =>
+                                      CameraFeedMessageComposer(
+                                        onSend: _recordFeedMessage,
+                                        onReaction: _recordFeedReaction,
+                                      ),
+                                ),
                         ),
                       ),
                     ),
                     CameraBottomSection(
+                      activeTab: _showHistoryGrid
+                          ? CameraBottomTab.history
+                          : CameraBottomTab.home,
                       unreadCount: unreadCount,
+                      onHomeTap: () {
+                        if (!_showHistoryGrid) return;
+                        setState(() {
+                          _showHistoryGrid = false;
+                          _showFeedAudienceSelector = false;
+                        });
+                      },
                       onChatTap: _openChatInbox,
+                      onHistoryTap: _openHistoryGrid,
+                      onHistoryLabelTap: () =>
+                          unawaited(_scrollToFirstStory()),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -1219,7 +1310,7 @@ class _CameraSkeleton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       const Icon(
-                        Icons.grid_view_rounded,
+                        Icons.calendar_today_rounded,
                         color: Color(0x33FFFFFF),
                         size: 28,
                       ),

@@ -288,6 +288,164 @@ class CameraFeedPhotoFrame extends StatelessWidget {
   }
 }
 
+class CameraStoryHistoryGrid extends StatelessWidget {
+  final List<CameraCheckinFeedItem> items;
+  final bool isLoading;
+  final ValueChanged<int>? onItemTap;
+
+  const CameraStoryHistoryGrid({
+    super.key,
+    required this.items,
+    required this.isLoading,
+    this.onItemTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading && items.isEmpty) {
+      return GridView.builder(
+        padding: const EdgeInsets.fromLTRB(6, 10, 6, 96),
+        physics: const BouncingScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 6,
+          childAspectRatio: 0.82,
+        ),
+        itemCount: 18,
+        itemBuilder: (context, index) => const _StoryGridSkeletonTile(),
+      );
+    }
+
+    if (items.isEmpty) {
+      return Center(
+        child: Text(
+          'Chưa có story nào',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.72),
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(6, 10, 6, 96),
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+        childAspectRatio: 0.82,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return GestureDetector(
+          onTap: onItemTap == null ? null : () => onItemTap!(index),
+          child: _StoryGridTile(item: item),
+        );
+      },
+    );
+  }
+}
+
+class _StoryGridTile extends StatelessWidget {
+  final CameraCheckinFeedItem item;
+
+  const _StoryGridTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (item.isVideo)
+            CameraFeedVideoFrame(item: item)
+          else
+            CachedNetworkImage(
+              imageUrl: item.imageUrl,
+              cacheManager: CameraFeedImageCacheManager.instance,
+              cacheKey: cameraFeedImageCacheKey(item),
+              fit: BoxFit.cover,
+              placeholder: (context, url) {
+                return const ColoredBox(color: Color(0xFF171717));
+              },
+              errorWidget: (context, url, error) {
+                return const ColoredBox(
+                  color: Color(0xFF2A2A2A),
+                  child: Center(
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white54,
+                      size: 24,
+                    ),
+                  ),
+                );
+              },
+            ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.55),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (item.isVideo)
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 8,
+            child: Text(
+              item.placeName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoryGridSkeletonTile extends StatelessWidget {
+  const _StoryGridSkeletonTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF171717),
+        borderRadius: BorderRadius.circular(13),
+      ),
+    );
+  }
+}
+
 class CameraFeedVideoFrame extends StatefulWidget {
   final CameraCheckinFeedItem item;
 

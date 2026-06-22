@@ -209,7 +209,7 @@ class ProPlanPickerShell extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '50 lượt AI mỗi ngày, video check-in 3 giây và upload từ thư viện.',
+              '50 lượt AI mỗi ngày và video check-in 3 giây.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.74),

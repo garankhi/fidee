@@ -116,7 +116,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(selectedAsset?.path, 'D:/tmp/first.jpg');
-    expect(selectedAsset?.source, 'EXIF_GALLERY');
+    expect(selectedAsset?.source, 'IN_APP_CAMERA');
     expect(selectedAsset?.mediaType, GalleryAssetMediaType.image);
   });
 

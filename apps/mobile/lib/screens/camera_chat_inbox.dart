@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/chat_provider.dart';
 import '../services/user_chat_service.dart';
 import 'camera_bottom_section.dart';
+import 'camera_story_history_screen.dart';
 import 'chat_thread_screen.dart';
 
 class CameraChatThread {
@@ -138,6 +139,14 @@ class _CameraChatInboxScaffold extends StatelessWidget {
                   showHistory: false,
                   unreadCount: unreadCount,
                   onHomeTap: () => Navigator.pop(context),
+                  onHistoryTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const CameraStoryHistoryScreen(),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
               ],

@@ -44,7 +44,7 @@ class GalleryAssetPickerItem {
 
 String galleryAssetSourceForMediaType(GalleryAssetMediaType mediaType) {
   return switch (mediaType) {
-    GalleryAssetMediaType.image => 'EXIF_GALLERY',
+    GalleryAssetMediaType.image => 'IN_APP_CAMERA',
     GalleryAssetMediaType.video => 'EXIF_GALLERY_VIDEO',
   };
 }
