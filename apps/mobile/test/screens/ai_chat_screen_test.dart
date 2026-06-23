@@ -1,10 +1,36 @@
 import 'package:fidee_mobile/screens/ai_chat_screen.dart';
+import 'package:fidee_mobile/services/ai_search_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget buildScreen({String? initialMessage}) {
-    return MaterialApp(home: AiChatScreen(initialMessage: initialMessage));
+  Widget buildScreen({
+    String? initialMessage,
+    List<List<AiContextPlace>>? capturedContexts,
+  }) {
+    return MaterialApp(
+      home: AiChatScreen(
+        initialMessage: initialMessage,
+        search: (prompt, history, contextPlaces) async {
+          capturedContexts?.add(contextPlaces);
+          return AiSearchResult(
+            answer:
+                'Fidee đã tìm qua /search cho "$prompt". Đây là vài gợi ý hợp vibe.',
+            results: const [
+              AiPlaceResult(
+                id: 'place-1',
+                name: 'Quán Trà Sữa Test',
+                category: 'cafe',
+                address: '123 Nguyễn Huệ',
+                description: 'Không gian rộng, hợp đi nhóm.',
+                similarityScore: 0.82,
+                tags: ['Cà phê', 'Wifi'],
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   testWidgets('uses Vietnamese Fidee AI copy', (tester) async {
@@ -45,11 +71,12 @@ void main() {
       );
       expect(find.text('Tìm quán bún chả yên tĩnh'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.textContaining('Fidee đã nhận vibe của bạn'),
+        find.textContaining('Fidee đã tìm qua /search'),
         120,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
+      expect(find.textContaining('Fidee đã tìm qua /search'), findsOneWidget);
+      expect(find.text('Quán Trà Sữa Test'), findsOneWidget);
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller?.text,
         isEmpty,
@@ -63,6 +90,7 @@ void main() {
     );
 
     await tester.pump();
+    await tester.pump();
 
     await tester.scrollUntilVisible(
       find.text('Tìm cafe yên tĩnh gần tôi'),
@@ -71,14 +99,36 @@ void main() {
     );
     expect(find.text('Tìm cafe yên tĩnh gần tôi'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.textContaining('Fidee đã nhận vibe của bạn'),
+      find.textContaining('Fidee đã tìm qua /search'),
       120,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.textContaining('Fidee đã nhận vibe của bạn'), findsOneWidget);
+    expect(find.textContaining('Fidee đã tìm qua /search'), findsOneWidget);
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller?.text,
       isEmpty,
     );
+  });
+
+  testWidgets('sends previous place cards as context for follow-up questions', (
+    tester,
+  ) async {
+    final capturedContexts = <List<AiContextPlace>>[];
+    await tester.pumpWidget(buildScreen(capturedContexts: capturedContexts));
+
+    await tester.enterText(find.byType(TextField), 'Tìm quán cafe gần đây');
+    await tester.tap(find.byIcon(Icons.send_rounded));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'quán đó mấy giờ đóng cửa');
+    await tester.tap(find.byIcon(Icons.send_rounded));
+    await tester.pump();
+    await tester.pump();
+
+    expect(capturedContexts.length, 2);
+    expect(capturedContexts.first, isEmpty);
+    expect(capturedContexts.last.single.id, 'place-1');
+    expect(capturedContexts.last.single.name, 'Quán Trà Sữa Test');
   });
 }
