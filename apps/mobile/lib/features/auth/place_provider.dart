@@ -33,6 +33,8 @@ class Place {
   final List<String> services;
 
   final String? coverMediaId;
+  final bool isCreator;
+  final bool isCandidate;
 
   const Place({
     this.id,
@@ -56,6 +58,8 @@ class Place {
     this.vibes = const [],
     this.services = const [],
     this.coverMediaId,
+    this.isCreator = false,
+    this.isCandidate = false,
   });
 
   Place copyWith({
@@ -80,6 +84,8 @@ class Place {
     List<String>? vibes,
     List<String>? services,
     String? coverMediaId,
+    bool? isCreator,
+    bool? isCandidate,
   }) {
     return Place(
       id: id ?? this.id,
@@ -103,6 +109,8 @@ class Place {
       vibes: vibes ?? this.vibes,
       services: services ?? this.services,
       coverMediaId: coverMediaId ?? this.coverMediaId,
+      isCreator: isCreator ?? this.isCreator,
+      isCandidate: isCandidate ?? this.isCandidate,
     );
   }
 }
@@ -155,6 +163,8 @@ class PlaceController extends _$PlaceController {
         address: data['address']?.toString(),
 
         coverMediaId: data['coverMediaId']?.toString() ?? imageUrlFromMetadata,
+        isCreator: data['isCreator'] == true,
+        isCandidate: data['isCandidate'] == true,
 
         lat: double.tryParse(coordinates['lat']?.toString() ?? data['lat']?.toString() ?? '') ?? 0,
         lng: double.tryParse(coordinates['lng']?.toString() ?? data['lng']?.toString() ?? '') ?? 0,
@@ -239,6 +249,8 @@ class PlaceFeedController extends _$PlaceFeedController {
           address: item['address']?.toString(),
 
           coverMediaId: item['coverMediaId']?.toString() ?? imageUrlFromMetadata,
+          isCreator: item['isCreator'] == true,
+          isCandidate: item['isCandidate'] == true,
 
           lat: double.tryParse(coordinates['lat']?.toString() ?? item['lat']?.toString() ?? '') ?? 0,
           lng: double.tryParse(coordinates['lng']?.toString() ?? item['lng']?.toString() ?? '') ?? 0,
