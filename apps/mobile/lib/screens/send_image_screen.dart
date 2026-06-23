@@ -12,9 +12,11 @@ import '../features/auth/auth_providers.dart';
 import '../features/auth/camera_checkin_feed_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../models/camera_share_audience.dart';
+import '../models/custom_address_validation.dart';
 import '../models/nearby_place.dart';
 import '../models/selected_place_tag.dart';
 import '../services/checkin_service.dart';
+import '../services/goong_geocoding_service.dart';
 import '../services/location_service.dart';
 import '../services/nearby_service.dart';
 import '../services/place_candidate_service.dart';
@@ -155,7 +157,30 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     return res.data.where((p) => !p.isCustomFallback).toList();
   }
 
-  Future<SelectedPlaceTag?> _createCustomPlaceTag(String name) async {
+  Future<String?> _resolveCustomPlaceAddress() async {
+    final coordinates = _placeLookupCoordinates();
+    return GoongGeocodingService().reverseGeocode(
+      lat: coordinates[0],
+      lng: coordinates[1],
+    );
+  }
+
+  Future<CustomAddressValidation?> _validateCustomPlaceAddress(
+    String address,
+  ) async {
+    final coordinates = _placeLookupCoordinates();
+    return GoongGeocodingService().validateAddressNear(
+      address: address,
+      lat: coordinates[0],
+      lng: coordinates[1],
+    );
+  }
+
+  Future<SelectedPlaceTag?> _createCustomPlaceTag(
+    String name,
+    String visibility,
+    String? address,
+  ) async {
     final coordinates = _placeLookupCoordinates();
     try {
       final response =
@@ -166,6 +191,8 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
             category: 'restaurant',
             lat: coordinates[0],
             lng: coordinates[1],
+            address: address,
+            visibility: visibility,
           );
 
       if (!response.isCreated || response.data == null) return null;
@@ -174,7 +201,11 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       return SelectedPlaceTag(
         id: data.candidateId,
         displayName: data.name,
-        address: 'Được tạo bởi Bạn',
+        address: address?.trim().isNotEmpty == true
+            ? address!.trim()
+            : data.visibility == 'PRIVATE'
+            ? 'Riêng tư'
+            : 'Chia sẻ với bạn bè',
         lat: coordinates[0],
         lng: coordinates[1],
         source: 'custom',
@@ -312,6 +343,8 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
           isLoading: _isLoadingNearbySpots,
           errorMessage: errorMessage ?? _nearbySpotsError,
           onCreateCustomPlace: _createCustomPlaceTag,
+          onResolveCustomAddress: _resolveCustomPlaceAddress,
+          onValidateCustomAddress: _validateCustomPlaceAddress,
           onSelected: (place) {
             _selectPlaceTag(place);
             Navigator.pop(context);

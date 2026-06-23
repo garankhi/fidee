@@ -23,6 +23,9 @@ class Config {
   static const String _goongStyleUrlDefine = String.fromEnvironment(
     'GOONG_STYLE_URL',
   );
+  static const String _goongApiKeyDefine = String.fromEnvironment(
+    'GOONG_API_KEY',
+  );
   static const String _revenueCatIosApiKeyDefine = String.fromEnvironment(
     'REVENUECAT_IOS_API_KEY',
   );
@@ -32,6 +35,10 @@ class Config {
 
   static String get goongMaptilesKey {
     return _envOrDefine('GOONG_MAPTILES_KEY', _goongMaptilesKeyDefine);
+  }
+
+  static String get goongApiKey {
+    return _envOrDefine('GOONG_API_KEY', _goongApiKeyDefine);
   }
 
   static String get goongStyleUrl {
@@ -73,6 +80,10 @@ class Config {
 
   static bool hasGoongMaptilesKey([String? key]) {
     return (key ?? goongMaptilesKey).trim().isNotEmpty;
+  }
+
+  static bool hasGoongApiKey([String? key]) {
+    return (key ?? goongApiKey).trim().isNotEmpty;
   }
 
   static String goongStyleUrlWithKey({String? maptilesKey, String? styleUrl}) {
