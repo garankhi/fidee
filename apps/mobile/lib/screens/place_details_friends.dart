@@ -1,10 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../features/auth/auth_providers.dart';
+import '../features/auth/chat_provider.dart';
+import '../features/auth/friends_provider.dart';
 import '../features/auth/place_provider.dart';
 import '../features/auth/review_provider.dart';
+import '../services/friend_service.dart';
 import '../services/place_candidate_service.dart';
 import '../services/upload_service.dart';
 import 'camera_screen.dart';
@@ -122,6 +126,435 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     });
   }
 
+  String _buildShareUrl(Place place) {
+    final placeId = place.id?.trim().isNotEmpty == true
+        ? place.id!.trim()
+        : widget.placeId;
+    return 'https://fidee.site/places/$placeId';
+  }
+
+  String _buildShareText(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'địa điểm này';
+    final address = place.address?.trim();
+    final buffer = StringBuffer('Xem $name trên Fidee');
+    if (address != null && address.isNotEmpty) {
+      buffer.write('\n$address');
+    }
+    buffer.write('\n${_buildShareUrl(place)}');
+    return buffer.toString();
+  }
+
+  String _buildInAppShareText(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'địa điểm này';
+    final address = place.address?.trim();
+    final placeId = place.id?.trim().isNotEmpty == true
+        ? place.id!.trim()
+        : widget.placeId;
+    final buffer = StringBuffer('Xem $name trên Fidee');
+    if (address != null && address.isNotEmpty) {
+      buffer.write('\n$address');
+    }
+    buffer.write('\n\u2063fidee_place:$placeId');
+    return buffer.toString();
+  }
+
+  Future<void> _copyShareText(Place place) async {
+    await Clipboard.setData(ClipboardData(text: _buildShareText(place)));
+    if (!mounted) return;
+    Navigator.of(context).maybePop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã sao chép liên kết địa điểm')),
+    );
+  }
+
+  void _showShareSheet(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'Địa điểm Fidee';
+    final address = place.address?.trim();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Chia sẻ địa điểm',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F8F8),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E8E8)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (address != null && address.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          address,
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showFriendShareSheet(place);
+                    },
+                    icon: const Icon(Icons.people_alt_rounded, size: 18),
+                    label: const Text('Gửi cho bạn bè trong Fidee'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF484F),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _copyShareText(place),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text('Sao chép liên kết'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFEF484F),
+                      side: const BorderSide(color: Color(0xFFEF484F)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _sendPlaceToFriend({
+    required Place place,
+    required FriendProfile friend,
+  }) async {
+    final conversationId = await ref
+        .read(chatInboxControllerProvider.notifier)
+        .openDirectConversation(friend.id);
+    if (conversationId == null || conversationId.isEmpty) return false;
+
+    final chatService = ref.read(userChatServiceProvider);
+    final sent = await chatService.sendMessage(
+      conversationId: conversationId,
+      clientMessageId: chatService.createClientMessageId(),
+      body: _buildInAppShareText(place),
+    );
+    if (sent == null) return false;
+
+    await ref.read(chatInboxControllerProvider.notifier).load(silent: true);
+    return true;
+  }
+
+  void _showFriendShareSheet(Place place) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) {
+        final selectedFriendIds = <String>{};
+        var isSending = false;
+
+        return Consumer(
+          builder: (context, ref, _) {
+            final friendsState = ref.watch(friendsControllerProvider);
+            final friends = friendsState.friends
+                .where((friend) => friend.id != friendsState.currentUserId)
+                .toList(growable: false);
+
+            return StatefulBuilder(
+              builder: (context, setSheetState) {
+                Future<void> sendSelected() async {
+                  if (selectedFriendIds.isEmpty || isSending) return;
+                  final sheetNavigator = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(this.context);
+                  setSheetState(() {
+                    isSending = true;
+                  });
+
+                  var sentCount = 0;
+                  final selectedFriends = friends
+                      .where(
+                        (friend) => selectedFriendIds.contains(friend.id),
+                      )
+                      .toList(growable: false);
+
+                  for (final friend in selectedFriends) {
+                    final success = await _sendPlaceToFriend(
+                      place: place,
+                      friend: friend,
+                    );
+                    if (success) sentCount++;
+                  }
+
+                  if (!mounted) return;
+                  sheetNavigator.pop();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        sentCount == selectedFriends.length
+                            ? 'Đã gửi địa điểm cho $sentCount bạn'
+                            : 'Đã gửi $sentCount/${selectedFriends.length} bạn',
+                      ),
+                    ),
+                  );
+                }
+
+                return SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 14,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0E0E0),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Gửi cho bạn bè',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (friendsState.isInitialLoading)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFEF484F),
+                              ),
+                            ),
+                          )
+                        else if (friends.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                              child: Text(
+                                'Bạn chưa có bạn bè để chia sẻ.',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight:
+                                  MediaQuery.of(context).size.height * 0.45,
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: friends.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final friend = friends[index];
+                                final isSelected = selectedFriendIds.contains(
+                                  friend.id,
+                                );
+
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  activeColor: const Color(0xFFEF484F),
+                                  contentPadding: EdgeInsets.zero,
+                                  onChanged: isSending
+                                      ? null
+                                      : (value) {
+                                          setSheetState(() {
+                                            if (value == true) {
+                                              selectedFriendIds.add(friend.id);
+                                            } else {
+                                              selectedFriendIds.remove(
+                                                friend.id,
+                                              );
+                                            }
+                                          });
+                                        },
+                                  title: Text(
+                                    friend.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  subtitle: friend.handle.isEmpty
+                                      ? null
+                                      : Text(
+                                          '@${friend.handle}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  secondary: CircleAvatar(
+                                    backgroundColor: const Color(0xFFFFE1E5),
+                                    backgroundImage:
+                                        friend.avatarUrl != null &&
+                                            friend.avatarUrl!.isNotEmpty
+                                        ? NetworkImage(friend.avatarUrl!)
+                                        : null,
+                                    child:
+                                        friend.avatarUrl != null &&
+                                            friend.avatarUrl!.isNotEmpty
+                                        ? null
+                                        : Text(
+                                            friend.initials,
+                                            style: const TextStyle(
+                                              color: Color(0xFFEF484F),
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            onPressed: selectedFriendIds.isEmpty || isSending
+                                ? null
+                                : sendSelected,
+                            icon: isSending
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded, size: 18),
+                            label: Text(
+                              isSending
+                                  ? 'Đang gửi...'
+                                  : 'Gửi (${selectedFriendIds.length})',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF484F),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(
+                                0xFFFFC2C6,
+                              ),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _pickAndUploadCover(Place place) async {
     if (!place.isCandidate || place.id == null) return;
     
@@ -235,7 +668,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                               size: 18,
                               color: Color(0xFFEF484F),
                             ),
-                            onPressed: () {},
+                            onPressed: () => _showShareSheet(place),
                           ),
                         ),
                       ),
