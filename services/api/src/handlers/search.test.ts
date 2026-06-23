@@ -71,6 +71,44 @@ describe('search handler', () => {
     expect(searchPlaces).toHaveBeenCalledWith({
       prompt: 'rooftop restaurant',
       history: undefined,
+      contextPlaces: undefined,
+      limit: 10,
+    });
+  });
+
+  it('passes sanitized context places to the search implementation', async () => {
+    const searchPlaces = vi.fn().mockResolvedValue({
+      answer: 'Tiệm Cơm Nhà Làm đóng cửa lúc 20:00.',
+      search_method: 'place_lookup',
+      results: [{ id: 'place-1', name: 'Tiệm Cơm Nhà Làm' }],
+    });
+    const handler = createSearchHandler({
+      getPlan: vi.fn().mockResolvedValue('FREE'),
+      incrementUsage: vi.fn().mockResolvedValue({
+        used: 1,
+        limit: 5,
+        allowed: true,
+        usageDate: '2026-06-16',
+      }),
+      searchPlaces,
+    });
+
+    const result = await handler(
+      mockEvent({
+        prompt: 'tiệm cơm nhà làm mấy giờ đóng cửa',
+        contextPlaces: [
+          { id: 'place-1', name: 'Tiệm Cơm Nhà Làm' },
+          { id: '', name: 'invalid' },
+          { id: 'place-2', name: '' },
+        ],
+      }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    expect(searchPlaces).toHaveBeenCalledWith({
+      prompt: 'tiệm cơm nhà làm mấy giờ đóng cửa',
+      history: undefined,
+      contextPlaces: [{ id: 'place-1', name: 'Tiệm Cơm Nhà Làm' }],
       limit: 10,
     });
   });
