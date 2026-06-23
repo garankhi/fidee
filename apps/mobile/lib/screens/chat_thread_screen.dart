@@ -252,7 +252,7 @@ class _Composer extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF243135),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
@@ -262,13 +262,20 @@ class _Composer extends StatelessWidget {
                 controller: controller,
                 onChanged: onChanged,
                 onSubmitted: (_) => onSend(),
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.send,
+                enableSuggestions: true,
+                autocorrect: true,
+                cursorColor: const Color(0xFFEF4050),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 15,
+                  height: 1.3,
+                ),
+                decoration: const InputDecoration(
                   border: InputBorder.none,
                   hintText: 'Nhắn tin...',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.48),
-                  ),
+                  hintStyle: TextStyle(color: Colors.black45),
                 ),
               ),
             ),

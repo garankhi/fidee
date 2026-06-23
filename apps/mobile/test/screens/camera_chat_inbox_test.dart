@@ -1,6 +1,31 @@
+import 'package:fidee_mobile/features/auth/auth_providers.dart';
+import 'package:fidee_mobile/features/auth/friends_provider.dart';
 import 'package:fidee_mobile/screens/camera_chat_inbox.dart';
+import 'package:fidee_mobile/screens/profile_screen.dart';
+import 'package:fidee_mobile/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _HydratedAuthController extends AuthController {
+  @override
+  Future<AuthUiState> build() async {
+    return const AuthUiState(
+      authState: AuthState.authenticated,
+      tier: UserTier.free,
+      firstName: 'Nguyen',
+      lastName: 'Minh',
+      preferredUsername: 'minh.nguyen',
+      avatarUrl: null,
+      since: '2026',
+    );
+  }
+}
+
+class _EmptyFriendsController extends FriendsController {
+  @override
+  FriendsState build() => const FriendsState();
+}
 
 void main() {
   testWidgets('renders chat inbox rows like the reference conversation list', (
@@ -68,5 +93,26 @@ void main() {
     );
 
     expect(find.text('Chưa có tin nhắn'), findsOneWidget);
+  });
+
+  testWidgets('opens profile when tapping the current user avatar', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_HydratedAuthController.new),
+          friendsControllerProvider.overrideWith(_EmptyFriendsController.new),
+        ],
+        child: const MaterialApp(
+          home: CameraChatInboxScreen(threads: <CameraChatThread>[]),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('camera-chat-me-avatar')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProfileScreen), findsOneWidget);
   });
 }

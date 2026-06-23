@@ -97,8 +97,8 @@ class PremiumUpgradeSheet extends StatelessWidget {
                   ),
                   _buildFeatureItem(
                     '🖼️',
-                    'Upload từ thư viện',
-                    'Gửi ảnh và video hợp lệ từ thư viện của bạn',
+                    'Video từ thư viện',
+                    'Gửi video hợp lệ từ thư viện của bạn',
                   ),
                 ],
               ),

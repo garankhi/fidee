@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/chat_provider.dart';
 import '../services/user_chat_service.dart';
 import 'camera_bottom_section.dart';
+import 'camera_story_history_screen.dart';
 import 'chat_thread_screen.dart';
+import 'profile_screen.dart';
 
 class CameraChatThread {
   final String id;
@@ -138,6 +140,14 @@ class _CameraChatInboxScaffold extends StatelessWidget {
                   showHistory: false,
                   unreadCount: unreadCount,
                   onHomeTap: () => Navigator.pop(context),
+                  onHistoryTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const CameraStoryHistoryScreen(),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
               ],
@@ -177,21 +187,32 @@ class _CameraChatHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: Container(
-              key: const ValueKey('camera-chat-me-avatar'),
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: Colors.blueAccent,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Text(
-                  'Tôi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                key: const ValueKey('camera-chat-me-avatar'),
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: Colors.blueAccent,
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text(
+                    'Tôi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),

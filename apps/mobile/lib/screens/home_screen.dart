@@ -264,16 +264,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
-  void _openAiChat(String query) {
+  void _openAiChat([String query = '']) {
     final trimmedQuery = query.trim();
-    if (trimmedQuery.isEmpty) {
-      return;
-    }
 
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => AiChatScreen(initialMessage: trimmedQuery),
+        builder: (_) => AiChatScreen(
+          initialMessage: trimmedQuery.isEmpty ? null : trimmedQuery,
+        ),
       ),
     );
   }
@@ -694,7 +693,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: HomeAiSearchBar(onSubmitted: _openAiChat),
+                    child: HomeAiSearchBar(
+                      onSubmitted: _openAiChat,
+                      onOpenChat: _openAiChat,
+                    ),
                   ),
                 ],
               ),

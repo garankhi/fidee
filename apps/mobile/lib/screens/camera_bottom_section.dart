@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-enum CameraBottomTab { home, chat }
+enum CameraBottomTab { history, home, chat }
 
 class CameraBottomSection extends StatelessWidget {
   final VoidCallback? onHomeTap;
   final VoidCallback? onChatTap;
+  final VoidCallback? onHistoryTap;
+  final VoidCallback? onHistoryLabelTap;
   final CameraBottomTab activeTab;
   final bool showHistory;
   final int unreadCount;
@@ -13,6 +15,8 @@ class CameraBottomSection extends StatelessWidget {
     super.key,
     this.onHomeTap,
     this.onChatTap,
+    this.onHistoryTap,
+    this.onHistoryLabelTap,
     this.activeTab = CameraBottomTab.home,
     this.showHistory = true,
     this.unreadCount = 0,
@@ -26,44 +30,47 @@ class CameraBottomSection extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (showHistory) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey[700],
+          GestureDetector(
+            onTap: onHistoryLabelTap ?? onHistoryTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey[700],
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.person,
-                    size: 16,
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Lịch sử',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
                     color: Colors.white,
+                    size: 20,
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Lịch sử',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -78,10 +85,25 @@ class CameraBottomSection extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                const Icon(
-                  Icons.grid_view_rounded,
-                  color: Colors.grey,
-                  size: 28,
+                GestureDetector(
+                  onTap: onHistoryTap,
+                  child: Container(
+                    key: const ValueKey('camera-bottom-history-button'),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: activeTab == CameraBottomTab.history
+                          ? Colors.grey[800]
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.calendar_today_rounded,
+                      color: activeTab == CameraBottomTab.history
+                          ? Colors.white
+                          : Colors.grey,
+                      size: 24,
+                    ),
+                  ),
                 ),
                 GestureDetector(
                   onTap: onHomeTap,

@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import '../features/auth/auth_providers.dart';
 import '../features/auth/place_provider.dart';
 import '../features/auth/review_provider.dart';
+import '../services/upload_service.dart';
 import 'camera_screen.dart';
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
@@ -16,6 +20,8 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
 
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   static const String _serverBaseUrl = 'https://api.fidee.site';
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _reviewsKey = GlobalKey();
 
   String _getFullImageUrl(dynamic mediaId) {
     if (mediaId == null || mediaId.toString().isEmpty) {
@@ -40,7 +46,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     return timeStr;
   }
 
-  void _showSuccessDialog(int rating, String content) {
+  void showSuccessDialog(int rating, String content) {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -82,6 +88,39 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  String _currentUserDisplayName(AuthUiState? authState) {
+    final preferredUsername = authState?.preferredUsername?.trim();
+    if (preferredUsername != null && preferredUsername.isNotEmpty) {
+      return preferredUsername;
+    }
+
+    final nameParts = [
+      authState?.firstName?.trim(),
+      authState?.lastName?.trim(),
+    ].whereType<String>().where((value) => value.isNotEmpty).join(' ');
+
+    return nameParts.isEmpty ? 'Bạn' : nameParts;
+  }
+
+  void _scrollToReviews() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _reviewsKey.currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final place = ref.watch(placeControllerProvider);
 
@@ -91,6 +130,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         child: Stack(
           children: [
             CustomScrollView(
+              controller: _scrollController,
               slivers: [
                 SliverAppBar(
                   toolbarHeight: 100,
@@ -168,7 +208,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       const SizedBox(height: 25),
                       _buildFriendCheckins(place),
                       const SizedBox(height: 25),
-                      _buildFriendReviews(place),
+                      KeyedSubtree(
+                        key: _reviewsKey,
+                        child: _buildFriendReviews(place),
+                      ),
                       const SizedBox(height: 25),
                       _buildPhotoGallery(place),
                     ]),
@@ -876,14 +919,18 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       builder: (context) {
         return NewRatingBottomSheet(
           placeId: widget.placeId,
-          onSuccess: (rating, content) {
+          userName: _currentUserDisplayName(
+            ref.read(authControllerProvider).valueOrNull,
+          ),
+          onSuccess: (review) {
             ref
                 .read(placeControllerProvider.notifier)
-                .fetchPlaceDetail(widget.placeId);
+                .prependFriendReview(review);
 
-            if (context.mounted) {
-              _showSuccessDialog(rating, content);
-            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Đã gửi đánh giá')),
+            );
+            _scrollToReviews();
           },
         );
       },
@@ -893,11 +940,13 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
 class NewRatingBottomSheet extends ConsumerStatefulWidget {
   final String placeId;
-  final void Function(int rating, String content) onSuccess;
+  final String userName;
+  final void Function(Map<String, dynamic> review) onSuccess;
 
   const NewRatingBottomSheet({
     super.key,
     required this.placeId,
+    required this.userName,
     required this.onSuccess,
   });
 
@@ -913,6 +962,23 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
   final List<String> _tags = ['Vibe chill', 'Phục vụ nhanh', 'Hợp khẩu vị'];
   final Set<String> _selectedTags = {};
 
+  String? _selectedImagePath;
+  bool _isUploadingImageLocal = false;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (pickedFile == null) return;
+    setState(() {
+      _selectedImagePath = pickedFile.path;
+    });
+  }
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -923,6 +989,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
   Widget build(BuildContext context) {
     final reviewState = ref.watch(reviewControllerProvider);
     final bool isLoading = reviewState.isLoading;
+    final bool isBusy = isLoading || _isUploadingImageLocal;
 
     return Container(
       padding: EdgeInsets.only(
@@ -961,7 +1028,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
             ),
             const SizedBox(height: 22),
 
-            // --- UPLOAD ẢNH CHECK-IN (Giữ UI, chưa đính kèm payload API) ---
+            // --- UPLOAD ẢNH CHECK-IN ---
             const Align(
               alignment: Alignment.centerLeft,
               child: Text.rich(
@@ -991,18 +1058,57 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE6E6E6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: Color(0xFFA6A6A6),
-                  size: 32,
-                ),
+              child: Stack(
+                children: [
+                  GestureDetector(
+                    onTap: isBusy ? null : _pickImage,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE6E6E6),
+                        borderRadius: BorderRadius.circular(20),
+                        image: _selectedImagePath != null
+                            ? DecorationImage(
+                                image: FileImage(File(_selectedImagePath!)),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: _selectedImagePath == null
+                          ? const Icon(
+                              Icons.add_a_photo_outlined,
+                              color: Color(0xFFA6A6A6),
+                              size: 32,
+                            )
+                          : null,
+                    ),
+                  ),
+                  if (_selectedImagePath != null && !isBusy)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedImagePath = null;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 22),
@@ -1012,7 +1118,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
                 return IconButton(
-                  onPressed: isLoading ? null : () {
+                  onPressed: isBusy ? null : () {
                     setState(() {
                       _rating = index + 1;
                     });
@@ -1035,7 +1141,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               children: _tags.map((tag) {
                 final isSelected = _selectedTags.contains(tag);
                 return InkWell(
-                  onTap: isLoading ? null : () {
+                  onTap: isBusy ? null : () {
                     setState(() {
                       if (isSelected) {
                         _selectedTags.remove(tag);
@@ -1085,7 +1191,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               controller: _commentController,
               maxLines: 3,
               maxLength: 500,
-              enabled: !isLoading,
+              enabled: !isBusy,
 
               style: const TextStyle(
                 color: Color(0xFF1E1E1E),
@@ -1131,7 +1237,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 Switch.adaptive(
                   value: _isPrivate,
                   activeThumbColor: const Color(0xFFEF484F),
-                  onChanged: isLoading ? null : (value) {
+                  onChanged: isBusy ? null : (value) {
                     setState(() {
                       _isPrivate = value;
                     });
@@ -1146,9 +1252,43 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: (_rating == 0 || isLoading)
+                onPressed: (_rating == 0 || _selectedImagePath == null || isBusy)
                     ? null
                     : () async {
+                  setState(() {
+                    _isUploadingImageLocal = true;
+                  });
+
+                  String? uploadedMediaId;
+                  if (_selectedImagePath != null) {
+                    try {
+                      final place = ref.read(placeControllerProvider);
+                      final lat = (place.lat != null && place.lat != 0) ? place.lat! : 10.762892;
+                      final lng = (place.lng != null && place.lng != 0) ? place.lng! : 106.682586;
+
+                      final authService = ref.read(authServiceProvider);
+                      final uploadService = UploadService(authService: authService);
+
+                      uploadedMediaId = await uploadService.upload(
+                        imagePath: _selectedImagePath!,
+                        latitude: lat,
+                        longitude: lng,
+                        source: 'IN_APP_CAMERA',
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      setState(() {
+                        _isUploadingImageLocal = false;
+                      });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Lỗi tải ảnh lên: $e')),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
                   String finalContent = _commentController.text.trim();
                   if (_selectedTags.isNotEmpty) {
                     final String tagsString = _selectedTags.map((e) => '#$e').join(' ');
@@ -1165,6 +1305,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                     'rating': _rating,
                     'content': finalContent.isEmpty ? null : finalContent,
                     'visibility': visibilityParam,
+                    if (uploadedMediaId != null) 'mediaIds': [uploadedMediaId],
                   };
 
                   final isSuccess = await ref
@@ -1172,10 +1313,25 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                       .submitReview(apiPayload);
 
                   if (isSuccess && context.mounted) {
+                    final submittedReview = <String, dynamic>{
+                      'id': uploadedMediaId ?? DateTime.now().toIso8601String(),
+                      'userName': widget.userName,
+                      'rating': _rating,
+                      'content': finalContent,
+                      'createdAt': DateTime.now().toIso8601String(),
+                      'mediaIds': uploadedMediaId == null
+                          ? const <String>[]
+                          : <String>[uploadedMediaId],
+                    };
                     Navigator.pop(context);
-                    widget.onSuccess(_rating, finalContent);
+                    widget.onSuccess(submittedReview);
 
                     ref.read(reviewControllerProvider.notifier).resetState();
+                  } else {
+                    if (!mounted) return;
+                    setState(() {
+                      _isUploadingImageLocal = false;
+                    });
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -1185,7 +1341,7 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                   ),
                   elevation: 0,
                 ),
-                child: isLoading
+                child: isBusy
                     ? const SizedBox(
                   height: 20,
                   width: 20,

@@ -19,6 +19,7 @@ class CameraViewfinderPager extends StatefulWidget {
   final ValueChanged<CameraCheckinFeedItem?> onFeedItemChanged;
   final ValueChanged<bool>? onFeedModeChanged;
   final Widget Function(CameraCheckinFeedItem item) feedMessageComposerBuilder;
+  final PageController? pageController;
 
   const CameraViewfinderPager({
     super.key,
@@ -33,6 +34,7 @@ class CameraViewfinderPager extends StatefulWidget {
     required this.onFeedItemChanged,
     required this.feedMessageComposerBuilder,
     this.onFeedModeChanged,
+    this.pageController,
   });
 
   @override
@@ -40,20 +42,23 @@ class CameraViewfinderPager extends StatefulWidget {
 }
 
 class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
-  final PageController _pageController = PageController();
+  late final PageController _pageController;
   final Set<String> _prefetchedCacheKeys = <String>{};
   bool _lastReportedFeedMode = false;
 
   @override
   void initState() {
     super.initState();
+    _pageController = widget.pageController ?? PageController();
     _pageController.addListener(_handlePageScroll);
   }
 
   @override
   void dispose() {
     _pageController.removeListener(_handlePageScroll);
-    _pageController.dispose();
+    if (widget.pageController == null) {
+      _pageController.dispose();
+    }
     super.dispose();
   }
 
