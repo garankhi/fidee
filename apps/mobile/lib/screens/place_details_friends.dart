@@ -134,10 +134,16 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     });
 
     try {
-      final uploadService = UploadService(ref.read(authServiceProvider));
+      final uploadService = UploadService(authService: ref.read(authServiceProvider));
       final file = File(image.path);
       
-      final mediaId = await uploadService.uploadMedia(file, 'image/jpeg');
+      final mediaId = await uploadService.upload(
+        imagePath: file.path,
+        longitude: place.lng ?? 0,
+        latitude: place.lat ?? 0,
+        source: 'EXIF_GALLERY',
+        contentTypeOverride: 'image/jpeg',
+      );
       
       final placeCandidateService = PlaceCandidateService(ref.read(authServiceProvider));
       await placeCandidateService.updateCandidate(
@@ -152,10 +158,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           const SnackBar(content: Text('Đã cập nhật ảnh bìa thành công!')),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Upload error: $e');
+      debugPrint('Stacktrace: $st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lỗi khi tải ảnh lên')),
+          SnackBar(content: Text('Lỗi tải ảnh: $e')),
         );
       }
     } finally {

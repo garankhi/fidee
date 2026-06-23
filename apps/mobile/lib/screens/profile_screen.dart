@@ -25,6 +25,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isUploading = false;
+  bool _isDeletingAccount = false;
 
   String _getInitials(String firstName, String lastName) {
     final first = firstName.trim().isNotEmpty
@@ -170,6 +171,69 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           onSaved: () {},
         );
       },
+    );
+  }
+
+  Future<void> _confirmAndDeleteAccount() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Xóa tài khoản',
+          style: TextStyle(
+            color: Color(0xFF151515),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Hành động này sẽ xóa quyền đăng nhập và ẩn thông tin cá nhân của bạn khỏi Fidee. Bạn có chắc chắn muốn tiếp tục?',
+          style: TextStyle(color: Color(0xFF8D8D8D), height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(color: Color(0xFF8D8D8D)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Xóa tài khoản',
+              style: TextStyle(
+                color: Color(0xFFEF4050),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || _isDeletingAccount) return;
+
+    setState(() => _isDeletingAccount = true);
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .deleteAccount();
+
+    if (!mounted) return;
+    setState(() => _isDeletingAccount = false);
+
+    if (result.success) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.errorMessage ?? 'Không thể xóa tài khoản. Vui lòng thử lại.',
+        ),
+      ),
     );
   }
 
@@ -719,6 +783,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     backgroundColor: const Color(0xFFFFE9EC),
                     foregroundColor: const Color(0xFFEF4050),
                     elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: _isDeletingAccount
+                      ? null
+                      : _confirmAndDeleteAccount,
+                  icon: _isDeletingAccount
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFEF4050),
+                          ),
+                        )
+                      : const Icon(Icons.delete_outline_rounded, size: 20),
+                  label: Text(
+                    _isDeletingAccount ? 'ĐANG XÓA...' : 'XÓA TÀI KHOẢN',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFEF4050),
+                    side: const BorderSide(color: Color(0xFFEF4050)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

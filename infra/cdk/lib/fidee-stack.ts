@@ -1013,6 +1013,36 @@ export class FideeStack extends cdk.Stack {
       }),
     );
 
+    const deleteUserFn = new nodejs.NodejsFunction(this, 'DeleteUserFunction', {
+      functionName: resourceName(stage, 'delete-user'),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: '../../services/api/src/handlers/delete-user.ts',
+      handler: 'handler',
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(20),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        STAGE: stage,
+        DB_SECRET_ARN: dbCluster.secret!.secretArn,
+        DB_NAME: 'fidee',
+        COGNITO_USER_POOL_ID: userPool.userPoolId,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
+      },
+      bundling: {
+        nodeModules: ['pg'],
+      },
+    });
+    dbCluster.secret!.grantRead(deleteUserFn);
+    userProfilesTable.grantReadWriteData(deleteUserFn);
+    deleteUserFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cognito-idp:AdminDeleteUser'],
+        resources: [userPool.userPoolArn],
+      }),
+    );
+
     const checkUsernameAvailabilityFn = new nodejs.NodejsFunction(
       this,
       'CheckUsernameAvailabilityFunction',
@@ -1066,6 +1096,18 @@ export class FideeStack extends cdk.Stack {
         authorizationType: apigateway.AuthorizationType.COGNITO,
       },
     );
+
+    const usersResource = api.root.addResource('users');
+    const userDetailResource = usersResource.addResource('{userId}');
+    userDetailResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    userDetailResource.addMethod('DELETE', new apigateway.LambdaIntegration(deleteUserFn), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     const billingLambdaProps = {
       runtime: lambda.Runtime.NODEJS_20_X,
