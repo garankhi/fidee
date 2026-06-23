@@ -1,10 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../features/auth/auth_providers.dart';
+import '../features/auth/chat_provider.dart';
+import '../features/auth/friends_provider.dart';
 import '../features/auth/place_provider.dart';
 import '../features/auth/review_provider.dart';
+import '../services/friend_service.dart';
 import '../services/place_candidate_service.dart';
 import '../services/upload_service.dart';
 import 'camera_screen.dart';
@@ -122,6 +126,510 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     });
   }
 
+  String _buildShareUrl(Place place) {
+    final placeId = place.id?.trim().isNotEmpty == true
+        ? place.id!.trim()
+        : widget.placeId;
+    return 'https://fidee.site/places/$placeId';
+  }
+
+  String _buildShareText(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'địa điểm này';
+    final address = place.address?.trim();
+    final buffer = StringBuffer('Xem $name trên Fidee');
+    if (address != null && address.isNotEmpty) {
+      buffer.write('\n$address');
+    }
+    buffer.write('\n${_buildShareUrl(place)}');
+    return buffer.toString();
+  }
+
+  String _buildInAppShareText(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'địa điểm này';
+    final address = place.address?.trim();
+    final placeId = place.id?.trim().isNotEmpty == true
+        ? place.id!.trim()
+        : widget.placeId;
+    final buffer = StringBuffer('Xem $name trên Fidee');
+    if (address != null && address.isNotEmpty) {
+      buffer.write('\n$address');
+    }
+    buffer.write('\n\u2063fidee_place:$placeId');
+    return buffer.toString();
+  }
+
+  Future<void> _copyShareText(Place place) async {
+    await Clipboard.setData(ClipboardData(text: _buildShareText(place)));
+    if (!mounted) return;
+    Navigator.of(context).maybePop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã sao chép liên kết địa điểm')),
+    );
+  }
+
+  void _showShareSheet(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'Địa điểm Fidee';
+    final address = place.address?.trim();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Chia sẻ địa điểm',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F8F8),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E8E8)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (address != null && address.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          address,
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showFriendShareSheet(place);
+                    },
+                    icon: const Icon(Icons.people_alt_rounded, size: 18),
+                    label: const Text('Gửi cho bạn bè trong Fidee'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF484F),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _copyShareText(place),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text('Sao chép liên kết'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFEF484F),
+                      side: const BorderSide(color: Color(0xFFEF484F)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _sendPlaceToFriend({
+    required Place place,
+    required FriendProfile friend,
+  }) async {
+    final conversationId = await ref
+        .read(chatInboxControllerProvider.notifier)
+        .openDirectConversation(friend.id);
+    if (conversationId == null || conversationId.isEmpty) return false;
+
+    final chatService = ref.read(userChatServiceProvider);
+    final sent = await chatService.sendMessage(
+      conversationId: conversationId,
+      clientMessageId: chatService.createClientMessageId(),
+      body: _buildInAppShareText(place),
+    );
+    if (sent == null) return false;
+
+    await ref.read(chatInboxControllerProvider.notifier).load(silent: true);
+    return true;
+  }
+
+  void _showFriendShareSheet(Place place) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) {
+        final selectedFriendIds = <String>{};
+        var isSending = false;
+        var searchQuery = '';
+
+        return Consumer(
+          builder: (context, ref, _) {
+            final friendsState = ref.watch(friendsControllerProvider);
+            final friends = friendsState.friends
+                .where((friend) => friend.id != friendsState.currentUserId)
+                .toList(growable: false);
+
+            return StatefulBuilder(
+              builder: (context, setSheetState) {
+                final normalizedQuery = searchQuery.trim().toLowerCase();
+                final filteredFriends = normalizedQuery.isEmpty
+                    ? friends
+                    : friends.where((friend) {
+                        return friend.name.toLowerCase().contains(
+                              normalizedQuery,
+                            ) ||
+                            friend.handle.toLowerCase().contains(
+                              normalizedQuery,
+                            );
+                      }).toList(growable: false);
+
+                Future<void> sendSelected() async {
+                  if (selectedFriendIds.isEmpty || isSending) return;
+                  final sheetNavigator = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(this.context);
+                  setSheetState(() {
+                    isSending = true;
+                  });
+
+                  var sentCount = 0;
+                  final selectedFriends = friends
+                      .where(
+                        (friend) => selectedFriendIds.contains(friend.id),
+                      )
+                      .toList(growable: false);
+
+                  for (final friend in selectedFriends) {
+                    final success = await _sendPlaceToFriend(
+                      place: place,
+                      friend: friend,
+                    );
+                    if (success) sentCount++;
+                  }
+
+                  if (!mounted) return;
+                  sheetNavigator.pop();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        sentCount == selectedFriends.length
+                            ? 'Đã gửi địa điểm cho $sentCount bạn'
+                            : 'Đã gửi $sentCount/${selectedFriends.length} bạn',
+                      ),
+                    ),
+                  );
+                }
+
+                return SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 14,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0E0E0),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Gửi cho bạn bè',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          enabled: !isSending,
+                          onChanged: (value) {
+                            setSheetState(() {
+                              searchQuery = value;
+                            });
+                          },
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Tìm bạn bè...',
+                            hintStyle: const TextStyle(
+                              color: Colors.black38,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: Color(0xFFEF484F),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF7F7F7),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE8E8E8),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE8E8E8),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFEF484F),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (friendsState.isInitialLoading)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFEF484F),
+                              ),
+                            ),
+                          )
+                        else if (friends.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                              child: Text(
+                                'Bạn chưa có bạn bè để chia sẻ.',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (filteredFriends.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                              child: Text(
+                                'Không tìm thấy bạn bè phù hợp.',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight:
+                                  MediaQuery.of(context).size.height * 0.45,
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: filteredFriends.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final friend = filteredFriends[index];
+                                final isSelected = selectedFriendIds.contains(
+                                  friend.id,
+                                );
+
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  activeColor: const Color(0xFFEF484F),
+                                  contentPadding: EdgeInsets.zero,
+                                  onChanged: isSending
+                                      ? null
+                                      : (value) {
+                                          setSheetState(() {
+                                            if (value == true) {
+                                              selectedFriendIds.add(friend.id);
+                                            } else {
+                                              selectedFriendIds.remove(
+                                                friend.id,
+                                              );
+                                            }
+                                          });
+                                        },
+                                  title: Text(
+                                    friend.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  subtitle: friend.handle.isEmpty
+                                      ? null
+                                      : Text(
+                                          '@${friend.handle}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  secondary: CircleAvatar(
+                                    backgroundColor: const Color(0xFFFFE1E5),
+                                    backgroundImage:
+                                        friend.avatarUrl != null &&
+                                            friend.avatarUrl!.isNotEmpty
+                                        ? NetworkImage(friend.avatarUrl!)
+                                        : null,
+                                    child:
+                                        friend.avatarUrl != null &&
+                                            friend.avatarUrl!.isNotEmpty
+                                        ? null
+                                        : Text(
+                                            friend.initials,
+                                            style: const TextStyle(
+                                              color: Color(0xFFEF484F),
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            onPressed: selectedFriendIds.isEmpty || isSending
+                                ? null
+                                : sendSelected,
+                            icon: isSending
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded, size: 18),
+                            label: Text(
+                              isSending
+                                  ? 'Đang gửi...'
+                                  : 'Gửi (${selectedFriendIds.length})',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF484F),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(
+                                0xFFFFC2C6,
+                              ),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _pickAndUploadCover(Place place) async {
     if (!place.isCandidate || place.id == null) return;
     
@@ -235,7 +743,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                               size: 18,
                               color: Color(0xFFEF484F),
                             ),
-                            onPressed: () {},
+                            onPressed: () => _showShareSheet(place),
                           ),
                         ),
                       ),
@@ -650,15 +1158,26 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Widget _buildFriendCheckins(Place place) {
     final checkins = place.friendCheckins;
+    final visibleCheckinCount = checkins.length;
 
     return Column(
       children: [
-        _buildSectionHeader('Check-in của bạn bè (${place.checkinCount})'),
+        _buildSectionHeader(
+          'Check-in của bạn bè ($visibleCheckinCount)',
+          onViewAll: checkins.isEmpty
+              ? null
+              : () => _showAllCheckinsSheet(checkins, place),
+        ),
         const SizedBox(height: 12),
         SizedBox(
           height: 165,
           child: checkins.isEmpty
-              ? const Center(child: Text('Chưa có check-in nào', style: TextStyle(color: Colors.grey, fontSize: 13)))
+              ? const Center(
+                  child: Text(
+                    'Chưa có check-in từ bạn bè',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                )
               : ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: checkins.length,
@@ -669,60 +1188,63 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 item['mediaId'] ?? item['url'],
               );
 
-              return Container(
-                width: 130,
-                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+              return GestureDetector(
+                onTap: () => _openCheckinDetail(item, place),
+                child: Container(
+                  width: 130,
+                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: checkinPhoto.isNotEmpty
-                            ? Image.network(
-                          checkinPhoto,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (_, _, _) => Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image, color: Colors.white),
-                          ),
-                        )
-                            : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        item['createdAt']?.toString().split('T').first ?? '',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
                         style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: checkinPhoto.isNotEmpty
+                              ? Image.network(
+                            checkinPhoto,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (_, _, _) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image, color: Colors.white),
+                            ),
+                          )
+                              : Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image, color: Colors.white),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Text(
+                          item['createdAt']?.toString().split('T').first ?? '',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -734,11 +1256,17 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Widget _buildFriendReviews(Place place) {
     final reviews = place.friendReviews;
+    final allReviews = <dynamic>[...place.friendReviews, ...place.otherReviews];
 
     if (reviews.isEmpty) {
       return Column(
         children: [
-          _buildSectionHeader('Bạn bè nói gì về quán này?'),
+          _buildSectionHeader(
+            'Bạn bè nói gì về quán này?',
+            onViewAll: allReviews.isEmpty
+                ? null
+                : () => _showAllReviewsSheet(allReviews),
+          ),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -759,7 +1287,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
     return Column(
       children: [
-        _buildSectionHeader('Bạn bè nói gì về quán này? (${reviews.length})'),
+        _buildSectionHeader(
+          'Bạn bè nói gì về quán này? (${reviews.length})',
+          onViewAll: allReviews.isEmpty
+              ? null
+              : () => _showAllReviewsSheet(allReviews),
+        ),
         const SizedBox(height: 12),
         ...reviews.map((review) {
           final item = review as Map<String, dynamic>;
@@ -774,6 +1307,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
     final bool isFeatured = review['isFeatured'] == true;
+    final mediaIds = _reviewMediaIds(review);
 
     return Container(
       padding: const EdgeInsets.all(15),
@@ -845,8 +1379,151 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               height: 1.4,
             ),
           ),
+          if (mediaIds.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 78,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: mediaIds.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final imageUrl = _getFullImageUrl(mediaIds[index]);
+                  return GestureDetector(
+                    onTap: () => _showReviewPhotoViewer(mediaIds, index),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 78,
+                        height: 78,
+                        color: Colors.white.withValues(alpha: 0.55),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Colors.black38,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.image_outlined,
+                                color: Colors.black38,
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  List<String> _reviewMediaIds(Map<String, dynamic> review) {
+    final raw = review['mediaIds'] ?? review['media_ids'];
+    if (raw is! Iterable) return const <String>[];
+
+    return raw
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  void _showReviewPhotoViewer(List<String> mediaIds, int initialIndex) {
+    final controller = PageController(initialPage: initialIndex);
+    var currentIndex = initialIndex;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              insetPadding: EdgeInsets.zero,
+              backgroundColor: Colors.black,
+              child: SafeArea(
+                child: Stack(
+                  children: [
+                    PageView.builder(
+                      controller: controller,
+                      itemCount: mediaIds.length,
+                      onPageChanged: (index) {
+                        setDialogState(() => currentIndex = index);
+                      },
+                      itemBuilder: (context, index) {
+                        final imageUrl = _getFullImageUrl(mediaIds[index]);
+                        return InteractiveViewer(
+                          minScale: 1,
+                          maxScale: 4,
+                          child: Center(
+                            child: imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, _, _) => const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.white54,
+                                      size: 48,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.image_outlined,
+                                    color: Colors.white54,
+                                    size: 48,
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                    if (mediaIds.length > 1)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 18,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Text(
+                              '${currentIndex + 1}/${mediaIds.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -855,7 +1532,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
     return Column(
       children: [
-        _buildSectionHeader('Ảnh (${photos.length})'),
+        _buildSectionHeader(
+          'Ảnh (${photos.length})',
+          onViewAll: photos.isEmpty ? null : () => _showAllPhotosSheet(photos),
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -936,7 +1616,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {VoidCallback? onViewAll}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -948,18 +1628,327 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             color: Colors.black,
           ),
         ),
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Xem tất cả',
-            style: TextStyle(
-              color: Color(0xFFEF484F),
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+        if (onViewAll != null)
+          TextButton(
+            onPressed: onViewAll,
+            child: const Text(
+              'Xem tất cả',
+              style: TextStyle(
+                color: Color(0xFFEF484F),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ),
       ],
+    );
+  }
+
+  void _showAllReviewsSheet(List<dynamic> reviews) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tất cả đánh giá (${reviews.length})',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    itemCount: reviews.length,
+                    itemBuilder: (context, index) {
+                      final review = reviews[index] as Map<String, dynamic>;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildReviewCard(review),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAllCheckinsSheet(List<dynamic> checkins, Place place) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tất cả check-in (${checkins.length})',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.82,
+                    ),
+                    itemCount: checkins.length,
+                    itemBuilder: (context, index) {
+                      final item = checkins[index] as Map<String, dynamic>;
+                      final imageUrl = _getFullImageUrl(
+                        item['mediaId'] ?? item['url'],
+                      );
+                      return _buildCheckinSheetCard(item, imageUrl, place);
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCheckinSheetCard(
+    Map<String, dynamic> item,
+    String imageUrl,
+    Place place,
+  ) {
+    return GestureDetector(
+      onTap: () => _openCheckinDetail(item, place),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE8E8E8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, _, _) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.broken_image,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image, color: Colors.white),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              item['createdAt']?.toString().split('T').first ?? '',
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openCheckinDetail(Map<String, dynamic> checkin, Place place) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => _CheckinDetailScreen(
+          checkin: checkin,
+          place: place,
+          imageUrl: _getFullImageUrl(checkin['mediaId'] ?? checkin['url']),
+        ),
+      ),
+    );
+  }
+
+  void _showAllPhotosSheet(List<dynamic> photos) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tất cả ảnh (${photos.length})',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                    ),
+                    itemCount: photos.length,
+                    itemBuilder: (context, index) {
+                      final item = photos[index] as Map<String, dynamic>;
+                      final imageUrl = _getFullImageUrl(
+                        item['mediaId'] ?? item['url'],
+                      );
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.image,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1011,6 +2000,169 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           },
         );
       },
+    );
+  }
+}
+
+class _CheckinDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> checkin;
+  final Place place;
+  final String imageUrl;
+
+  const _CheckinDetailScreen({
+    required this.checkin,
+    required this.place,
+    required this.imageUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final userName =
+        checkin['userName']?.toString() ?? checkin['name']?.toString() ?? 'Bạn bè';
+    final userAvatar = checkin['userAvatar']?.toString();
+    final caption = checkin['caption']?.toString().trim() ?? '';
+    final createdAt = checkin['createdAt']?.toString().split('T').first ?? '';
+    final rating = int.tryParse(checkin['rating']?.toString() ?? '') ?? 0;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFEF484F)),
+        ),
+        title: const Text(
+          'Chi tiết check-in',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          color: Colors.white,
+                          size: 42,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.image_outlined,
+                        color: Colors.white,
+                        size: 42,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: const Color(0xFFFFE1E5),
+                backgroundImage: userAvatar != null && userAvatar.isNotEmpty
+                    ? NetworkImage(userAvatar)
+                    : null,
+                child: userAvatar != null && userAvatar.isNotEmpty
+                    ? null
+                    : Text(
+                        userName.trim().isEmpty
+                            ? 'U'
+                            : userName.trim().substring(0, 1).toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFFEF484F),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      place.name ?? 'Địa điểm',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (rating > 0) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: List.generate(
+                5,
+                (index) => Icon(
+                  index < rating ? Icons.star : Icons.star_border,
+                  color: Colors.amber,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+          if (caption.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              caption,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 15,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (createdAt.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              createdAt,
+              style: const TextStyle(
+                color: Colors.black45,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

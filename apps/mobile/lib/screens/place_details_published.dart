@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import '../features/auth/place_provider.dart';
 
 class PlaceDetailsFriends extends ConsumerStatefulWidget {
@@ -13,6 +14,138 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
 }
 
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
+  String _buildShareUrl(Place place) {
+    final placeId = place.id?.trim().isNotEmpty == true
+        ? place.id!.trim()
+        : widget.placeId;
+    return 'https://fidee.site/places/$placeId';
+  }
+
+  String _buildShareText(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'địa điểm này';
+    final address = place.address?.trim();
+    final buffer = StringBuffer('Xem $name trên Fidee');
+    if (address != null && address.isNotEmpty) {
+      buffer.write('\n$address');
+    }
+    buffer.write('\n${_buildShareUrl(place)}');
+    return buffer.toString();
+  }
+
+  Future<void> _copyShareText(Place place) async {
+    await Clipboard.setData(ClipboardData(text: _buildShareText(place)));
+    if (!mounted) return;
+    Navigator.of(context).maybePop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã sao chép liên kết địa điểm')),
+    );
+  }
+
+  void _showShareSheet(Place place) {
+    final name = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'Địa điểm Fidee';
+    final address = place.address?.trim();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Chia sẻ địa điểm',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F8F8),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E8E8)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (address != null && address.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          address,
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _copyShareText(place),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text('Sao chép liên kết'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF484F),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final place = ref.watch(placeControllerProvider);
@@ -58,7 +191,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   size: 18,
                   color: Color(0xFFEF484F),
                 ),
-                onPressed: () {},
+                onPressed: () => _showShareSheet(place),
               ),
             ),
           ),
