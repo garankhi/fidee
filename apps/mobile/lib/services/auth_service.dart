@@ -614,6 +614,59 @@ class AuthService {
     }
   }
 
+  Future<AuthResult> deleteAccount() async {
+    if (isTestMode) {
+      _resetProfileDetails();
+      _state = AuthState.unauthenticated;
+      _username = null;
+      _cognitoUser = null;
+      _destination = null;
+      return const AuthResult(success: true);
+    }
+
+    final token = await getToken();
+    final userId = await getCurrentUserSub();
+    if (token == null || userId == null || userId.isEmpty) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      );
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse('${Config.apiBaseUrl}/users/$userId'),
+        headers: {'Authorization': token},
+      );
+      final body = decodeResponseObject(response.body);
+
+      if (response.statusCode == 200) {
+        try {
+          await _userPool.storage.clear();
+        } catch (_) {
+          // Ignore local storage cleanup failures after the server accepted deletion.
+        }
+        _resetProfileDetails();
+        _state = AuthState.unauthenticated;
+        _username = null;
+        _cognitoUser = null;
+        _destination = null;
+        return const AuthResult(success: true);
+      }
+
+      final error = body['error'] as String?;
+      return AuthResult(
+        success: false,
+        errorMessage: error ?? 'Không thể xóa tài khoản. Vui lòng thử lại.',
+      );
+    } catch (_) {
+      return const AuthResult(
+        success: false,
+        errorMessage: 'Lỗi kết nối. Vui lòng thử lại.',
+      );
+    }
+  }
+
   Future<AuthResult> completeProfile(
     String firstName,
     String lastName,

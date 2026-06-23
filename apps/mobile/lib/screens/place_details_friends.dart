@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/place_provider.dart';
 import '../features/auth/review_provider.dart';
+import '../services/place_candidate_service.dart';
 import '../services/upload_service.dart';
 import 'camera_screen.dart';
 
@@ -22,10 +23,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   static const String _serverBaseUrl = 'https://api.fidee.site';
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _reviewsKey = GlobalKey();
+  bool _isUploadingCover = false;
 
   String _getFullImageUrl(dynamic mediaId) {
     if (mediaId == null || mediaId.toString().isEmpty) {
-      return 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500';
+      return '';
     }
 
     final value = mediaId.toString();
@@ -118,6 +120,59 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         alignment: 0.08,
       );
     });
+  }
+
+  Future<void> _pickAndUploadCover(Place place) async {
+    if (!place.isCandidate || place.id == null) return;
+    
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    setState(() {
+      _isUploadingCover = true;
+    });
+
+    try {
+      final uploadService = UploadService(authService: ref.read(authServiceProvider));
+      final file = File(image.path);
+      
+      final mediaId = await uploadService.upload(
+        imagePath: file.path,
+        longitude: place.lng ?? 0,
+        latitude: place.lat ?? 0,
+        source: 'EXIF_GALLERY',
+        contentTypeOverride: 'image/jpeg',
+      );
+      
+      final placeCandidateService = PlaceCandidateService(ref.read(authServiceProvider));
+      await placeCandidateService.updateCandidate(
+        candidateId: place.id!,
+        mediaId: mediaId,
+      );
+      
+      await ref.read(placeControllerProvider.notifier).fetchPlaceDetail(place.id!);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã cập nhật ảnh bìa thành công!')),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('Upload error: $e');
+      debugPrint('Stacktrace: $st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải ảnh: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingCover = false;
+        });
+      }
+    }
   }
 
   @override
@@ -294,8 +349,30 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               ),
 
             if (bannerUrl.isEmpty)
-              const Center(
-                child: Icon(Icons.image, size: 40, color: Colors.white30),
+              Positioned.fill(
+                child: (place.isCreator && place.isCandidate) ? GestureDetector(
+                  onTap: _isUploadingCover ? null : () => _pickAndUploadCover(place),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_isUploadingCover)
+                          const CircularProgressIndicator(color: Color(0xFFEF484F))
+                        else ...[
+                          const Icon(Icons.add_a_photo, size: 40, color: Colors.white54),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Thêm ảnh bìa',
+                            style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ) : const Center(
+                  child: Icon(Icons.image, size: 40, color: Colors.white30),
+                ),
               ),
 
             Positioned(
