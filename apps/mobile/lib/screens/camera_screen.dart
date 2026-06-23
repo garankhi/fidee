@@ -124,12 +124,35 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   void _openHomeTab() {
-    if (!mounted || _activeBottomTab == CameraBottomTab.home) return;
+    if (!mounted) return;
+
+    if (_activeBottomTab == CameraBottomTab.home) {
+      unawaited(_returnToCameraPage());
+      return;
+    }
+
     setState(() {
       _activeBottomTab = CameraBottomTab.home;
       _showFeedAudienceSelector = false;
       _activeFeedItem = null;
     });
+    unawaited(_returnToCameraPage());
+  }
+
+  Future<void> _returnToCameraPage() async {
+    if (!mounted) return;
+
+    setState(() {
+      _showFeedAudienceSelector = false;
+      _activeFeedItem = null;
+    });
+
+    if (!_pageController.hasClients) return;
+    await _pageController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _openChatTab() {
@@ -686,6 +709,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       activeTab: _activeBottomTab,
                       showHistory:
                           !_showFeedAudienceSelector &&
+                          _activeBottomTab == CameraBottomTab.home,
+                      showHomeAsShutter:
+                          _showFeedAudienceSelector &&
                           _activeBottomTab == CameraBottomTab.home,
                       unreadCount: unreadCount,
                       onHomeTap: _openHomeTab,
