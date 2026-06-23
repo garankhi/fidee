@@ -650,15 +650,26 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Widget _buildFriendCheckins(Place place) {
     final checkins = place.friendCheckins;
+    final visibleCheckinCount = checkins.length;
 
     return Column(
       children: [
-        _buildSectionHeader('Check-in của bạn bè (${place.checkinCount})'),
+        _buildSectionHeader(
+          'Check-in của bạn bè ($visibleCheckinCount)',
+          onViewAll: checkins.isEmpty
+              ? null
+              : () => _showAllCheckinsSheet(checkins, place),
+        ),
         const SizedBox(height: 12),
         SizedBox(
           height: 165,
           child: checkins.isEmpty
-              ? const Center(child: Text('Chưa có check-in nào', style: TextStyle(color: Colors.grey, fontSize: 13)))
+              ? const Center(
+                  child: Text(
+                    'Chưa có check-in từ bạn bè',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                )
               : ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: checkins.length,
@@ -669,60 +680,63 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 item['mediaId'] ?? item['url'],
               );
 
-              return Container(
-                width: 130,
-                margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+              return GestureDetector(
+                onTap: () => _openCheckinDetail(item, place),
+                child: Container(
+                  width: 130,
+                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: checkinPhoto.isNotEmpty
-                            ? Image.network(
-                          checkinPhoto,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (_, _, _) => Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image, color: Colors.white),
-                          ),
-                        )
-                            : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        item['createdAt']?.toString().split('T').first ?? '',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
                         style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: checkinPhoto.isNotEmpty
+                              ? Image.network(
+                            checkinPhoto,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (_, _, _) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image, color: Colors.white),
+                            ),
+                          )
+                              : Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image, color: Colors.white),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Text(
+                          item['createdAt']?.toString().split('T').first ?? '',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -734,11 +748,17 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Widget _buildFriendReviews(Place place) {
     final reviews = place.friendReviews;
+    final allReviews = <dynamic>[...place.friendReviews, ...place.otherReviews];
 
     if (reviews.isEmpty) {
       return Column(
         children: [
-          _buildSectionHeader('Bạn bè nói gì về quán này?'),
+          _buildSectionHeader(
+            'Bạn bè nói gì về quán này?',
+            onViewAll: allReviews.isEmpty
+                ? null
+                : () => _showAllReviewsSheet(allReviews),
+          ),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -759,7 +779,12 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
     return Column(
       children: [
-        _buildSectionHeader('Bạn bè nói gì về quán này? (${reviews.length})'),
+        _buildSectionHeader(
+          'Bạn bè nói gì về quán này? (${reviews.length})',
+          onViewAll: allReviews.isEmpty
+              ? null
+              : () => _showAllReviewsSheet(allReviews),
+        ),
         const SizedBox(height: 12),
         ...reviews.map((review) {
           final item = review as Map<String, dynamic>;
@@ -774,6 +799,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
     final bool isFeatured = review['isFeatured'] == true;
+    final mediaIds = _reviewMediaIds(review);
 
     return Container(
       padding: const EdgeInsets.all(15),
@@ -845,8 +871,151 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               height: 1.4,
             ),
           ),
+          if (mediaIds.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 78,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: mediaIds.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final imageUrl = _getFullImageUrl(mediaIds[index]);
+                  return GestureDetector(
+                    onTap: () => _showReviewPhotoViewer(mediaIds, index),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 78,
+                        height: 78,
+                        color: Colors.white.withValues(alpha: 0.55),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Colors.black38,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.image_outlined,
+                                color: Colors.black38,
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  List<String> _reviewMediaIds(Map<String, dynamic> review) {
+    final raw = review['mediaIds'] ?? review['media_ids'];
+    if (raw is! Iterable) return const <String>[];
+
+    return raw
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  void _showReviewPhotoViewer(List<String> mediaIds, int initialIndex) {
+    final controller = PageController(initialPage: initialIndex);
+    var currentIndex = initialIndex;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              insetPadding: EdgeInsets.zero,
+              backgroundColor: Colors.black,
+              child: SafeArea(
+                child: Stack(
+                  children: [
+                    PageView.builder(
+                      controller: controller,
+                      itemCount: mediaIds.length,
+                      onPageChanged: (index) {
+                        setDialogState(() => currentIndex = index);
+                      },
+                      itemBuilder: (context, index) {
+                        final imageUrl = _getFullImageUrl(mediaIds[index]);
+                        return InteractiveViewer(
+                          minScale: 1,
+                          maxScale: 4,
+                          child: Center(
+                            child: imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, _, _) => const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.white54,
+                                      size: 48,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.image_outlined,
+                                    color: Colors.white54,
+                                    size: 48,
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                    if (mediaIds.length > 1)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 18,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Text(
+                              '${currentIndex + 1}/${mediaIds.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -855,7 +1024,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
     return Column(
       children: [
-        _buildSectionHeader('Ảnh (${photos.length})'),
+        _buildSectionHeader(
+          'Ảnh (${photos.length})',
+          onViewAll: photos.isEmpty ? null : () => _showAllPhotosSheet(photos),
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -936,7 +1108,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {VoidCallback? onViewAll}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -948,18 +1120,327 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             color: Colors.black,
           ),
         ),
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Xem tất cả',
-            style: TextStyle(
-              color: Color(0xFFEF484F),
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+        if (onViewAll != null)
+          TextButton(
+            onPressed: onViewAll,
+            child: const Text(
+              'Xem tất cả',
+              style: TextStyle(
+                color: Color(0xFFEF484F),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ),
       ],
+    );
+  }
+
+  void _showAllReviewsSheet(List<dynamic> reviews) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tất cả đánh giá (${reviews.length})',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    itemCount: reviews.length,
+                    itemBuilder: (context, index) {
+                      final review = reviews[index] as Map<String, dynamic>;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildReviewCard(review),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAllCheckinsSheet(List<dynamic> checkins, Place place) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tất cả check-in (${checkins.length})',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.82,
+                    ),
+                    itemCount: checkins.length,
+                    itemBuilder: (context, index) {
+                      final item = checkins[index] as Map<String, dynamic>;
+                      final imageUrl = _getFullImageUrl(
+                        item['mediaId'] ?? item['url'],
+                      );
+                      return _buildCheckinSheetCard(item, imageUrl, place);
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCheckinSheetCard(
+    Map<String, dynamic> item,
+    String imageUrl,
+    Place place,
+  ) {
+    return GestureDetector(
+      onTap: () => _openCheckinDetail(item, place),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE8E8E8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, _, _) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.broken_image,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image, color: Colors.white),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              item['createdAt']?.toString().split('T').first ?? '',
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openCheckinDetail(Map<String, dynamic> checkin, Place place) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => _CheckinDetailScreen(
+          checkin: checkin,
+          place: place,
+          imageUrl: _getFullImageUrl(checkin['mediaId'] ?? checkin['url']),
+        ),
+      ),
+    );
+  }
+
+  void _showAllPhotosSheet(List<dynamic> photos) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tất cả ảnh (${photos.length})',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                    ),
+                    itemCount: photos.length,
+                    itemBuilder: (context, index) {
+                      final item = photos[index] as Map<String, dynamic>;
+                      final imageUrl = _getFullImageUrl(
+                        item['mediaId'] ?? item['url'],
+                      );
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.image,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1011,6 +1492,169 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           },
         );
       },
+    );
+  }
+}
+
+class _CheckinDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> checkin;
+  final Place place;
+  final String imageUrl;
+
+  const _CheckinDetailScreen({
+    required this.checkin,
+    required this.place,
+    required this.imageUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final userName =
+        checkin['userName']?.toString() ?? checkin['name']?.toString() ?? 'Bạn bè';
+    final userAvatar = checkin['userAvatar']?.toString();
+    final caption = checkin['caption']?.toString().trim() ?? '';
+    final createdAt = checkin['createdAt']?.toString().split('T').first ?? '';
+    final rating = int.tryParse(checkin['rating']?.toString() ?? '') ?? 0;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFEF484F)),
+        ),
+        title: const Text(
+          'Chi tiết check-in',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          color: Colors.white,
+                          size: 42,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.image_outlined,
+                        color: Colors.white,
+                        size: 42,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: const Color(0xFFFFE1E5),
+                backgroundImage: userAvatar != null && userAvatar.isNotEmpty
+                    ? NetworkImage(userAvatar)
+                    : null,
+                child: userAvatar != null && userAvatar.isNotEmpty
+                    ? null
+                    : Text(
+                        userName.trim().isEmpty
+                            ? 'U'
+                            : userName.trim().substring(0, 1).toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFFEF484F),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      place.name ?? 'Địa điểm',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (rating > 0) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: List.generate(
+                5,
+                (index) => Icon(
+                  index < rating ? Icons.star : Icons.star_border,
+                  color: Colors.amber,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+          if (caption.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              caption,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 15,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (createdAt.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              createdAt,
+              style: const TextStyle(
+                color: Colors.black45,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
