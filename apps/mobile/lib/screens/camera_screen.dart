@@ -652,6 +652,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       activeTab: _showHistoryGrid
                           ? CameraBottomTab.history
                           : CameraBottomTab.home,
+                      showHistory:
+                          !_showFeedAudienceSelector && !_showHistoryGrid,
                       unreadCount: unreadCount,
                       onHomeTap: () {
                         if (!_showHistoryGrid) return;

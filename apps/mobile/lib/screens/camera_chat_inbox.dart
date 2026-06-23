@@ -6,6 +6,7 @@ import '../services/user_chat_service.dart';
 import 'camera_bottom_section.dart';
 import 'camera_story_history_screen.dart';
 import 'chat_thread_screen.dart';
+import 'profile_screen.dart';
 
 class CameraChatThread {
   final String id;
@@ -186,21 +187,32 @@ class _CameraChatHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: Container(
-              key: const ValueKey('camera-chat-me-avatar'),
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: Colors.blueAccent,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Text(
-                  'Tôi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                key: const ValueKey('camera-chat-me-avatar'),
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: Colors.blueAccent,
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text(
+                    'Tôi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
