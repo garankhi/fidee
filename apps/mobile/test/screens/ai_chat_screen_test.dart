@@ -4,25 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget buildScreen({String? initialMessage}) {
+  Widget buildScreen({
+    String? initialMessage,
+    List<List<AiContextPlace>>? capturedContexts,
+  }) {
     return MaterialApp(
       home: AiChatScreen(
         initialMessage: initialMessage,
-        search: (prompt, history) async => AiSearchResult(
-          answer:
-              'Fidee đã tìm qua /search cho "$prompt". Đây là vài gợi ý hợp vibe.',
-          results: const [
-            AiPlaceResult(
-              id: 'place-1',
-              name: 'Quán Trà Sữa Test',
-              category: 'cafe',
-              address: '123 Nguyễn Huệ',
-              description: 'Không gian rộng, hợp đi nhóm.',
-              similarityScore: 0.82,
-              tags: ['Cà phê', 'Wifi'],
-            ),
-          ],
-        ),
+        search: (prompt, history, contextPlaces) async {
+          capturedContexts?.add(contextPlaces);
+          return AiSearchResult(
+            answer:
+                'Fidee đã tìm qua /search cho "$prompt". Đây là vài gợi ý hợp vibe.',
+            results: const [
+              AiPlaceResult(
+                id: 'place-1',
+                name: 'Quán Trà Sữa Test',
+                category: 'cafe',
+                address: '123 Nguyễn Huệ',
+                description: 'Không gian rộng, hợp đi nhóm.',
+                similarityScore: 0.82,
+                tags: ['Cà phê', 'Wifi'],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -102,5 +108,27 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).controller?.text,
       isEmpty,
     );
+  });
+
+  testWidgets('sends previous place cards as context for follow-up questions', (
+    tester,
+  ) async {
+    final capturedContexts = <List<AiContextPlace>>[];
+    await tester.pumpWidget(buildScreen(capturedContexts: capturedContexts));
+
+    await tester.enterText(find.byType(TextField), 'Tìm quán cafe gần đây');
+    await tester.tap(find.byIcon(Icons.send_rounded));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'quán đó mấy giờ đóng cửa');
+    await tester.tap(find.byIcon(Icons.send_rounded));
+    await tester.pump();
+    await tester.pump();
+
+    expect(capturedContexts.length, 2);
+    expect(capturedContexts.first, isEmpty);
+    expect(capturedContexts.last.single.id, 'place-1');
+    expect(capturedContexts.last.single.name, 'Quán Trà Sữa Test');
   });
 }

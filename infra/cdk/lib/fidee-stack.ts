@@ -626,7 +626,7 @@ export class FideeStack extends cdk.Stack {
       },
     });
     dbCluster.secret!.grantRead(searchFn);
-    userProfilesTable.grantReadData(searchFn);
+    userProfilesTable.grantReadWriteData(searchFn);
 
     const createMediaUploadFn = new nodejs.NodejsFunction(this, 'CreateMediaUploadFunction', {
       functionName: resourceName(stage, 'create-media-upload'),

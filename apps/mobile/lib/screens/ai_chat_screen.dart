@@ -9,6 +9,7 @@ typedef AiSearchRunner =
     Future<AiSearchResult> Function(
       String prompt,
       List<AiChatHistoryMessage> history,
+      List<AiContextPlace> contextPlaces,
     );
 
 class AiChatScreen extends StatefulWidget {
@@ -36,6 +37,7 @@ class _ChatMessage {
 class _AiChatScreenState extends State<AiChatScreen> {
   final TextEditingController _chatController = TextEditingController();
   final List<_ChatMessage> _messages = [];
+  List<AiContextPlace> _contextPlaces = const <AiContextPlace>[];
   bool _isWaitingForAnswer = false;
 
   @override
@@ -64,6 +66,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         )
         .toList(growable: false);
+    final contextPlaces = _contextPlaces;
 
     setState(() {
       _messages.add(_ChatMessage(text: trimmedMessage, isUser: true));
@@ -73,11 +76,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
     try {
       final search = widget.search ?? _searchWithApi;
-      final result = await search(trimmedMessage, history);
+      final result = await search(trimmedMessage, history, contextPlaces);
       if (!mounted) return;
 
       final places = result.results.take(5).toList(growable: false);
       setState(() {
+        if (places.isNotEmpty) {
+          _contextPlaces = places
+              .map((place) => place.toContextPlace())
+              .toList(growable: false);
+        }
         _messages.add(
           _ChatMessage(
             text: _cleanAssistantAnswer(
@@ -137,14 +145,17 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Future<AiSearchResult> _searchWithApi(
     String prompt,
     List<AiChatHistoryMessage> history,
+    List<AiContextPlace> contextPlaces,
   ) {
     final authService = ProviderScope.containerOf(
       context,
       listen: false,
     ).read(authServiceProvider);
-    return AiSearchService(
-      authService,
-    ).search(prompt: prompt, history: history);
+    return AiSearchService(authService).search(
+      prompt: prompt,
+      history: history,
+      contextPlaces: contextPlaces,
+    );
   }
 
   void _openPlace(AiPlaceResult place) {
@@ -417,7 +428,10 @@ class _ChatMessageView extends StatelessWidget {
   final _ChatMessage message;
   final ValueChanged<AiPlaceResult> onPlaceTap;
 
-  const _ChatMessageView({required this.message, required this.onPlaceTap});
+  const _ChatMessageView({
+    required this.message,
+    required this.onPlaceTap,
+  });
 
   @override
   Widget build(BuildContext context) {

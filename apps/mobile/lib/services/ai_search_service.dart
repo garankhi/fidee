@@ -15,6 +15,15 @@ class AiChatHistoryMessage {
   Map<String, dynamic> toJson() => {'role': role, 'text': text};
 }
 
+class AiContextPlace {
+  final String id;
+  final String name;
+
+  const AiContextPlace({required this.id, required this.name});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+}
+
 class AiSearchResult {
   final String answer;
   final String? searchMethod;
@@ -90,6 +99,8 @@ class AiPlaceResult {
     );
   }
 
+  AiContextPlace toContextPlace() => AiContextPlace(id: id, name: name);
+
   String get priceLabel {
     if (priceMin == null && priceMax == null) return '';
     if (priceMin != null && priceMax != null) {
@@ -164,6 +175,7 @@ class AiSearchService {
   Future<AiSearchResult> search({
     required String prompt,
     List<AiChatHistoryMessage> history = const <AiChatHistoryMessage>[],
+    List<AiContextPlace> contextPlaces = const <AiContextPlace>[],
     int limit = 10,
   }) async {
     final token = await _authService.getToken();
@@ -177,6 +189,7 @@ class AiSearchService {
       body: jsonEncode({
         'prompt': prompt,
         'history': history.map((message) => message.toJson()).toList(),
+        'contextPlaces': contextPlaces.map((place) => place.toJson()).toList(),
         'limit': limit,
       }),
     );
