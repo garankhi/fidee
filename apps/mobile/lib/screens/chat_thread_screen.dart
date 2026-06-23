@@ -7,6 +7,7 @@ import '../features/auth/auth_providers.dart';
 import '../features/auth/chat_provider.dart';
 import '../services/appsync_realtime_service.dart';
 import '../services/user_chat_service.dart';
+import 'place_details_friends.dart';
 
 class ChatThreadScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -167,41 +168,100 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.message, required this.isMine});
 
+  static final RegExp _placeUrlPattern = RegExp(
+    r'https:\/\/fidee\.site\/places\/([0-9a-fA-F-]{36})',
+  );
+  static final RegExp _placeMarkerPattern = RegExp(
+    r'\u2063fidee_place:([0-9a-fA-F-]{36})',
+  );
+
+  String? _extractPlaceId(String body) {
+    final markerMatch = _placeMarkerPattern.firstMatch(body);
+    if (markerMatch != null) return markerMatch.group(1);
+
+    final urlMatch = _placeUrlPattern.firstMatch(body);
+    return urlMatch?.group(1);
+  }
+
+  String _visibleBody(String body) {
+    return body.replaceAll(_placeMarkerPattern, '').trimRight();
+  }
+
+  void _openPlaceDetail(BuildContext context, String placeId) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlaceDetailsFriends(placeId: placeId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final placeId = _extractPlaceId(message.body);
+    final canOpenPlace = placeId != null && placeId.isNotEmpty;
+    final visibleBody = _visibleBody(message.body);
+
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 290),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMine ? const Color(0xFFEF4050) : const Color(0xFF243135),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.body,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.35,
-              ),
-            ),
-            if (message.isPending) ...[
-              const SizedBox(height: 4),
+      child: GestureDetector(
+        onTap: canOpenPlace ? () => _openPlaceDetail(context, placeId) : null,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 290),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isMine ? const Color(0xFFEF4050) : const Color(0xFF243135),
+            borderRadius: BorderRadius.circular(18),
+            border: canOpenPlace
+                ? Border.all(color: Colors.white.withValues(alpha: 0.18))
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Đang gửi',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                visibleBody,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  height: 1.35,
                 ),
               ),
+              if (canOpenPlace) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.storefront_rounded,
+                      color: Colors.white.withValues(alpha: 0.82),
+                      size: 15,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Nhấn để mở địa điểm',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (message.isPending) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Đang gửi',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

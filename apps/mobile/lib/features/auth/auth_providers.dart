@@ -218,6 +218,24 @@ class AuthController extends _$AuthController {
     state = AsyncData(AuthUiState.fromService(service));
   }
 
+  Future<AuthResult> deleteAccount() async {
+    final current = _currentState();
+    state = AsyncData(current.copyWith(isSubmitting: true, clearError: true));
+
+    final service = ref.read(authServiceProvider);
+    final result = await service.deleteAccount();
+    if (result.success) {
+      await _syncRevenueCatLogout();
+    }
+    state = AsyncData(
+      AuthUiState.fromService(
+        service,
+        errorMessage: result.success ? null : result.errorMessage,
+      ),
+    );
+    return result;
+  }
+
   Future<AuthResult> completeProfile(
     String firstName,
     String lastName,

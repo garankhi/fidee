@@ -143,13 +143,13 @@ class PlaceCandidateService {
       'category': category,
       'coordinates': {'lat': lat, 'lng': lng},
       'force': force,
-      'address': ?address,
-      'openTime': ?openTime,
-      'closeTime': ?closeTime,
-      'priceMin': ?priceMin,
-      'priceMax': ?priceMax,
-      'phoneNumber': ?phoneNumber,
-      'description': ?description,
+      if (address != null) 'address': address,
+      if (openTime != null) 'openTime': openTime,
+      if (closeTime != null) 'closeTime': closeTime,
+      if (priceMin != null) 'priceMin': priceMin,
+      if (priceMax != null) 'priceMax': priceMax,
+      if (phoneNumber != null) 'phoneNumber': phoneNumber,
+      if (description != null) 'description': description,
       'visibility': visibility,
     };
     if (mediaId != null) {
@@ -211,15 +211,15 @@ class PlaceCandidateService {
     }
 
     final payload = {
-      'address': ?address,
-      'openTime': ?openTime,
-      'closeTime': ?closeTime,
-      'priceMin': ?priceMin,
-      'priceMax': ?priceMax,
-      'phoneNumber': ?phoneNumber,
-      'description': ?description,
-      'visibility': ?visibility,
-      'mediaId': ?mediaId,
+      if (address != null) 'address': address,
+      if (openTime != null) 'openTime': openTime,
+      if (closeTime != null) 'closeTime': closeTime,
+      if (priceMin != null) 'priceMin': priceMin,
+      if (priceMax != null) 'priceMax': priceMax,
+      if (phoneNumber != null) 'phoneNumber': phoneNumber,
+      if (description != null) 'description': description,
+      if (visibility != null) 'visibility': visibility,
+      if (mediaId != null) 'mediaId': mediaId,
     };
 
     final response = await _client.patch(
