@@ -186,6 +186,13 @@ class PlaceController extends _$PlaceController {
   }
 
   void clear() => state = const Place();
+
+  void prependFriendReview(Map<String, dynamic> review) {
+    state = state.copyWith(
+      friendReviews: <dynamic>[review, ...state.friendReviews],
+      ratingCount: state.ratingCount + 1,
+    );
+  }
 }
 
 @riverpod
