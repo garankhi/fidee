@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../features/auth/candidate_provider.dart';
+import 'comment_sheet.dart';
 import 'place_details_friends.dart';
 
 class CandidateFeedScreen extends ConsumerStatefulWidget {
@@ -67,6 +68,22 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
     return '${min}đ - ${max}đ';
   }
 
+  void _openComments(CandidatePlace candidate) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => CommentSheet(
+        targetType: 'CANDIDATE',
+        targetId: candidate.id,
+        initialCommentCount: candidate.commentCount,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final candidatesAsync = ref.watch(candidateControllerProvider);
@@ -88,19 +105,12 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
         centerTitle: true,
       ),
       body: candidatesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator.adaptive(),
-        ),
-        error: (err, _) => Center(
-          child: Text('Đã xảy ra lỗi: $err'),
-        ),
+        loading: () =>
+            const Center(child: CircularProgressIndicator.adaptive()),
+        error: (err, _) => Center(child: Text('Đã xảy ra lỗi: $err')),
         data: (candidates) {
           if (candidates.isEmpty) {
-            return const Center(
-              child: Text(
-                'Không có địa điểm nào cần duyệt',
-              ),
-            );
+            return const Center(child: Text('Không có địa điểm nào cần duyệt'));
           }
 
           return RefreshIndicator(
@@ -110,10 +120,7 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                   .refresh(status: _selectedStatus);
             },
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               itemCount: candidates.length,
               itemBuilder: (context, index) {
                 final candidate = candidates[index];
@@ -123,9 +130,8 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (_) => PlaceDetailsFriends(
-                          placeId: candidate.id,
-                        ),
+                        builder: (_) =>
+                            PlaceDetailsFriends(placeId: candidate.id),
                       ),
                     );
                   },
@@ -168,7 +174,9 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                     backgroundColor: Colors.grey[200],
                     backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                         ? NetworkImage(avatarUrl)
-                        : const NetworkImage('https://ui-avatars.com/api/?name=User'),
+                        : const NetworkImage(
+                            'https://ui-avatars.com/api/?name=User',
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -177,7 +185,9 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          place.createdByName ?? place.createdByUsername ?? 'Người dùng',
+                          place.createdByName ??
+                              place.createdByUsername ??
+                              'Người dùng',
                           style: const TextStyle(
                             color: Color(0xFF0E1B16),
                             fontSize: 16,
@@ -225,9 +235,9 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                   const SizedBox(height: 8),
                   Text(
                     '📍 Địa chỉ: ${place.address ?? "Chưa cập nhật địa chỉ"}\n'
-                        '📞 SĐT: ${place.phoneNumber ?? "Chưa cập nhật SĐT"}\n'
-                        '💵 Giá: ${_formatPrice(place.priceMin, place.priceMax)}\n'
-                        '🕗 Giờ mở cửa: ${_formatHours(place.openTime, place.closeTime)}',
+                    '📞 SĐT: ${place.phoneNumber ?? "Chưa cập nhật SĐT"}\n'
+                    '💵 Giá: ${_formatPrice(place.priceMin, place.priceMax)}\n'
+                    '🕗 Giờ mở cửa: ${_formatHours(place.openTime, place.closeTime)}',
                     style: const TextStyle(
                       color: Color(0xFF0E1B16),
                       fontSize: 13,
@@ -251,12 +261,13 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: mediaId != null && !mediaId.contains('mock')
                         ? Image.network(
-                      mediaId,
-                      width: 160,
-                      height: 200,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
-                    )
+                            mediaId,
+                            width: 160,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _buildImagePlaceholder(),
+                          )
                         : _buildImagePlaceholder(),
                   ),
                 ],
@@ -304,14 +315,26 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                   const SizedBox(width: 20),
                   Row(
                     children: [
-                      Icon(Icons.chat_bubble_outline, color: Colors.grey[700], size: 20),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(
+                          Icons.chat_bubble_outline,
+                          color: Colors.grey[700],
+                          size: 20,
+                        ),
+                        onPressed: () => _openComments(place),
+                      ),
                       const SizedBox(width: 6),
-                      const Text(
-                        '',
+                      Text(
+                        place.commentCount > 0
+                            ? place.commentCount.toString()
+                            : '',
                         style: TextStyle(
                           fontSize: 14,
                           fontFamily: 'SF Pro',
                           fontWeight: FontWeight.w700,
+                          color: Colors.grey[700],
                         ),
                       ),
                     ],
@@ -320,14 +343,22 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: Icon(Icons.send_outlined, color: Colors.grey[700], size: 20),
+                    icon: Icon(
+                      Icons.send_outlined,
+                      color: Colors.grey[700],
+                      size: 20,
+                    ),
                     onPressed: () {},
                   ),
                   const Spacer(),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: Icon(Icons.bookmark_border_rounded, color: Colors.grey[700], size: 22),
+                    icon: Icon(
+                      Icons.bookmark_border_rounded,
+                      color: Colors.grey[700],
+                      size: 22,
+                    ),
                     onPressed: () {},
                   ),
                 ],
@@ -351,12 +382,16 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
       child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 32),
+          Icon(
+            Icons.image_not_supported_outlined,
+            color: Colors.grey,
+            size: 32,
+          ),
           SizedBox(height: 4),
           Text(
             'Không có ảnh',
             style: TextStyle(color: Colors.grey, fontSize: 11),
-          )
+          ),
         ],
       ),
     );

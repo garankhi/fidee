@@ -32,6 +32,7 @@ class CandidatePlace {
   final String? createdByName;
   final String? createdByUsername;
   final String? createdByAvatar;
+  final int commentCount;
 
   final double distanceKm;
   final int distanceMeters;
@@ -57,6 +58,7 @@ class CandidatePlace {
     this.createdByName,
     this.createdByUsername,
     this.createdByAvatar,
+    this.commentCount = 0,
     required this.distanceKm,
     required this.distanceMeters,
   });
@@ -88,6 +90,9 @@ class CandidatePlace {
       createdByName: json['created_by_name']?.toString(),
       createdByUsername: json['created_by_username']?.toString(),
       createdByAvatar: json['created_by_avatar']?.toString(),
+      commentCount:
+          ((json['commentCount'] ?? json['comment_count']) as num?)?.toInt() ??
+          0,
 
       distanceKm: 0.0,
       distanceMeters: 0,

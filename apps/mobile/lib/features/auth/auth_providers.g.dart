@@ -45,7 +45,7 @@ final locationControllerProvider = FutureProvider<LocationService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LocationControllerRef = FutureProviderRef<LocationService>;
-String _$authControllerHash() => r'61c704c161c419485d6343fc45c85c0b22ecfb3f';
+String _$authControllerHash() => r'1d0c20e521f4b4385f0eb80689abab307cfe0e04';
 
 /// See also [AuthController].
 @ProviderFor(AuthController)
