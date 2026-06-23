@@ -4,9 +4,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class HomeAiSearchBar extends StatefulWidget {
-  const HomeAiSearchBar({super.key, required this.onSubmitted});
+  const HomeAiSearchBar({
+    super.key,
+    required this.onSubmitted,
+    this.onOpenChat,
+  });
 
   final ValueChanged<String> onSubmitted;
+  final VoidCallback? onOpenChat;
 
   @override
   State<HomeAiSearchBar> createState() => _HomeAiSearchBarState();
@@ -145,7 +150,20 @@ class _HomeAiSearchBarState extends State<HomeAiSearchBar> {
               ],
             ),
           ),
-          Icon(Icons.mic, color: Colors.grey.shade600),
+          IconButton(
+            key: const ValueKey('home-ai-chat-button'),
+            tooltip: 'Mở Fidee AI',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            onPressed: widget.onOpenChat,
+            icon: Icon(
+              Icons.auto_awesome_rounded,
+              color: widget.onOpenChat == null
+                  ? Colors.grey.shade400
+                  : const Color(0xFFFF3B30),
+              size: 22,
+            ),
+          ),
         ],
       ),
     );

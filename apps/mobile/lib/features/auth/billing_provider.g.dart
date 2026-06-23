@@ -23,7 +23,7 @@ final revenueCatServiceProvider = Provider<RevenueCatService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef RevenueCatServiceRef = ProviderRef<RevenueCatService>;
-String _$billingControllerHash() => r'e2754c371585859b309c29c311c68ab64323a6ea';
+String _$billingControllerHash() => r'f05e3248c16a1db20f05a8f78767ed957b539c48';
 
 /// See also [BillingController].
 @ProviderFor(BillingController)

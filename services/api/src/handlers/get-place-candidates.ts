@@ -49,7 +49,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         pc.created_by,
         u.display_name AS created_by_name,
         u.username AS created_by_username,
-        u.avatar_url AS created_by_avatar
+        u.avatar_url AS created_by_avatar,
+        (SELECT COUNT(*)::integer FROM comments c WHERE c.target_type = 'CANDIDATE' AND c.target_id = pc.id) AS "commentCount"
       FROM place_candidates pc
       JOIN users u ON pc.created_by = u.id
       WHERE pc.status = $1
@@ -66,6 +67,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         status: 'success',
         data: result.rows.map((r: any) => ({
           ...r,
+          commentCount: r.commentCount,
           coordinates: { lat: parseFloat(r.lat), lng: parseFloat(r.lng) },
         })),
       }),
