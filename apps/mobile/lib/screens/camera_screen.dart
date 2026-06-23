@@ -68,7 +68,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       GalleryPermissionStatus.notDetermined;
   CameraCheckinFeedItem? _activeFeedItem;
   bool _showFeedAudienceSelector = false;
-  bool _showHistoryGrid = false;
+  CameraBottomTab _activeBottomTab = CameraBottomTab.home;
   Timer? _recordingTimer;
   bool _isRecordingVideo = false;
   DateTime? _recordingStartedAt;
@@ -107,7 +107,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   void _handleFeedModeChanged(bool isViewingFeed) {
-    if (_showHistoryGrid && !isViewingFeed) return;
+    if (_activeBottomTab != CameraBottomTab.home) return;
     if (!mounted || _showFeedAudienceSelector == isViewingFeed) return;
     setState(() {
       _showFeedAudienceSelector = isViewingFeed;
@@ -117,16 +117,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   void _openHistoryGrid() {
     if (!mounted) return;
     setState(() {
-      _showHistoryGrid = true;
+      _activeBottomTab = CameraBottomTab.history;
       _showFeedAudienceSelector = true;
       _activeFeedItem = null;
     });
   }
 
+  void _openHomeTab() {
+    if (!mounted || _activeBottomTab == CameraBottomTab.home) return;
+    setState(() {
+      _activeBottomTab = CameraBottomTab.home;
+      _showFeedAudienceSelector = false;
+      _activeFeedItem = null;
+    });
+  }
+
+  void _openChatTab() {
+    if (!mounted || _activeBottomTab == CameraBottomTab.chat) return;
+    setState(() {
+      _activeBottomTab = CameraBottomTab.chat;
+      _showFeedAudienceSelector = false;
+      _activeFeedItem = null;
+    });
+  }
+
   Future<void> _scrollToFirstStory() async {
-    if (_showHistoryGrid) {
+    if (_activeBottomTab == CameraBottomTab.history) {
       setState(() {
-        _showHistoryGrid = false;
+        _activeBottomTab = CameraBottomTab.home;
         _showFeedAudienceSelector = true;
       });
       await WidgetsBinding.instance.endOfFrame;
@@ -143,7 +161,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   Future<void> _openHistoryItem(int index) async {
     if (!mounted) return;
     setState(() {
-      _showHistoryGrid = false;
+      _activeBottomTab = CameraBottomTab.home;
       _showFeedAudienceSelector = true;
     });
 
@@ -175,15 +193,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final item = _activeFeedItem;
     if (item == null) return;
     debugPrint('Feed reaction recorded for ${item.userName}: $reaction');
-  }
-
-  void _openChatInbox() {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const CameraChatInboxScreen(),
-      ),
-    );
   }
 
   void _openProfile() {
@@ -565,9 +574,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       authUiState?.lastName,
       fallback: authUiState?.preferredUsername ?? 'Bạn',
     );
+    const chatBackgroundColor = Color(0xFF101B1F);
+    final isChatTab = _activeBottomTab == CameraBottomTab.chat;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: isChatTab ? chatBackgroundColor : Colors.black,
       body: Stack(
         children: [
           SafeArea(
@@ -577,31 +588,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   MediaQuery.sizeOf(context).width,
                   460.0,
                 );
+                final isHistoryTab =
+                    _activeBottomTab == CameraBottomTab.history;
 
                 return Column(
                   children: [
-                    _CameraTopBar(
-                      friendsCount: friendsState.friendCount,
-                      friendRequestCount: friendsState.requestCount,
-                      showAudienceSelector: _showFeedAudienceSelector,
-                      selectedAudience: feedState.audience,
-                      friends: friendsState.friends,
-                      currentUserAvatarUrl: authUiState?.avatarUrl,
-                      currentUserInitials: currentUserInitials,
-                      onMapTap: () => Navigator.pop(context),
-                      onFriendsTap: () => showCameraFriendsSheet(context),
-                      onProfileTap: _openProfile,
-                      onAudienceSelected: (audience) =>
-                          unawaited(_selectFeedAudience(audience)),
-                    ),
+                    if (!isChatTab)
+                      _CameraTopBar(
+                        friendsCount: friendsState.friendCount,
+                        friendRequestCount: friendsState.requestCount,
+                        showAudienceSelector: _showFeedAudienceSelector,
+                        selectedAudience: feedState.audience,
+                        friends: friendsState.friends,
+                        currentUserAvatarUrl: authUiState?.avatarUrl,
+                        currentUserInitials: currentUserInitials,
+                        onMapTap: () => Navigator.pop(context),
+                        onFriendsTap: () => showCameraFriendsSheet(context),
+                        onProfileTap: _openProfile,
+                        onAudienceSelected: (audience) =>
+                            unawaited(_selectFeedAudience(audience)),
+                      ),
                     Expanded(
                       child: SizedBox(
-                        width: _showHistoryGrid
+                        width: isHistoryTab || isChatTab
                             ? MediaQuery.sizeOf(context).width
                             : deckWidth,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
-                          child: _showHistoryGrid
+                          child: isHistoryTab
                               ? NotificationListener<ScrollNotification>(
                                   key: const ValueKey('camera-history-grid'),
                                   onNotification: (notification) {
@@ -622,6 +636,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                     onItemTap: (index) =>
                                         unawaited(_openHistoryItem(index)),
                                   ),
+                                )
+                              : isChatTab
+                              ? const ColoredBox(
+                                  key: ValueKey('camera-chat-tab'),
+                                  color: chatBackgroundColor,
+                                  child: CameraChatInboxContent(),
                                 )
                               : CameraViewfinderPager(
                                   key: const ValueKey(
@@ -663,20 +683,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       ),
                     ),
                     CameraBottomSection(
-                      activeTab: _showHistoryGrid
-                          ? CameraBottomTab.history
-                          : CameraBottomTab.home,
+                      activeTab: _activeBottomTab,
                       showHistory:
-                          !_showFeedAudienceSelector && !_showHistoryGrid,
+                          !_showFeedAudienceSelector &&
+                          _activeBottomTab == CameraBottomTab.home,
                       unreadCount: unreadCount,
-                      onHomeTap: () {
-                        if (!_showHistoryGrid) return;
-                        setState(() {
-                          _showHistoryGrid = false;
-                          _showFeedAudienceSelector = false;
-                        });
-                      },
-                      onChatTap: _openChatInbox,
+                      onHomeTap: _openHomeTab,
+                      onChatTap: _openChatTab,
                       onHistoryTap: _openHistoryGrid,
                       onHistoryLabelTap: () => unawaited(_scrollToFirstStory()),
                     ),
@@ -775,6 +788,7 @@ class _CameraTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compactHeight = MediaQuery.sizeOf(context).height < 720;
+    final avatarUrl = currentUserAvatarUrl?.trim();
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -814,23 +828,42 @@ class _CameraTopBar extends StatelessWidget {
             child: Container(
               width: 36,
               height: 36,
-              decoration: const BoxDecoration(
-                color: Colors.blueAccent,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Text(
-                  'Tôi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              clipBehavior: Clip.antiAlias,
+              child: avatarUrl == null || avatarUrl.isEmpty
+                  ? _CameraProfileInitials(initials: currentUserInitials)
+                  : Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _CameraProfileInitials(initials: currentUserInitials),
+                    ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CameraProfileInitials extends StatelessWidget {
+  final String initials;
+
+  const _CameraProfileInitials({required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.blueAccent,
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }

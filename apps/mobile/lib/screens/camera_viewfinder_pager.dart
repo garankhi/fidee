@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/camera_checkin_feed_item.dart';
 import '../services/camera_feed_image_cache.dart';
+import '../widgets/glass_surface.dart';
 import 'camera_checkin_feed.dart';
 
 class CameraViewfinderPager extends StatefulWidget {
@@ -232,11 +233,13 @@ class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
 class _CameraSwipePage extends StatelessWidget {
   final Widget media;
   final Widget footer;
+  final Alignment mediaAlignment;
 
   const _CameraSwipePage({
     super.key,
     required this.media,
     required this.footer,
+    this.mediaAlignment = Alignment.bottomCenter,
   });
 
   @override
@@ -251,7 +254,7 @@ class _CameraSwipePage extends StatelessWidget {
           child: Column(
             children: [
               Expanded(
-                child: Align(alignment: Alignment.bottomCenter, child: media),
+                child: Align(alignment: mediaAlignment, child: media),
               ),
               SizedBox(height: compactHeight ? 10 : 16),
               footer,
@@ -275,21 +278,91 @@ class _FeedSwipePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final placeName = item.placeName.trim().isEmpty
+        ? 'Địa điểm'
+        : item.placeName.trim();
+
     return _CameraSwipePage(
-      media: _RoundedMediaFrame(
-        child: ColoredBox(
-          color: Colors.black,
-          child: CameraFeedPhotoFrame(item: item),
-        ),
+      mediaAlignment: Alignment.center,
+      media: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _RoundedMediaFrame(
+            aspectRatio: 1,
+            borderRadius: 40,
+            child: ColoredBox(
+              color: Colors.black,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CameraFeedPhotoFrame(item: item),
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 260),
+                        child: _FeedPlaceTagPill(label: placeName),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          CameraFeedAuthorMeta(item: item),
+        ],
       ),
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CameraFeedAuthorMeta(item: item),
-          const SizedBox(height: 16),
           KeyedSubtree(
             key: ValueKey('camera-feed-message-composer-${item.id}'),
             child: messageComposer,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+class _FeedPlaceTagPill extends StatelessWidget {
+  final String label;
+
+  const _FeedPlaceTagPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassSurface(
+      key: ValueKey('camera-feed-place-tag-pill-$label'),
+      borderRadius: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      tint: const Color(0xCC4A4A4A),
+      highContrastTint: const Color(0xF22E2E2E),
+      borderColor: const Color(0x59FFFFFF),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.location_on_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'SF Pro',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ],
       ),
