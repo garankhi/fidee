@@ -3,10 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget buildSearchBar({required ValueChanged<String> onSubmitted}) {
+  Widget buildSearchBar({
+    required ValueChanged<String> onSubmitted,
+    VoidCallback? onOpenChat,
+  }) {
     return MaterialApp(
       home: Scaffold(
-        body: Center(child: HomeAiSearchBar(onSubmitted: onSubmitted)),
+        body: Center(
+          child: HomeAiSearchBar(
+            onSubmitted: onSubmitted,
+            onOpenChat: onOpenChat,
+          ),
+        ),
       ),
     );
   }
@@ -72,6 +80,21 @@ void main() {
     await tester.pump();
 
     expect(submitCount, 0);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('opens AI chat when sparkle button is tapped', (tester) async {
+    var openCount = 0;
+
+    await tester.pumpWidget(
+      buildSearchBar(onSubmitted: (_) {}, onOpenChat: () => openCount++),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('home-ai-chat-button')));
+    await tester.pump();
+
+    expect(openCount, 1);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
