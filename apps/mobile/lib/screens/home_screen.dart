@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +18,66 @@ import 'camera_chat_inbox.dart';
 import 'camera_screen.dart';
 import 'dashboard.dart';
 import 'home_ai_search_bar.dart';
+import 'place_details_friends.dart';
 import 'profile_screen.dart';
+
+enum MapFeedMode { friends, private }
+
+class MapFeedMarkerPresentation {
+  static const int maxLabelChars = 14;
+  static const double labelHorizontalPadding = 3.0;
+  static const double minLabelWidth = 44.0;
+  static const double maxLabelWidth = 160.0;
+
+  final IconData icon;
+  final String label;
+  final Color accent;
+  final bool isCandidate;
+
+  const MapFeedMarkerPresentation({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    required this.isCandidate,
+  });
+
+  factory MapFeedMarkerPresentation.fromItem(MapFeedItem item) {
+    final isPrivate =
+        item.visibility == 'PRIVATE' || item.checkinVisibility == 'PRIVATE';
+    return MapFeedMarkerPresentation(
+      icon: _iconForCategory(item.category),
+      label: _shortPlaceLabel(item.placeName),
+      accent: isPrivate ? const Color(0xFF374151) : const Color(0xFFEF4050),
+      isCandidate: item.isCandidate,
+    );
+  }
+
+  static IconData _iconForCategory(String category) {
+    return switch (category) {
+      'cafe' => Icons.local_cafe_rounded,
+      'restaurant' => Icons.restaurant_rounded,
+      'hotel' => Icons.hotel_rounded,
+      'tourist_attraction' => Icons.photo_camera_rounded,
+      'office' => Icons.business_rounded,
+      'shopping' => Icons.shopping_bag_rounded,
+      _ => Icons.place_rounded,
+    };
+  }
+
+  static double labelPillWidth(double textWidth) {
+    return (textWidth + labelHorizontalPadding * 2).clamp(
+      minLabelWidth,
+      maxLabelWidth,
+    );
+  }
+
+  static String _shortPlaceLabel(String placeName) {
+    final normalized = placeName.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.isEmpty) return 'Địa điểm';
+    if (normalized.length <= maxLabelChars) return normalized;
+    return '${normalized.substring(0, maxLabelChars)}…';
+  }
+}
 
 /// Home screen with Goong Map, current location, and check-in CTA.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -42,10 +103,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   LatLng? _lastFeedPosition;
   DateTime? _lastFeedFetchAt;
   bool _feedFetchInFlight = false;
+  MapFeedMode _feedMode = MapFeedMode.friends;
   List<MapFeedItem> _feedItems = [];
   final Map<String, MapFeedItem> _feedItemsBySymbolId = <String, MapFeedItem>{};
+  final Set<String> _registeredMarkerImages = <String>{};
 
   bool get _isLimitedMode => _locationService.status != LocationStatus.granted;
+
+  List<MapFeedItem> get _visibleFeedItems {
+    return _feedItems.where((item) {
+      final isPrivate = _isPrivateFeedItem(item);
+      return _feedMode == MapFeedMode.private ? isPrivate : !isPrivate;
+    }).toList(growable: false);
+  }
 
   @override
   void initState() {
@@ -208,10 +278,146 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  String _feedMarkerLabel(MapFeedItem item) {
-    final userName = item.userName.trim();
-    if (userName.isEmpty) return '?';
-    return userName.substring(0, 1).toUpperCase();
+  bool _isPrivateFeedItem(MapFeedItem item) {
+    return item.visibility == 'PRIVATE' || item.checkinVisibility == 'PRIVATE';
+  }
+
+  void _toggleFeedMode() {
+    setState(() {
+      _feedMode = _feedMode == MapFeedMode.friends
+          ? MapFeedMode.private
+          : MapFeedMode.friends;
+    });
+    unawaited(_syncFeedSymbols());
+  }
+
+  String _markerImageName(MapFeedItem item) {
+    final presentation = MapFeedMarkerPresentation.fromItem(item);
+    final privacy = _isPrivateFeedItem(item) ? 'private' : 'friends';
+    final candidate = item.isCandidate ? 'candidate' : 'place';
+    return 'feed-marker-$privacy-$candidate-${item.placeId}-${item.category}-${presentation.label.hashCode}';
+  }
+
+  Future<String> _ensureMarkerImage(
+    goong.MapLibreMapController controller,
+    MapFeedItem item,
+  ) async {
+    final name = _markerImageName(item);
+    if (_registeredMarkerImages.contains(name)) return name;
+
+    final bytes = await _buildMarkerImageBytes(item);
+    await controller.addImage(name, bytes);
+    _registeredMarkerImages.add(name);
+    return name;
+  }
+
+  Future<Uint8List> _buildMarkerImageBytes(MapFeedItem item) async {
+    final presentation = MapFeedMarkerPresentation.fromItem(item);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    const size = Size(192, 116);
+    const iconCenter = Offset(96, 32);
+    const iconRadius = 24.0;
+    const labelTop = 60.0;
+    const labelHeight = 34.0;
+    final accent = presentation.accent;
+
+    final labelPainter = TextPainter(
+      text: TextSpan(
+        text: presentation.label,
+        style: TextStyle(
+          color: accent,
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          height: 1,
+        ),
+      ),
+      maxLines: 1,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+      ellipsis: '…',
+    )..layout(maxWidth: MapFeedMarkerPresentation.maxLabelWidth);
+    final labelWidth = MapFeedMarkerPresentation.labelPillWidth(
+      labelPainter.width,
+    );
+    final labelRect = Rect.fromLTWH(
+      (size.width - labelWidth) / 2,
+      labelTop,
+      labelWidth,
+      labelHeight,
+    );
+
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.16)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        labelRect.translate(0, 4),
+        const Radius.circular(17),
+      ),
+      shadowPaint,
+    );
+    canvas.drawCircle(iconCenter.translate(0, 5), iconRadius, shadowPaint);
+
+    final pointerPath = ui.Path()
+      ..moveTo(88, 92)
+      ..lineTo(104, 92)
+      ..lineTo(96, 110)
+      ..close();
+    canvas.drawPath(pointerPath, Paint()..color = Colors.white);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(labelRect, const Radius.circular(17)),
+      Paint()..color = Colors.white,
+    );
+    canvas.drawCircle(iconCenter, iconRadius + 4, Paint()..color = Colors.white);
+    canvas.drawCircle(iconCenter, iconRadius, Paint()..color = accent);
+
+    final iconPainter = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(presentation.icon.codePoint),
+        style: TextStyle(
+          color: Colors.white,
+          fontFamily: presentation.icon.fontFamily,
+          fontSize: 27,
+          height: 1,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    iconPainter.paint(
+      canvas,
+      Offset(
+        iconCenter.dx - iconPainter.width / 2,
+        iconCenter.dy - iconPainter.height / 2,
+      ),
+    );
+
+    if (presentation.isCandidate) {
+      const badgeCenter = Offset(116, 16);
+      canvas.drawCircle(badgeCenter, 8, Paint()..color = Colors.white);
+      canvas.drawCircle(badgeCenter, 5, Paint()..color = accent);
+    }
+
+    labelPainter.layout(
+      maxWidth:
+          labelRect.width - MapFeedMarkerPresentation.labelHorizontalPadding * 2,
+    );
+    labelPainter.paint(
+      canvas,
+      Offset(
+        labelRect.left + (labelRect.width - labelPainter.width) / 2,
+        labelRect.top + (labelRect.height - labelPainter.height) / 2,
+      ),
+    );
+
+    final image = await recorder.endRecording().toImage(
+      size.width.toInt(),
+      size.height.toInt(),
+    );
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
   }
 
   Future<void> _syncFeedSymbols() async {
@@ -221,16 +427,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     await controller.clearSymbols();
     _feedItemsBySymbolId.clear();
 
-    for (final item in _feedItems) {
+    for (final item in _visibleFeedItems) {
+      final imageName = await _ensureMarkerImage(controller, item);
       final symbol = await controller.addSymbol(
         goong.SymbolOptions(
           geometry: goong.LatLng(item.lat, item.lng),
-          textField: _feedMarkerLabel(item),
-          textSize: 18,
-          textColor: '#FFFFFF',
-          textHaloColor: '#2563EB',
-          textHaloWidth: 8,
-          textAnchor: 'center',
+          iconImage: imageName,
+          iconSize: 2.3,
+          iconAnchor: 'bottom',
           zIndex: 10,
         ),
       );
@@ -243,7 +447,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _FeedItemSheet(item: item),
+      builder: (ctx) => FeedPlaceSheet(
+        item: item,
+        onViewDetails: () {
+          Navigator.pop(ctx);
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => PlaceDetailsFriends(placeId: item.placeId),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -309,10 +524,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
       return;
     }
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute<void>(builder: (_) => const CameraScreen()),
     );
+    if (!mounted) return;
+    unawaited(_fetchFeed(center: _locationService.currentPosition));
   }
 
   void _onExplore() {
@@ -358,6 +575,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     },
                     onStyleLoadedCallback: () {
                       if (!mounted) return;
+                      _registeredMarkerImages.clear();
                       setState(() => _mapStyleLoaded = true);
                       unawaited(_syncFeedSymbols());
                     },
@@ -479,6 +697,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     child: HomeAiSearchBar(onSubmitted: _openAiChat),
                   ),
                 ],
+              ),
+            ),
+          ),
+
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 130,
+            right: 16,
+            child: RepaintBoundary(
+              child: MapModeToggleButton(
+                mode: _feedMode,
+                onTap: _toggleFeedMode,
               ),
             ),
           ),
@@ -838,103 +1067,352 @@ class _LimitedModeBanner extends StatelessWidget {
   }
 }
 
-class _FeedItemSheet extends StatelessWidget {
-  final MapFeedItem item;
+class MapModeToggleButton extends StatelessWidget {
+  final MapFeedMode mode;
+  final VoidCallback onTap;
 
-  const _FeedItemSheet({required this.item});
+  const MapModeToggleButton({super.key, required this.mode, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPrivate = mode == MapFeedMode.private;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: isPrivate
+                  ? const Color(0xFF374151).withValues(alpha: 0.18)
+                  : const Color(0xFFEF4050).withValues(alpha: 0.22),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isPrivate ? Icons.lock_rounded : Icons.group_rounded,
+                size: 16,
+                color: isPrivate
+                    ? const Color(0xFF374151)
+                    : const Color(0xFFEF4050),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                isPrivate ? 'Riêng tư' : 'Bạn bè',
+                style: const TextStyle(
+                  color: Color(0xFF1F2937),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.swap_horiz_rounded,
+                size: 15,
+                color: Color(0xFF8B95A1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FeedPlaceSheet extends StatelessWidget {
+  final MapFeedItem item;
+  final VoidCallback? onViewDetails;
+
+  const FeedPlaceSheet({super.key, required this.item, this.onViewDetails});
+
+  String get _categoryLabel {
+    return switch (item.category) {
+      'cafe' => 'Cafe',
+      'restaurant' => 'Nhà hàng',
+      'hotel' => 'Khách sạn',
+      'tourist_attraction' => 'Du lịch',
+      'office' => 'Văn phòng',
+      'shopping' => 'Mua sắm',
+      _ => 'Địa điểm',
+    };
+  }
+
+  String get _contextChip {
+    if (item.visibility == 'PRIVATE' || item.checkinVisibility == 'PRIVATE') {
+      return 'Riêng tư';
+    }
+    if (item.isCandidate) return 'Địa điểm bạn bè đề xuất';
+    return _categoryLabel;
+  }
+
+  String get _latestLine {
+    if (item.isCandidate && item.placeCheckinCount == 0) {
+      final creatorName = item.createdByName?.trim();
+      if (creatorName != null && creatorName.isNotEmpty) {
+        return '$creatorName đã tạo địa điểm này';
+      }
+      return 'Địa điểm mới được đề xuất';
+    }
+
+    final latestUser = item.userName.trim().isNotEmpty ? item.userName.trim() : 'Bạn bè';
+    final caption = item.caption.trim();
+    if (caption.isEmpty) return '$latestUser vừa check-in tại đây';
+    return '$latestUser vừa check-in: $caption';
+  }
+
+  String get _checkinCountLabel {
+    if (item.placeCheckinCount == 0) return 'Chưa có check-in';
+    return '${item.placeCheckinCount} check-ins gần đây';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final address = item.address?.trim();
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, 10, 20, 20 + bottomSafeArea),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.placeName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF111827),
+                          fontSize: 24,
+                          height: 1.08,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (address != null && address.isNotEmpty) ...[
+                        const SizedBox(height: 7),
+                        Text(
+                          address,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF8B95A1),
+                            fontSize: 14,
+                            height: 1.25,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FeedAvatarStack(
+                  names: item.recentUserNames.isEmpty
+                      ? <String>[item.userName]
+                      : item.recentUserNames,
+                  avatars: item.recentAvatars,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _FeedChip(label: _contextChip),
+                _FeedChip(label: _checkinCountLabel),
+                if (item.createdByName != null && item.createdByName!.isNotEmpty)
+                  _FeedChip(label: 'Tạo bởi ${item.createdByName}'),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                children: [
+                  _InitialAvatar(name: item.userName, avatarUrl: item.userAvatar),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _latestLine,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF374151),
+                        fontSize: 14,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: onViewDetails,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4050),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Xem chi tiết',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+    );
+  }
+}
+
+class FeedAvatarStack extends StatelessWidget {
+  final List<String> names;
+  final List<String> avatars;
+
+  const FeedAvatarStack({
+    super.key,
+    required this.names,
+    required this.avatars,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = names.isEmpty ? 1 : names.length.clamp(1, 3);
+    return SizedBox(
+      width: 34.0 + (count - 1) * 22.0,
+      height: 34,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var index = 0; index < count; index++)
+            Positioned(
+              left: index * 22,
+              child: _InitialAvatar(
+                name: index < names.length ? names[index] : '',
+                avatarUrl: index < avatars.length ? avatars[index] : null,
+                size: 34,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InitialAvatar extends StatelessWidget {
+  final String name;
+  final String? avatarUrl;
+  final double size;
+
+  const _InitialAvatar({required this.name, this.avatarUrl, this.size = 38});
+
+  String get _initial {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+    return trimmed.substring(0, 1).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = avatarUrl?.trim();
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4050),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        image: url != null && url.startsWith('http')
+            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
+            : null,
+      ),
+      child: url == null || !url.startsWith('http')
+          ? Center(
+              child: Text(
+                _initial,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: size * 0.42,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+class _FeedChip extends StatelessWidget {
+  final String label;
+
+  const _FeedChip({required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1F2E),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: const Color(0xFFEF4050).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF3B82F6),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    item.userName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.userName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.placeName,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                '${item.createdAt.hour}:${item.createdAt.minute.toString().padLeft(2, '0')}',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          if (item.caption.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              item.caption,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ],
-          const SizedBox(height: 16),
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0E17),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Center(
-              child: Icon(Icons.image, color: Colors.white24, size: 48),
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFEF4050),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

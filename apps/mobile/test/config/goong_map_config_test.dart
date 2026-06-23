@@ -45,6 +45,13 @@ void main() {
       );
     });
 
+    test('reads the Goong API key from runtime dotenv', () {
+      dotenv.loadFromString(envString: 'GOONG_API_KEY= geocode-key ');
+
+      expect(Config.goongApiKey, 'geocode-key');
+      expect(Config.hasGoongApiKey(), isTrue);
+    });
+
     test('reads the Goong style URL from runtime dotenv', () {
       dotenv.loadFromString(
         envString:

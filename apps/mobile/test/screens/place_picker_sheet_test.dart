@@ -1,3 +1,4 @@
+import 'package:fidee_mobile/models/custom_address_validation.dart';
 import 'package:fidee_mobile/models/nearby_place.dart';
 import 'package:fidee_mobile/models/selected_place_tag.dart';
 import 'package:fidee_mobile/screens/place_picker_sheet.dart';
@@ -34,7 +35,14 @@ void main() {
   Widget buildSheet({
     List<NearbyPlace> places = const [samplePlace],
     void Function(SelectedPlaceTag place)? onSelected,
-    Future<SelectedPlaceTag?> Function(String name)? onCreateCustomPlace,
+    Future<SelectedPlaceTag?> Function(
+      String name,
+      String visibility,
+      String? address,
+    )? onCreateCustomPlace,
+    Future<String?> Function()? onResolveCustomAddress,
+    Future<CustomAddressValidation?> Function(String address)?
+        onValidateCustomAddress,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -42,6 +50,8 @@ void main() {
           places: places,
           onSelected: onSelected ?? (_) {},
           onCreateCustomPlace: onCreateCustomPlace,
+          onResolveCustomAddress: onResolveCustomAddress,
+          onValidateCustomAddress: onValidateCustomAddress,
         ),
       ),
     );
@@ -72,12 +82,14 @@ void main() {
 
   testWidgets('creates a custom place from the compact form', (tester) async {
     SelectedPlaceTag? selected;
+    String? submittedAddress;
 
     await tester.pumpWidget(
       buildSheet(
         places: const [],
         onSelected: (place) => selected = place,
-        onCreateCustomPlace: (name) async {
+        onCreateCustomPlace: (name, visibility, address) async {
+          submittedAddress = address;
           return SelectedPlaceTag(
             id: 'custom-1',
             displayName: name,
@@ -92,9 +104,18 @@ void main() {
 
     await tester.tap(find.text('Thêm địa điểm tùy chỉnh'));
     await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('place-search-field')), findsNothing);
+    expect(find.text('Bạn bè'), findsOneWidget);
+    expect(find.text('Riêng tư'), findsOneWidget);
+    expect(find.byKey(const ValueKey('custom-place-address-field')), findsOneWidget);
     await tester.enterText(
       find.byKey(const ValueKey('custom-place-name-field')),
       'Há Há Há',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-place-address-field')),
+      '12 Nguyen Hue',
     );
     await tester.tap(find.text('Lưu'));
     await tester.pump();
@@ -102,6 +123,103 @@ void main() {
 
     expect(selected?.displayName, 'Há Há Há');
     expect(selected?.source, 'custom');
+    expect(submittedAddress, '12 Nguyen Hue');
+  });
+
+  testWidgets('prefills custom place address from current coordinates', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildSheet(
+        places: const [],
+        onResolveCustomAddress: () async => '91 Trung Kinh, Ha Noi',
+      ),
+    );
+
+    await tester.tap(find.text('Thêm địa điểm tùy chỉnh'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('91 Trung Kinh, Ha Noi'), findsOneWidget);
+  });
+
+  testWidgets('shows a soft warning when custom address is far away', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildSheet(
+        places: const [],
+        onCreateCustomPlace: (name, visibility, address) async {
+          return SelectedPlaceTag(
+            id: 'custom-1',
+            displayName: name,
+            address: address ?? '',
+            lat: 10.2,
+            lng: 106.2,
+            source: 'custom',
+          );
+        },
+        onValidateCustomAddress: (address) async {
+          return const CustomAddressValidation(
+            isFarFromCurrentLocation: true,
+            distanceMeters: 850,
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Thêm địa điểm tùy chỉnh'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-place-name-field')),
+      'Quán xa',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-place-address-field')),
+      '91 Trung Kinh',
+    );
+    await tester.tap(find.text('Lưu'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('cách xa vị trí hiện tại'), findsOneWidget);
+  });
+
+  testWidgets('passes private visibility when creating a custom place', (
+    tester,
+  ) async {
+    String? submittedVisibility;
+
+    await tester.pumpWidget(
+      buildSheet(
+        places: const [],
+        onCreateCustomPlace: (name, visibility, address) async {
+          submittedVisibility = visibility;
+          return SelectedPlaceTag(
+            id: 'custom-1',
+            displayName: name,
+            address: visibility,
+            lat: 10.2,
+            lng: 106.2,
+            source: 'custom',
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Thêm địa điểm tùy chỉnh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Riêng tư'));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-place-name-field')),
+      'Quán riêng',
+    );
+    await tester.tap(find.text('Lưu'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(submittedVisibility, 'PRIVATE');
   });
 
   testWidgets('filters nearby places by search text', (tester) async {
