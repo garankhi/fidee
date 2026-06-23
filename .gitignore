@@ -28,6 +28,12 @@ env
 # Mobile runtime env asset; bundled into local app builds, never commit real keys.
 apps/mobile/assets/env/mobile.env
 
+# Android signing secrets for Google Play upload/release builds.
+apps/mobile/android/key.properties
+apps/mobile/android/app/upload-keystore.jks
+apps/mobile/android/app/*.jks
+apps/mobile/android/app/*.keystore
+
 # Logs
 *.log
 npm-debug.log*

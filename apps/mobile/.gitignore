@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Google Play upload/release signing secrets
+/android/key.properties
+/android/app/upload-keystore.jks
+/android/app/*.jks
+/android/app/*.keystore

@@ -257,16 +257,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
 
     if (!mounted) return;
-    final selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => GalleryAssetPickerSheet(
-        loadAssets: () => GalleryAssetPickerService(
-          permissionService: _galleryPermissionService,
-        ).loadRecentMedia(),
-      ),
-    );
+    final selectedAsset =
+        await showModalBottomSheet<GalleryAssetPickerSelection>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => GalleryAssetPickerSheet(
+            loadAssets: () => GalleryAssetPickerService(
+              permissionService: _galleryPermissionService,
+            ).loadRecentMedia(),
+          ),
+        );
 
     if (mounted) unawaited(_loadGalleryPreview());
     if (selectedAsset == null) return;
@@ -284,7 +285,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   ) async {
     _setLoading(true);
     try {
-      final gpsCoordinates = selectedAsset.mediaType == GalleryAssetMediaType.video
+      final gpsCoordinates =
+          selectedAsset.mediaType == GalleryAssetMediaType.video
           ? selectedAsset.gpsCoordinates?.toList()
           : await _gpsCoordinatesFromImageExif(selectedAsset.path);
 
@@ -438,7 +440,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _startVideoRecording() async {
-    var isPro = ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
+    var isPro =
+        ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
     final controller = _controller;
     final cameraReady = controller?.value.isInitialized ?? false;
 
@@ -666,8 +669,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       },
                       onChatTap: _openChatInbox,
                       onHistoryTap: _openHistoryGrid,
-                      onHistoryLabelTap: () =>
-                          unawaited(_scrollToFirstStory()),
+                      onHistoryLabelTap: () => unawaited(_scrollToFirstStory()),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -887,7 +889,8 @@ class _NonDistortingCameraPreview extends StatelessWidget {
       return CameraPreview(controller);
     }
 
-    final isPortrait = MediaQuery.orientationOf(context) == Orientation.portrait;
+    final isPortrait =
+        MediaQuery.orientationOf(context) == Orientation.portrait;
     final previewWidth = isPortrait ? previewSize.height : previewSize.width;
     final previewHeight = isPortrait ? previewSize.width : previewSize.height;
 
@@ -1223,17 +1226,18 @@ class _CameraSkeleton extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                const targetAspectRatio = 3 / 4;
-                final horizontalPadding = MediaQuery.sizeOf(context).width < 380
-                    ? 14.0
-                    : 20.0;
+                const targetAspectRatio = 1.0;
+                const horizontalPadding = 16.0;
                 final controlsHeight = compactHeight ? 104.0 : 122.0;
                 final frameMaxHeight = math.max(
                   0.0,
                   constraints.maxHeight - controlsHeight - 10,
                 );
-                final frameWidth = (constraints.maxWidth - horizontalPadding * 2)
-                    .clamp(0.0, frameMaxHeight * targetAspectRatio);
+                final frameWidth =
+                    (constraints.maxWidth - horizontalPadding * 2).clamp(
+                      0.0,
+                      frameMaxHeight * targetAspectRatio,
+                    );
                 final frameHeight = frameWidth / targetAspectRatio;
 
                 return Padding(
@@ -1249,7 +1253,7 @@ class _CameraSkeleton extends StatelessWidget {
                             child: Container(
                               decoration: BoxDecoration(
                                 color: const Color(0x0DFFFFFF),
-                                borderRadius: BorderRadius.circular(30),
+                                borderRadius: BorderRadius.circular(40),
                                 border: Border.all(
                                   color: const Color(0x1AFFFFFF),
                                   width: 1,

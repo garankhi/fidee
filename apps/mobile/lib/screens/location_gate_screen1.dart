@@ -49,9 +49,9 @@ class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
       await _locationService.refreshPosition();
     } else if (_locationService.status == LocationStatus.serviceDisabled) {
       await _locationService.openLocationSettings();
-      await _locationService.initialize();
+      await _locationService.initialize(requestPermission: true);
     } else {
-      await _locationService.initialize();
+      await _locationService.initialize(requestPermission: true);
     }
 
     if (!mounted) return;

@@ -20,18 +20,30 @@ List<String> visibleProPackageIds(List<String> productIds) {
 
 List<Package> visibleProPackages(Offerings? offerings) {
   final packages = offerings?.current?.availablePackages ?? const <Package>[];
-  return packages.where((package) {
-    return visibleProPackageIds([package.storeProduct.identifier]).isNotEmpty;
-  }).toList(growable: false);
+  return packages
+      .where((package) {
+        return visibleProPackageIds([
+          package.storeProduct.identifier,
+        ]).isNotEmpty;
+      })
+      .toList(growable: false);
 }
 
 void logRevenueCatCustomerInfo(String event, CustomerInfo customerInfo) {
+  if (!kDebugMode) return;
+
   debugPrint(
     '[RevenueCat] $event originalAppUserId=${customerInfo.originalAppUserId} '
     'activeEntitlements=${customerInfo.entitlements.active.keys.toList()} '
     'allPurchasedProducts=${customerInfo.allPurchasedProductIdentifiers} '
     'latestExpirationDate=${customerInfo.latestExpirationDate}',
   );
+}
+
+String revenueCatStoreForPlatform() {
+  return defaultTargetPlatform == TargetPlatform.android
+      ? 'PLAY_STORE'
+      : 'APP_STORE';
 }
 
 class BillingState {
@@ -105,12 +117,16 @@ class BillingController extends _$BillingController {
   Future<void> loadCustomerInfo() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final customerInfo = await ref.read(revenueCatServiceProvider).getCustomerInfo();
+      final customerInfo = await ref
+          .read(revenueCatServiceProvider)
+          .getCustomerInfo();
       logRevenueCatCustomerInfo('loadCustomerInfo', customerInfo);
       state = state.copyWith(isLoading: false, customerInfo: customerInfo);
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] loadCustomerInfo failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] loadCustomerInfo failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Không tải được trạng thái gói Pro',
@@ -121,17 +137,24 @@ class BillingController extends _$BillingController {
   Future<void> loadOfferings() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final offerings = await ref.read(revenueCatServiceProvider).getOfferings();
-      final packages = offerings.current?.availablePackages ?? const <Package>[];
-      debugPrint(
-        '[RevenueCat] loadOfferings current=${offerings.current?.identifier} '
-        'packages=${packages.map((package) => '${package.identifier}:${package.storeProduct.identifier}').toList()} '
-        'visiblePro=${visibleProPackages(offerings).map((package) => package.storeProduct.identifier).toList()}',
-      );
+      final offerings = await ref
+          .read(revenueCatServiceProvider)
+          .getOfferings();
+      final packages =
+          offerings.current?.availablePackages ?? const <Package>[];
+      if (kDebugMode) {
+        debugPrint(
+          '[RevenueCat] loadOfferings current=${offerings.current?.identifier} '
+          'packages=${packages.map((package) => '${package.identifier}:${package.storeProduct.identifier}').toList()} '
+          'visiblePro=${visibleProPackages(offerings).map((package) => package.storeProduct.identifier).toList()}',
+        );
+      }
       state = state.copyWith(isLoading: false, offerings: offerings);
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] loadOfferings failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] loadOfferings failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Không tải được lựa chọn gói Pro',
@@ -146,11 +169,15 @@ class BillingController extends _$BillingController {
   }) async {
     state = state.copyWith(isPurchasing: true, clearError: true);
     try {
-      debugPrint(
-        '[RevenueCat] purchase start package=${package.identifier} '
-        'product=${package.storeProduct.identifier} appUserId=$appUserId',
-      );
-      final result = await ref.read(revenueCatServiceProvider).purchase(package);
+      if (kDebugMode) {
+        debugPrint(
+          '[RevenueCat] purchase start package=${package.identifier} '
+          'product=${package.storeProduct.identifier} appUserId=$appUserId',
+        );
+      }
+      final result = await ref
+          .read(revenueCatServiceProvider)
+          .purchase(package);
       final customerInfo = result.customerInfo;
       logRevenueCatCustomerInfo('purchase success', customerInfo);
       await _syncCustomerInfo(
@@ -162,8 +189,10 @@ class BillingController extends _$BillingController {
       state = state.copyWith(isPurchasing: false, customerInfo: customerInfo);
       return customerInfo;
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] purchase failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] purchase failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       state = state.copyWith(
         isPurchasing: false,
         errorMessage: 'Không hoàn tất được thanh toán',
@@ -178,7 +207,9 @@ class BillingController extends _$BillingController {
   }) async {
     state = state.copyWith(isRestoring: true, clearError: true);
     try {
-      debugPrint('[RevenueCat] restore start appUserId=$appUserId');
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] restore start appUserId=$appUserId');
+      }
       final customerInfo = await ref.read(revenueCatServiceProvider).restore();
       logRevenueCatCustomerInfo('restore success', customerInfo);
       await _syncCustomerInfo(
@@ -189,8 +220,10 @@ class BillingController extends _$BillingController {
       state = state.copyWith(isRestoring: false, customerInfo: customerInfo);
       return customerInfo;
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] restore failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] restore failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       state = state.copyWith(
         isRestoring: false,
         errorMessage: 'Không khôi phục được giao dịch',
@@ -207,30 +240,42 @@ class BillingController extends _$BillingController {
   }) async {
     final trimmedAppUserId = appUserId?.trim();
     if (trimmedAppUserId == null || trimmedAppUserId.isEmpty) {
-      debugPrint('[RevenueCat] backend sync skipped: missing appUserId');
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] backend sync skipped: missing appUserId');
+      }
       return;
     }
     if (billingSyncService == null) {
-      debugPrint('[RevenueCat] backend sync skipped: missing BillingSyncService');
+      if (kDebugMode) {
+        debugPrint(
+          '[RevenueCat] backend sync skipped: missing BillingSyncService',
+        );
+      }
       return;
     }
 
     try {
-      debugPrint(
-        '[RevenueCat] backend sync start appUserId=$trimmedAppUserId '
-        'activeEntitlements=${customerInfo.entitlements.active.keys.toList()} '
-        'productId=$productId',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[RevenueCat] backend sync start appUserId=$trimmedAppUserId '
+          'activeEntitlements=${customerInfo.entitlements.active.keys.toList()} '
+          'productId=$productId',
+        );
+      }
       await billingSyncService.syncRevenueCat(
         appUserId: trimmedAppUserId,
         activeEntitlementIds: customerInfo.entitlements.active.keys.toSet(),
         productId: productId,
-        store: 'TEST_STORE',
+        store: revenueCatStoreForPlatform(),
       );
-      debugPrint('[RevenueCat] backend sync success');
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] backend sync success');
+      }
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] backend sync failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] backend sync failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       state = state.copyWith(
         errorMessage: 'Thanh toán xong nhưng chưa đồng bộ được gói Pro',
       );

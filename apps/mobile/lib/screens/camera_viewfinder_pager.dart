@@ -191,6 +191,8 @@ class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
           return _CameraSwipePage(
             key: const ValueKey('camera-viewfinder-page-camera'),
             media: _RoundedMediaFrame(
+              aspectRatio: 1,
+              borderRadius: 40,
               child: Stack(
                 fit: StackFit.expand,
                 children: [widget.cameraPreview, widget.cameraOverlay],
@@ -242,17 +244,14 @@ class _CameraSwipePage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compactHeight = constraints.maxHeight < 620;
-        final horizontalPadding = constraints.maxWidth < 380 ? 14.0 : 20.0;
+        const horizontalPadding = 16.0;
 
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           child: Column(
             children: [
               Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: media,
-                ),
+                child: Align(alignment: Alignment.bottomCenter, child: media),
               ),
               SizedBox(height: compactHeight ? 10 : 16),
               footer,
@@ -300,24 +299,29 @@ class _FeedSwipePage extends StatelessWidget {
 
 class _RoundedMediaFrame extends StatelessWidget {
   final Widget child;
+  final double aspectRatio;
+  final double borderRadius;
 
-  const _RoundedMediaFrame({required this.child});
+  const _RoundedMediaFrame({
+    required this.child,
+    this.aspectRatio = 3 / 4,
+    this.borderRadius = 30,
+  });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const targetAspectRatio = 3 / 4;
         final maxWidth = constraints.maxWidth;
         final maxHeight = constraints.maxHeight;
-        final width = maxWidth.clamp(0.0, maxHeight * targetAspectRatio);
-        final height = width / targetAspectRatio;
+        final width = maxWidth.clamp(0.0, maxHeight * aspectRatio);
+        final height = width / aspectRatio;
 
         return SizedBox(
           width: width,
           height: height,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(borderRadius),
             child: child,
           ),
         );

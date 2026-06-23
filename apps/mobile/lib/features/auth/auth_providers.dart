@@ -108,14 +108,14 @@ AuthService authService(AuthServiceRef ref) {
 
 /// Khởi động LocationService song song với AuthController ngay từ lúc app start.
 /// keepAlive = true → không bị dispose, HomeScreen nhận instance đã sẵn sàng,
-/// không cần chạy _initLocation() lại → loại bỏ hoàn toàn spinner trắng.
+/// nhưng chỉ kiểm tra trạng thái quyền; prompt chỉ hiện sau khi user bấm Cho phép.
 @Riverpod(keepAlive: true)
 Future<LocationService> locationController(LocationControllerRef ref) async {
   final service = LocationService();
   ref.onDispose(() {
     unawaited(service.dispose());
   });
-  await service.initialize();
+  await service.initialize(requestPermission: false);
   return service;
 }
 
@@ -287,8 +287,10 @@ class AuthController extends _$AuthController {
     try {
       await ref.read(revenueCatServiceProvider).logIn(userId!.trim());
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] auth logIn failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] auth logIn failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       // Billing sync must not block auth state transitions.
     }
   }
@@ -297,8 +299,10 @@ class AuthController extends _$AuthController {
     try {
       await ref.read(revenueCatServiceProvider).logOut();
     } catch (error, stackTrace) {
-      debugPrint('[RevenueCat] auth logOut failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] auth logOut failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       // Billing sync must not block auth state transitions.
     }
   }
