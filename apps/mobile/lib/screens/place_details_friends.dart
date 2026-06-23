@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/place_provider.dart';
 import '../features/auth/review_provider.dart';
@@ -120,6 +121,63 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     });
   }
 
+  Future<void> _openDirections(Place place) async {
+    final lat = place.lat;
+    final lng = place.lng;
+
+    if (lat == null || lng == null || (lat == 0 && lng == 0)) {
+      _showDirectionsError('Địa điểm này chưa có tọa độ chỉ đường.');
+      return;
+    }
+
+    final label = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'Địa điểm';
+    final fallbackUri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': '$lat,$lng',
+      'travelmode': 'driving',
+    });
+
+    final candidateUris = <Uri>[
+      if (Platform.isAndroid) Uri.parse('geo:$lat,$lng?q=$lat,$lng'),
+      if (Platform.isIOS)
+        Uri.https('maps.apple.com', '/', {
+          'daddr': '$lat,$lng',
+          'dirflg': 'd',
+          'q': label,
+        }),
+      fallbackUri,
+    ];
+
+    for (final uri in candidateUris) {
+      try {
+        final opened = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (opened) return;
+      } catch (error) {
+        debugPrint('Open directions failed for $uri: $error');
+      }
+    }
+
+    // Last chance: allow an in-app/browser flow if no external maps handler exists.
+    try {
+      final opened = await launchUrl(fallbackUri, mode: LaunchMode.platformDefault);
+      if (opened) return;
+    } catch (error) {
+      debugPrint('Open directions browser fallback failed: $error');
+    }
+
+    _showDirectionsError('Không thể mở ứng dụng bản đồ trên thiết bị này.');
+  }
+
+  void _showDirectionsError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final place = ref.watch(placeControllerProvider);
@@ -204,7 +262,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       const SizedBox(height: 20),
                       _buildAmenities(place),
                       const SizedBox(height: 25),
-                      _buildLargeButton(Icons.near_me, 'Chỉ đường'),
+                      _buildLargeButton(
+                        Icons.near_me,
+                        'Chỉ đường',
+                        onTap: () => _openDirections(place),
+                      ),
                       const SizedBox(height: 25),
                       _buildFriendCheckins(place),
                       const SizedBox(height: 25),
@@ -545,28 +607,32 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildLargeButton(IconData icon, String text) {
-    return Container(
-      width: double.infinity,
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEF484F),
+  Widget _buildLargeButton(IconData icon, String text, {VoidCallback? onTap}) {
+    return Material(
+      color: const Color(0xFFEF484F),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

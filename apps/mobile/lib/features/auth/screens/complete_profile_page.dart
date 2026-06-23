@@ -9,7 +9,7 @@ class CompleteProfilePage extends ConsumerWidget {
   final String? initialFirstName;
   final String? initialLastName;
   final String? initialUsername;
-
+  
   const CompleteProfilePage({
     super.key,
     required this.initialFirstName,

@@ -1241,7 +1241,9 @@ class _CameraSkeleton extends StatelessWidget {
                 final frameHeight = frameWidth / targetAspectRatio;
 
                 return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                  ),
                   child: Column(
                     children: [
                       Expanded(

@@ -63,6 +63,7 @@ dependencies:
   purchases_flutter: ^10.2.3
   purchases_ui_flutter: ^10.2.3
   video_player: ^2.11.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

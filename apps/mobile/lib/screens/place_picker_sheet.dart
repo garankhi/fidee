@@ -513,7 +513,7 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
     double lat2,
     double lng2,
   ) {
-    return Distance()
+    return const Distance()
         .as(LengthUnit.Meter, LatLng(lat1, lng1), LatLng(lat2, lng2))
         .round();
   }

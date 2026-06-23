@@ -176,7 +176,7 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
       return ListView.builder(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
         itemCount: 5,
-        itemBuilder: (_, __) => const _CommentSkeleton(),
+        itemBuilder: (_, _) => const _CommentSkeleton(),
       );
     }
 

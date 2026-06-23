@@ -115,9 +115,7 @@ class CandidateController extends _$CandidateController {
       final token = await authService.getToken();
 
       final uri = Uri.parse('https://api.fidee.site/place-candidates').replace(
-        queryParameters: {
-          if (status != null) 'status': status,
-        },
+        queryParameters: status == null ? null : {'status': status},
       );
 
       final response = await http.get(

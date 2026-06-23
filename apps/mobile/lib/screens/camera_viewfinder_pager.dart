@@ -247,7 +247,7 @@ class _CameraSwipePage extends StatelessWidget {
         const horizontalPadding = 16.0;
 
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
           child: Column(
             children: [
               Expanded(
