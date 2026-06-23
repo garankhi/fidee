@@ -234,19 +234,9 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
           const SizedBox(height: 12),
           _buildCategoryGrid(),
           const SizedBox(height: 20),
-          SwitchListTile(
+          CandidateVisibilitySwitch(
             value: _shareWithFriends,
             onChanged: (value) => setState(() => _shareWithFriends = value),
-            title: const Text(
-              'Chia sẻ cho bạn bè',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151),
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            activeThumbColor: const Color(0xFF3B82F6),
           ),
           const SizedBox(height: 24),
 
@@ -765,6 +755,35 @@ class _CreatePlaceScreenState extends State<CreatePlaceScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class CandidateVisibilitySwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const CandidateVisibilitySwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      title: const Text(
+        'Chia sẻ với bạn bè',
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      activeThumbColor: const Color(0xFFEF4050),
     );
   }
 }

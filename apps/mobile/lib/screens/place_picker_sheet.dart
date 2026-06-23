@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../models/custom_address_validation.dart';
 import '../models/nearby_place.dart';
 import '../models/selected_place_tag.dart';
 
 class PlacePickerSheetContent extends StatefulWidget {
   final List<NearbyPlace> places;
   final void Function(SelectedPlaceTag place) onSelected;
-  final Future<SelectedPlaceTag?> Function(String name)? onCreateCustomPlace;
+  final Future<SelectedPlaceTag?> Function(
+    String name,
+    String visibility,
+    String? address,
+  )? onCreateCustomPlace;
+  final Future<String?> Function()? onResolveCustomAddress;
+  final Future<CustomAddressValidation?> Function(String address)?
+      onValidateCustomAddress;
   final bool isLoading;
   final String? errorMessage;
 
@@ -15,6 +23,8 @@ class PlacePickerSheetContent extends StatefulWidget {
     required this.places,
     required this.onSelected,
     this.onCreateCustomPlace,
+    this.onResolveCustomAddress,
+    this.onValidateCustomAddress,
     this.isLoading = false,
     this.errorMessage,
   });
@@ -24,6 +34,54 @@ class PlacePickerSheetContent extends StatefulWidget {
       _PlacePickerSheetContentState();
 }
 
+class _VisibilityOption extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _VisibilityOption({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? _PlacePickerSheetContentState._accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: selected ? Colors.white : _PlacePickerSheetContentState._mutedText,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : _PlacePickerSheetContentState._mutedText,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
   static const Color _accent = Color(0xFFEF4050);
   static const Color _sheet = Color(0xFF2B2B2B);
@@ -31,15 +89,20 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
 
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _customNameController = TextEditingController();
+  final TextEditingController _customAddressController = TextEditingController();
   String _searchQuery = '';
   bool _isCreatingCustom = false;
   bool _isSavingCustom = false;
+  String _customVisibility = 'FRIENDS';
   String? _customError;
+  String? _customWarning;
+  bool _addressWarningAcknowledged = false;
 
   @override
   void dispose() {
     _searchController.dispose();
     _customNameController.dispose();
+    _customAddressController.dispose();
     super.dispose();
   }
 
@@ -51,6 +114,29 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
       return place.displayName.toLowerCase().contains(query) ||
           place.address.toLowerCase().contains(query);
     }).toList();
+  }
+
+  Future<void> _startCustomPlaceCreation() async {
+    setState(() {
+      _isCreatingCustom = true;
+      _customError = null;
+      _customWarning = null;
+      _addressWarningAcknowledged = false;
+    });
+
+    final resolver = widget.onResolveCustomAddress;
+    if (resolver == null || _customAddressController.text.trim().isNotEmpty) {
+      return;
+    }
+
+    final resolvedAddress = await resolver();
+    if (!mounted || resolvedAddress == null || resolvedAddress.trim().isEmpty) {
+      return;
+    }
+
+    if (_customAddressController.text.trim().isEmpty) {
+      _customAddressController.text = resolvedAddress.trim();
+    }
   }
 
   Future<void> _saveCustomPlace() async {
@@ -66,12 +152,34 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
       return;
     }
 
+    final address = _customAddressController.text.trim();
+    final validator = widget.onValidateCustomAddress;
+    if (validator != null && address.isNotEmpty && !_addressWarningAcknowledged) {
+      final validation = await validator(address);
+      if (!mounted) return;
+      if (validation?.isFarFromCurrentLocation == true) {
+        final distance = validation?.distanceMeters;
+        setState(() {
+          _customWarning = distance == null
+              ? 'Địa chỉ này có vẻ cách xa vị trí hiện tại. Nhấn Lưu lần nữa nếu vẫn muốn dùng.'
+              : 'Địa chỉ này có vẻ cách xa vị trí hiện tại khoảng ${distance}m. Nhấn Lưu lần nữa nếu vẫn muốn dùng.';
+          _addressWarningAcknowledged = true;
+        });
+        return;
+      }
+    }
+
     setState(() {
       _isSavingCustom = true;
       _customError = null;
+      _customWarning = null;
     });
 
-    final created = await onCreate(name);
+    final created = await onCreate(
+      name,
+      _customVisibility,
+      address.isEmpty ? null : address,
+    );
     if (!mounted) return;
 
     setState(() => _isSavingCustom = false);
@@ -106,8 +214,10 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
               borderRadius: BorderRadius.circular(99),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildSearchField(),
+          if (!_isCreatingCustom) ...[
+            const SizedBox(height: 20),
+            _buildSearchField(),
+          ],
           if (widget.errorMessage != null) ...[
             const SizedBox(height: 12),
             Text(
@@ -265,7 +375,7 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () => setState(() => _isCreatingCustom = true),
+        onPressed: _startCustomPlaceCreation,
         style: ElevatedButton.styleFrom(
           backgroundColor: _accent,
           foregroundColor: Colors.white,
@@ -352,16 +462,57 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Được tạo bởi Bạn',
-            style: TextStyle(
-              color: _mutedText,
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey('custom-place-address-field'),
+            controller: _customAddressController,
+            onChanged: (_) => setState(() {
+              _customWarning = null;
+              _addressWarningAcknowledged = false;
+            }),
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              hintText: 'Địa chỉ hoặc khu vực',
+              hintStyle: const TextStyle(color: Color(0xFF8D8D8D)),
+              prefixIcon: const Icon(
+                Icons.location_on_rounded,
+                color: Color(0xFF8D8D8D),
+                size: 20,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: _accent, width: 2),
+              ),
             ),
           ),
+          const SizedBox(height: 14),
+          _buildVisibilityToggle(),
+          if (_customWarning != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _customWarning!,
+              style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
           if (_customError != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -396,6 +547,34 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
                     'Lưu',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisibilityToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _VisibilityOption(
+            label: 'Bạn bè',
+            icon: Icons.group_rounded,
+            selected: _customVisibility == 'FRIENDS',
+            onTap: () => setState(() => _customVisibility = 'FRIENDS'),
+          ),
+          _VisibilityOption(
+            label: 'Riêng tư',
+            icon: Icons.lock_rounded,
+            selected: _customVisibility == 'PRIVATE',
+            onTap: () => setState(() => _customVisibility = 'PRIVATE'),
           ),
         ],
       ),
