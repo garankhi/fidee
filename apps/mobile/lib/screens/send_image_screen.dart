@@ -333,6 +333,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   }
 
   void _showPlacePickerSheet({String? errorMessage}) {
+    final coords = _placeLookupCoordinates();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -345,6 +346,8 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
           onCreateCustomPlace: _createCustomPlaceTag,
           onResolveCustomAddress: _resolveCustomPlaceAddress,
           onValidateCustomAddress: _validateCustomPlaceAddress,
+          deviceLat: coords[0],
+          deviceLng: coords[1],
           onSelected: (place) {
             _selectPlaceTag(place);
             Navigator.pop(context);
