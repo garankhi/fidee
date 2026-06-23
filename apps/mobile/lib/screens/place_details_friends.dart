@@ -330,6 +330,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       builder: (_) {
         final selectedFriendIds = <String>{};
         var isSending = false;
+        var searchQuery = '';
 
         return Consumer(
           builder: (context, ref, _) {
@@ -340,6 +341,18 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
             return StatefulBuilder(
               builder: (context, setSheetState) {
+                final normalizedQuery = searchQuery.trim().toLowerCase();
+                final filteredFriends = normalizedQuery.isEmpty
+                    ? friends
+                    : friends.where((friend) {
+                        return friend.name.toLowerCase().contains(
+                              normalizedQuery,
+                            ) ||
+                            friend.handle.toLowerCase().contains(
+                              normalizedQuery,
+                            );
+                      }).toList(growable: false);
+
                 Future<void> sendSelected() async {
                   if (selectedFriendIds.isEmpty || isSending) return;
                   final sheetNavigator = Navigator.of(context);
@@ -408,6 +421,55 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        TextField(
+                          enabled: !isSending,
+                          onChanged: (value) {
+                            setSheetState(() {
+                              searchQuery = value;
+                            });
+                          },
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Tìm bạn bè...',
+                            hintStyle: const TextStyle(
+                              color: Colors.black38,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: Color(0xFFEF484F),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF7F7F7),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE8E8E8),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE8E8E8),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFEF484F),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         if (friendsState.isInitialLoading)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 28),
@@ -430,6 +492,19 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                               ),
                             ),
                           )
+                        else if (filteredFriends.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                              child: Text(
+                                'Không tìm thấy bạn bè phù hợp.',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
                         else
                           ConstrainedBox(
                             constraints: BoxConstraints(
@@ -438,11 +513,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                             ),
                             child: ListView.separated(
                               shrinkWrap: true,
-                              itemCount: friends.length,
+                              itemCount: filteredFriends.length,
                               separatorBuilder: (_, _) =>
                                   const Divider(height: 1),
                               itemBuilder: (context, index) {
-                                final friend = friends[index];
+                                final friend = filteredFriends[index];
                                 final isSelected = selectedFriendIds.contains(
                                   friend.id,
                                 );
