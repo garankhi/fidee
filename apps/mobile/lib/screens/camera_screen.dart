@@ -33,6 +33,7 @@ import 'gallery_asset_picker_sheet.dart';
 import 'gallery_permission_sheet.dart';
 import 'gallery_preview_button.dart';
 import 'premium_upgrade_sheet.dart';
+import 'profile_screen.dart';
 import 'send_image_screen.dart';
 
 List<CameraDescription>? globalCameras;
@@ -185,6 +186,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
+  void _openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (context) => const ProfileScreen()),
+    );
+  }
+
   Future<void> _loadGalleryPreview() async {
     final result = await _galleryPreviewService.loadRecentThumbnails();
     if (!mounted) return;
@@ -239,7 +247,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   Future<void> _pickFromGallery() async {
     final authState = ref.read(authControllerProvider).valueOrNull;
-    var isPro = authState?.tier == UserTier.pro;
+    final isPro = authState?.tier == UserTier.pro;
 
     final hasGalleryAccess = await _ensureGalleryPermissionForUpload();
     if (!hasGalleryAccess) return;
@@ -257,16 +265,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
 
     if (!mounted) return;
-    final selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => GalleryAssetPickerSheet(
-        loadAssets: () => GalleryAssetPickerService(
-          permissionService: _galleryPermissionService,
-        ).loadRecentMedia(),
-      ),
-    );
+    final selectedAsset =
+        await showModalBottomSheet<GalleryAssetPickerSelection>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => GalleryAssetPickerSheet(
+            loadAssets: () => GalleryAssetPickerService(
+              permissionService: _galleryPermissionService,
+            ).loadRecentMedia(),
+          ),
+        );
 
     if (mounted) unawaited(_loadGalleryPreview());
     if (selectedAsset == null) return;
@@ -284,7 +293,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   ) async {
     _setLoading(true);
     try {
-      final gpsCoordinates = selectedAsset.mediaType == GalleryAssetMediaType.video
+      final gpsCoordinates =
+          selectedAsset.mediaType == GalleryAssetMediaType.video
           ? selectedAsset.gpsCoordinates?.toList()
           : await _gpsCoordinatesFromImageExif(selectedAsset.path);
 
@@ -438,7 +448,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _startVideoRecording() async {
-    var isPro = ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
+    var isPro =
+        ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
     final controller = _controller;
     final cameraReady = controller?.value.isInitialized ?? false;
 
@@ -579,6 +590,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       currentUserInitials: currentUserInitials,
                       onMapTap: () => Navigator.pop(context),
                       onFriendsTap: () => showCameraFriendsSheet(context),
+                      onProfileTap: _openProfile,
                       onAudienceSelected: (audience) =>
                           unawaited(_selectFeedAudience(audience)),
                     ),
@@ -616,7 +628,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                     'camera-viewfinder-pager-shell',
                                   ),
                                   pageController: _pageController,
-                                  cameraPreview: CameraPreview(_controller!),
+                                  cameraPreview: _NonDistortingCameraPreview(
+                                    controller: _controller!,
+                                  ),
                                   cameraOverlay: _CameraPreviewControls(
                                     isFlashOn: _isFlashOn,
                                     onToggleFlash: _toggleFlash,
@@ -664,8 +678,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       },
                       onChatTap: _openChatInbox,
                       onHistoryTap: _openHistoryGrid,
-                      onHistoryLabelTap: () =>
-                          unawaited(_scrollToFirstStory()),
+                      onHistoryLabelTap: () => unawaited(_scrollToFirstStory()),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -742,6 +755,7 @@ class _CameraTopBar extends StatelessWidget {
   final String currentUserInitials;
   final VoidCallback onMapTap;
   final VoidCallback onFriendsTap;
+  final VoidCallback onProfileTap;
   final ValueChanged<CameraFeedAudience> onAudienceSelected;
 
   const _CameraTopBar({
@@ -754,13 +768,19 @@ class _CameraTopBar extends StatelessWidget {
     required this.currentUserInitials,
     required this.onMapTap,
     required this.onFriendsTap,
+    required this.onProfileTap,
     required this.onAudienceSelected,
   });
 
   @override
   Widget build(BuildContext context) {
+    final compactHeight = MediaQuery.sizeOf(context).height < 720;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 60.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: compactHeight ? 24.0 : 44.0,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -788,20 +808,24 @@ class _CameraTopBar extends StatelessWidget {
                   requestCount: friendRequestCount,
                   onTap: onFriendsTap,
                 ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Colors.blueAccent,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'Tôi',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          GestureDetector(
+            key: const ValueKey('camera-profile-button'),
+            onTap: onProfileTap,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(
+                color: Colors.blueAccent,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  'Tôi',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
@@ -868,6 +892,36 @@ class _CameraPreviewControls extends StatelessWidget {
   }
 }
 
+class _NonDistortingCameraPreview extends StatelessWidget {
+  final CameraController controller;
+
+  const _NonDistortingCameraPreview({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final previewSize = controller.value.previewSize;
+    if (previewSize == null) {
+      return CameraPreview(controller);
+    }
+
+    final isPortrait =
+        MediaQuery.orientationOf(context) == Orientation.portrait;
+    final previewWidth = isPortrait ? previewSize.height : previewSize.width;
+    final previewHeight = isPortrait ? previewSize.width : previewSize.height;
+
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: previewWidth,
+          height: previewHeight,
+          child: CameraPreview(controller),
+        ),
+      ),
+    );
+  }
+}
+
 class _CameraCaptureControls extends StatelessWidget {
   final List<Uint8List> thumbnails;
   final AnimationController animationController;
@@ -893,68 +947,95 @@ class _CameraCaptureControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GalleryPreviewButton(thumbnails: thumbnails, onTap: onGalleryTap),
-          AnimatedBuilder(
-            animation: animationController,
-            builder: (context, child) {
-              final shrinkValue = shrinkAnimation.value;
-              final currentInnerSize = isRecordingVideo ? 48.0 : 68.0 * shrinkValue;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactWidth = constraints.maxWidth < 360;
+        final captureOuterSize = compactWidth ? 78.0 : 86.0;
+        final captureInnerBaseSize = compactWidth ? 60.0 : 68.0;
 
-              return GestureDetector(
-                onTap: () => unawaited(onCapture()),
-                onLongPressStart: (_) => unawaited(onStartVideoRecording()),
-                onLongPressEnd: (_) => unawaited(onStopVideoRecording()),
-                child: Container(
-                  width: 86,
-                  height: 86,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFEF484F),
-                      width: 5,
+        return SafeArea(
+          top: false,
+          minimum: EdgeInsets.only(bottom: compactWidth ? 8 : 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compactWidth ? 16.0 : 24.0,
+                  vertical: compactWidth ? 12.0 : 18.0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GalleryPreviewButton(
+                      thumbnails: thumbnails,
+                      onTap: onGalleryTap,
                     ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: currentInnerSize,
-                      height: currentInnerSize,
-                      decoration: BoxDecoration(
-                        color: isRecordingVideo
-                            ? const Color(0xFFEF484F)
-                            : Colors.white,
-                        shape: BoxShape.circle,
+                    AnimatedBuilder(
+                      animation: animationController,
+                      builder: (context, child) {
+                        final shrinkValue = shrinkAnimation.value;
+                        final currentInnerSize = isRecordingVideo
+                            ? 48.0
+                            : captureInnerBaseSize * shrinkValue;
+
+                        return GestureDetector(
+                          onTap: () => unawaited(onCapture()),
+                          onLongPressStart: (_) =>
+                              unawaited(onStartVideoRecording()),
+                          onLongPressEnd: (_) =>
+                              unawaited(onStopVideoRecording()),
+                          child: Container(
+                            width: captureOuterSize,
+                            height: captureOuterSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFEF484F),
+                                width: 5,
+                              ),
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: currentInnerSize,
+                                height: currentInnerSize,
+                                decoration: BoxDecoration(
+                                  color: isRecordingVideo
+                                      ? const Color(0xFFEF484F)
+                                      : Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(
+                      width: 55,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: onSwitchCamera,
+                          child: Transform.rotate(
+                            angle: -36 * math.pi / 180,
+                            child: const Icon(
+                              LucideIcons.refreshCcw,
+                              color: Colors.white,
+                              size: 38,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-          SizedBox(
-            width: 55,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: onSwitchCamera,
-                child: Transform.rotate(
-                  angle: -36 * math.pi / 180,
-                  child: const Icon(
-                    LucideIcons.refreshCcw,
-                    color: Colors.white,
-                    size: 38,
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -1112,14 +1193,16 @@ class _CameraSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compactHeight = MediaQuery.sizeOf(context).height < 720;
+
     return SafeArea(
       child: Column(
         children: [
           // Top Bar Placeholder
           Padding(
-            padding: const EdgeInsets.symmetric(
+            padding: EdgeInsets.symmetric(
               horizontal: 16.0,
-              vertical: 60.0,
+              vertical: compactHeight ? 24.0 : 44.0,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1155,104 +1238,131 @@ class _CameraSkeleton extends StatelessWidget {
             ),
           ),
 
-          const Spacer(flex: 1),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const targetAspectRatio = 1.0;
+                const horizontalPadding = 16.0;
+                final controlsHeight = compactHeight ? 104.0 : 122.0;
+                final frameMaxHeight = math.max(
+                  0.0,
+                  constraints.maxHeight - controlsHeight - 10,
+                );
+                final frameWidth =
+                    (constraints.maxWidth - horizontalPadding * 2).clamp(
+                      0.0,
+                      frameMaxHeight * targetAspectRatio,
+                    );
+                final frameHeight = frameWidth / targetAspectRatio;
 
-          // Camera Viewfinder Placeholder
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: AspectRatio(
-              aspectRatio: 1 / 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0x0DFFFFFF), // 5% white
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: const Color(0x1AFFFFFF), width: 1),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.photo_camera,
-                    color: Color(0x33FFFFFF), // 20% white
-                    size: 48,
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
                   ),
-                ),
-              ),
-            ),
-          ),
-
-          const Spacer(flex: 1),
-          const SizedBox(height: 12),
-
-          // Bottom Controls Placeholder
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 40.0,
-              vertical: 24.0,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Gallery placeholder
-                SizedBox(
-                  width: 55,
-                  height: 55,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: 45,
-                      height: 45,
-                      decoration: BoxDecoration(
-                        color: const Color(0x1FFFFFFF),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0x2EFFFFFF)),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: SizedBox(
+                            width: frameWidth,
+                            height: frameHeight,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0x0DFFFFFF),
+                                borderRadius: BorderRadius.circular(40),
+                                border: Border.all(
+                                  color: const Color(0x1AFFFFFF),
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.photo_camera,
+                                  color: Color(0x33FFFFFF),
+                                  size: 48,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.photo_library_outlined,
-                        color: Color(0xB3FFFFFF),
-                        size: 24,
+                      SizedBox(height: compactHeight ? 10 : 16),
+                      SizedBox(
+                        height: controlsHeight,
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 360),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                SizedBox(
+                                  width: 55,
+                                  height: 55,
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      width: 45,
+                                      height: 45,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0x1FFFFFFF),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0x2EFFFFFF),
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.photo_library_outlined,
+                                        color: Color(0xB3FFFFFF),
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  width: compactHeight ? 78 : 86,
+                                  height: compactHeight ? 78 : 86,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0x1AFFFFFF),
+                                      width: 5,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      width: compactHeight ? 60 : 68,
+                                      height: compactHeight ? 60 : 68,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0x33FFFFFF),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 55,
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0x1AFFFFFF),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ),
-
-                // Capture Button placeholder
-                Container(
-                  width: 86,
-                  height: 86,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0x1AFFFFFF),
-                      width: 5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      decoration: const BoxDecoration(
-                        color: Color(0x33FFFFFF),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Flip button placeholder
-                SizedBox(
-                  width: 55,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        color: Color(0x1AFFFFFF),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
 

@@ -191,6 +191,8 @@ class _CameraViewfinderPagerState extends State<CameraViewfinderPager> {
           return _CameraSwipePage(
             key: const ValueKey('camera-viewfinder-page-camera'),
             media: _RoundedMediaFrame(
+              aspectRatio: 1,
+              borderRadius: 40,
               child: Stack(
                 fit: StackFit.expand,
                 children: [widget.cameraPreview, widget.cameraOverlay],
@@ -239,18 +241,24 @@ class _CameraSwipePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: media),
-            const SizedBox(height: 18),
-            footer,
-          ],
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactHeight = constraints.maxHeight < 620;
+        const horizontalPadding = 16.0;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+          child: Column(
+            children: [
+              Expanded(
+                child: Align(alignment: Alignment.bottomCenter, child: media),
+              ),
+              SizedBox(height: compactHeight ? 10 : 16),
+              footer,
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -291,14 +299,33 @@ class _FeedSwipePage extends StatelessWidget {
 
 class _RoundedMediaFrame extends StatelessWidget {
   final Widget child;
+  final double aspectRatio;
+  final double borderRadius;
 
-  const _RoundedMediaFrame({required this.child});
+  const _RoundedMediaFrame({
+    required this.child,
+    this.aspectRatio = 3 / 4,
+    this.borderRadius = 30,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(30),
-      child: AspectRatio(aspectRatio: 1, child: child),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final maxHeight = constraints.maxHeight;
+        final width = maxWidth.clamp(0.0, maxHeight * aspectRatio);
+        final height = width / aspectRatio;
+
+        return SizedBox(
+          width: width,
+          height: height,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(borderRadius),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

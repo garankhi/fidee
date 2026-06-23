@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
@@ -57,7 +58,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Row(
             children: [
               Icon(Icons.check_circle, color: Colors.green, size: 28),
@@ -73,7 +76,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 'Đóng',
-                style: TextStyle(color: Color(0xFFEF484F), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Color(0xFFEF484F),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -124,6 +130,68 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         alignment: 0.08,
       );
     });
+  }
+
+  Future<void> _openDirections(Place place) async {
+    final lat = place.lat;
+    final lng = place.lng;
+
+    if (lat == null || lng == null || (lat == 0 && lng == 0)) {
+      _showDirectionsError('Địa điểm này chưa có tọa độ chỉ đường.');
+      return;
+    }
+
+    final label = place.name?.trim().isNotEmpty == true
+        ? place.name!.trim()
+        : 'Địa điểm';
+    final fallbackUri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': '$lat,$lng',
+      'travelmode': 'driving',
+    });
+
+    final candidateUris = <Uri>[
+      if (Platform.isAndroid) Uri.parse('geo:$lat,$lng?q=$lat,$lng'),
+      if (Platform.isIOS)
+        Uri.https('maps.apple.com', '/', {
+          'daddr': '$lat,$lng',
+          'dirflg': 'd',
+          'q': label,
+        }),
+      fallbackUri,
+    ];
+
+    for (final uri in candidateUris) {
+      try {
+        final opened = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (opened) return;
+      } catch (error) {
+        debugPrint('Open directions failed for $uri: $error');
+      }
+    }
+
+    // Last chance: allow an in-app/browser flow if no external maps handler exists.
+    try {
+      final opened = await launchUrl(
+        fallbackUri,
+        mode: LaunchMode.platformDefault,
+      );
+      if (opened) return;
+    } catch (error) {
+      debugPrint('Open directions browser fallback failed: $error');
+    }
+
+    _showDirectionsError('Không thể mở ứng dụng bản đồ trên thiết bị này.');
+  }
+
+  void _showDirectionsError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _buildShareUrl(Place place) {
@@ -344,14 +412,16 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 final normalizedQuery = searchQuery.trim().toLowerCase();
                 final filteredFriends = normalizedQuery.isEmpty
                     ? friends
-                    : friends.where((friend) {
-                        return friend.name.toLowerCase().contains(
-                              normalizedQuery,
-                            ) ||
-                            friend.handle.toLowerCase().contains(
-                              normalizedQuery,
-                            );
-                      }).toList(growable: false);
+                    : friends
+                          .where((friend) {
+                            return friend.name.toLowerCase().contains(
+                                  normalizedQuery,
+                                ) ||
+                                friend.handle.toLowerCase().contains(
+                                  normalizedQuery,
+                                );
+                          })
+                          .toList(growable: false);
 
                 Future<void> sendSelected() async {
                   if (selectedFriendIds.isEmpty || isSending) return;
@@ -363,9 +433,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
                   var sentCount = 0;
                   final selectedFriends = friends
-                      .where(
-                        (friend) => selectedFriendIds.contains(friend.id),
-                      )
+                      .where((friend) => selectedFriendIds.contains(friend.id))
                       .toList(growable: false);
 
                   for (final friend in selectedFriends) {
@@ -604,9 +672,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFEF484F),
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: const Color(
-                                0xFFFFC2C6,
-                              ),
+                              disabledBackgroundColor: const Color(0xFFFFC2C6),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(24),
@@ -632,7 +698,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
   Future<void> _pickAndUploadCover(Place place) async {
     if (!place.isCandidate || place.id == null) return;
-    
+
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
@@ -642,9 +708,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     });
 
     try {
-      final uploadService = UploadService(authService: ref.read(authServiceProvider));
+      final uploadService = UploadService(
+        authService: ref.read(authServiceProvider),
+      );
       final file = File(image.path);
-      
+
       final mediaId = await uploadService.upload(
         imagePath: file.path,
         longitude: place.lng ?? 0,
@@ -652,15 +720,19 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         source: 'EXIF_GALLERY',
         contentTypeOverride: 'image/jpeg',
       );
-      
-      final placeCandidateService = PlaceCandidateService(ref.read(authServiceProvider));
+
+      final placeCandidateService = PlaceCandidateService(
+        ref.read(authServiceProvider),
+      );
       await placeCandidateService.updateCandidate(
         candidateId: place.id!,
         mediaId: mediaId,
       );
-      
-      await ref.read(placeControllerProvider.notifier).fetchPlaceDetail(place.id!);
-      
+
+      await ref
+          .read(placeControllerProvider.notifier)
+          .fetchPlaceDetail(place.id!);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã cập nhật ảnh bìa thành công!')),
@@ -670,9 +742,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       debugPrint('Upload error: $e');
       debugPrint('Stacktrace: $st');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải ảnh: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi tải ảnh: $e')));
       }
     } finally {
       if (mounted) {
@@ -730,10 +802,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   centerTitle: true,
                   actions: [
                     Padding(
-                      padding: const EdgeInsets.only(
-                        right: 8,
-                        top: 10,
-                      ),
+                      padding: const EdgeInsets.only(right: 8, top: 10),
                       child: Center(
                         child: CircleAvatar(
                           backgroundColor: const Color(0x19EF484F),
@@ -767,7 +836,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                       const SizedBox(height: 20),
                       _buildAmenities(place),
                       const SizedBox(height: 25),
-                      _buildLargeButton(Icons.near_me, 'Chỉ đường'),
+                      _buildLargeButton(
+                        Icons.near_me,
+                        'Chỉ đường',
+                        onTap: () => _openDirections(place),
+                      ),
                       const SizedBox(height: 25),
                       _buildFriendCheckins(place),
                       const SizedBox(height: 25),
@@ -802,7 +875,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                               ),
                             );
                           },
-                          child: _buildBottomButton(Icons.camera_alt, 'Check-in'),
+                          child: _buildBottomButton(
+                            Icons.camera_alt,
+                            'Check-in',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 15),
@@ -858,36 +934,56 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
 
             if (bannerUrl.isEmpty)
               Positioned.fill(
-                child: (place.isCreator && place.isCandidate) ? GestureDetector(
-                  onTap: _isUploadingCover ? null : () => _pickAndUploadCover(place),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.8),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_isUploadingCover)
-                          const CircularProgressIndicator(color: Color(0xFFEF484F))
-                        else ...[
-                          const Icon(Icons.add_a_photo, size: 40, color: Colors.white54),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Thêm ảnh bìa',
-                            style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold),
+                child: (place.isCreator && place.isCandidate)
+                    ? GestureDetector(
+                        onTap: _isUploadingCover
+                            ? null
+                            : () => _pickAndUploadCover(place),
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.8),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isUploadingCover)
+                                const CircularProgressIndicator(
+                                  color: Color(0xFFEF484F),
+                                )
+                              else ...[
+                                const Icon(
+                                  Icons.add_a_photo,
+                                  size: 40,
+                                  color: Colors.white54,
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Thêm ảnh bìa',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ) : const Center(
-                  child: Icon(Icons.image, size: 40, color: Colors.white30),
-                ),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(
+                          Icons.image,
+                          size: 40,
+                          color: Colors.white30,
+                        ),
+                      ),
               ),
 
             Positioned(
               top: 15,
               left: 15,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
@@ -898,7 +994,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     const SizedBox(width: 4),
                     Text(
                       place.avgRating.toStringAsFixed(1),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -1130,28 +1229,32 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     );
   }
 
-  Widget _buildLargeButton(IconData icon, String text) {
-    return Container(
-      width: double.infinity,
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEF484F),
+  Widget _buildLargeButton(IconData icon, String text, {VoidCallback? onTap}) {
+    return Material(
+      color: const Color(0xFFEF484F),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1179,76 +1282,94 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                   ),
                 )
               : ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: checkins.length,
-            itemBuilder: (context, index) {
-              final item = checkins[index] as Map<String, dynamic>;
+                  scrollDirection: Axis.horizontal,
+                  itemCount: checkins.length,
+                  itemBuilder: (context, index) {
+                    final item = checkins[index] as Map<String, dynamic>;
 
-              final String checkinPhoto = _getFullImageUrl(
-                item['mediaId'] ?? item['url'],
-              );
+                    final String checkinPhoto = _getFullImageUrl(
+                      item['mediaId'] ?? item['url'],
+                    );
 
-              return GestureDetector(
-                onTap: () => _openCheckinDetail(item, place),
-                child: Container(
-                  width: 130,
-                  margin: const EdgeInsets.only(right: 12, bottom: 5, top: 5),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: const Color(0xFFC5C5C5).withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                    return GestureDetector(
+                      onTap: () => _openCheckinDetail(item, place),
+                      child: Container(
+                        width: 130,
+                        margin: const EdgeInsets.only(
+                          right: 12,
+                          bottom: 5,
+                          top: 5,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: checkinPhoto.isNotEmpty
-                              ? Image.network(
-                            checkinPhoto,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            errorBuilder: (_, _, _) => Container(
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.broken_image, color: Colors.white),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFC5C5C5,
+                            ).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['userName']?.toString() ??
+                                  item['name']?.toString() ??
+                                  'Bạn bè',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          )
-                              : Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.image, color: Colors.white),
-                          ),
+                            const SizedBox(height: 4),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: checkinPhoto.isNotEmpty
+                                    ? Image.network(
+                                        checkinPhoto,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        errorBuilder: (_, _, _) => Container(
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.broken_image,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : Container(
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.image,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: Text(
+                                item['createdAt']
+                                        ?.toString()
+                                        .split('T')
+                                        .first ??
+                                    '',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Text(
-                          item['createdAt']?.toString().split('T').first ?? '',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -1343,7 +1464,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     Row(
                       children: List.generate(
                         (review['rating'] ?? 0) as int,
-                            (index) => const Icon(
+                        (index) => const Icon(
                           Icons.star,
                           color: Colors.amber,
                           size: 12,
@@ -1557,57 +1678,72 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
               child: SizedBox(
                 height: 100,
                 child: photos.isEmpty
-                    ? const Center(child: Text('Chưa có ảnh', style: TextStyle(color: Colors.grey)))
+                    ? const Center(
+                        child: Text(
+                          'Chưa có ảnh',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      )
                     : ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: photos.length,
-                  itemBuilder: (context, index) {
-                    final photoItem = photos[index] as Map<String, dynamic>;
-                    final String galleryPhotoUrl = _getFullImageUrl(
-                      photoItem['mediaId'] ?? photoItem['url'],
-                    );
-                    return Container(
-                      width: 100,
-                      margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: const Color(0xFF303E42),
-                        image: galleryPhotoUrl.isNotEmpty
-                            ? DecorationImage(
-                          image: NetworkImage(galleryPhotoUrl),
-                          fit: BoxFit.cover,
-                        )
-                            : null,
-                      ),
-                      child: Stack(
-                        children: [
-                          if (galleryPhotoUrl.isEmpty)
-                            const Center(child: Icon(Icons.image, color: Colors.white24)),
-                          Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(15),
-                                  bottomRight: Radius.circular(15),
-                                ),
-                              ),
-                              child: Text(
-                                photoItem['userName']?.toString() ?? 'Ẩn danh',
-                                style: const TextStyle(color: Colors.white, fontSize: 10),
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                              ),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: photos.length,
+                        itemBuilder: (context, index) {
+                          final photoItem =
+                              photos[index] as Map<String, dynamic>;
+                          final String galleryPhotoUrl = _getFullImageUrl(
+                            photoItem['mediaId'] ?? photoItem['url'],
+                          );
+                          return Container(
+                            width: 100,
+                            margin: const EdgeInsets.only(right: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              color: const Color(0xFF303E42),
+                              image: galleryPhotoUrl.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(galleryPhotoUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                             ),
-                          ),
-                        ],
+                            child: Stack(
+                              children: [
+                                if (galleryPhotoUrl.isEmpty)
+                                  const Center(
+                                    child: Icon(
+                                      Icons.image,
+                                      color: Colors.white24,
+                                    ),
+                                  ),
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(15),
+                                        bottomRight: Radius.circular(15),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      photoItem['userName']?.toString() ??
+                                          'Ẩn danh',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ),
           ],
@@ -1764,11 +1900,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.82,
-                    ),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.82,
+                        ),
                     itemCount: checkins.length,
                     itemBuilder: (context, index) {
                       final item = checkins[index] as Map<String, dynamic>;
@@ -1805,7 +1941,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item['userName']?.toString() ?? item['name']?.toString() ?? 'Bạn bè',
+              item['userName']?.toString() ??
+                  item['name']?.toString() ??
+                  'Bạn bè',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
@@ -1909,10 +2047,10 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                    ),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
                     itemCount: photos.length,
                     itemBuilder: (context, index) {
                       final item = photos[index] as Map<String, dynamic>;
@@ -1993,9 +2131,9 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                 .read(placeControllerProvider.notifier)
                 .prependFriendReview(review);
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Đã gửi đánh giá')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Đã gửi đánh giá')));
             _scrollToReviews();
           },
         );
@@ -2018,7 +2156,9 @@ class _CheckinDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userName =
-        checkin['userName']?.toString() ?? checkin['name']?.toString() ?? 'Bạn bè';
+        checkin['userName']?.toString() ??
+        checkin['name']?.toString() ??
+        'Bạn bè';
     final userAvatar = checkin['userAvatar']?.toString();
     final caption = checkin['caption']?.toString().trim() ?? '';
     final createdAt = checkin['createdAt']?.toString().split('T').first ?? '';
@@ -2180,7 +2320,8 @@ class NewRatingBottomSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<NewRatingBottomSheet> createState() => _NewRatingBottomSheetState();
+  ConsumerState<NewRatingBottomSheet> createState() =>
+      _NewRatingBottomSheetState();
 }
 
 class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
@@ -2229,7 +2370,12 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 24, left: 20, right: 20, bottom: 20),
+        padding: const EdgeInsets.only(
+          top: 24,
+          left: 20,
+          right: 20,
+          bottom: 20,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -2347,14 +2493,20 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
                 return IconButton(
-                  onPressed: isBusy ? null : () {
-                    setState(() {
-                      _rating = index + 1;
-                    });
-                  },
+                  onPressed: isBusy
+                      ? null
+                      : () {
+                          setState(() {
+                            _rating = index + 1;
+                          });
+                        },
                   icon: Icon(
-                    index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                    color: index < _rating ? Colors.amber : const Color(0xFFD9D9D9),
+                    index < _rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    color: index < _rating
+                        ? Colors.amber
+                        : const Color(0xFFD9D9D9),
                     size: 40,
                   ),
                 );
@@ -2370,21 +2522,28 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               children: _tags.map((tag) {
                 final isSelected = _selectedTags.contains(tag);
                 return InkWell(
-                  onTap: isBusy ? null : () {
-                    setState(() {
-                      if (isSelected) {
-                        _selectedTags.remove(tag);
-                      } else {
-                        _selectedTags.add(tag);
-                      }
-                    });
-                  },
+                  onTap: isBusy
+                      ? null
+                      : () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedTags.remove(tag);
+                            } else {
+                              _selectedTags.add(tag);
+                            }
+                          });
+                        },
                   borderRadius: BorderRadius.circular(20),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFEF484F) : const Color(0x19FF9296),
+                      color: isSelected
+                          ? const Color(0xFFEF484F)
+                          : const Color(0x19FF9296),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -2393,7 +2552,9 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                         Text(
                           isSelected ? '✓ ' : '+ ',
                           style: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFFEF484F),
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
@@ -2401,7 +2562,9 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                         Text(
                           tag,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFFEF484F),
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFFEF484F),
                             fontSize: 14,
                             fontFamily: 'SF Pro',
                             fontWeight: FontWeight.w700,
@@ -2430,7 +2593,10 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
 
               decoration: InputDecoration(
                 hintText: 'Chia sẻ cảm nhận của bạn...',
-                hintStyle: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 15),
+                hintStyle: const TextStyle(
+                  color: Color(0xFFA6A6A6),
+                  fontSize: 15,
+                ),
                 fillColor: const Color(0x7FEFEFEF),
                 filled: true,
                 contentPadding: const EdgeInsets.all(16),
@@ -2466,11 +2632,13 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 Switch.adaptive(
                   value: _isPrivate,
                   activeThumbColor: const Color(0xFFEF484F),
-                  onChanged: isBusy ? null : (value) {
-                    setState(() {
-                      _isPrivate = value;
-                    });
-                  },
+                  onChanged: isBusy
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _isPrivate = value;
+                          });
+                        },
                 ),
               ],
             ),
@@ -2481,88 +2649,104 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: (_rating == 0 || _selectedImagePath == null || isBusy)
+                onPressed:
+                    (_rating == 0 || _selectedImagePath == null || isBusy)
                     ? null
                     : () async {
-                  setState(() {
-                    _isUploadingImageLocal = true;
-                  });
+                        setState(() {
+                          _isUploadingImageLocal = true;
+                        });
 
-                  String? uploadedMediaId;
-                  if (_selectedImagePath != null) {
-                    try {
-                      final place = ref.read(placeControllerProvider);
-                      final lat = (place.lat != null && place.lat != 0) ? place.lat! : 10.762892;
-                      final lng = (place.lng != null && place.lng != 0) ? place.lng! : 106.682586;
+                        String? uploadedMediaId;
+                        if (_selectedImagePath != null) {
+                          try {
+                            final place = ref.read(placeControllerProvider);
+                            final lat = (place.lat != null && place.lat != 0)
+                                ? place.lat!
+                                : 10.762892;
+                            final lng = (place.lng != null && place.lng != 0)
+                                ? place.lng!
+                                : 106.682586;
 
-                      final authService = ref.read(authServiceProvider);
-                      final uploadService = UploadService(authService: authService);
+                            final authService = ref.read(authServiceProvider);
+                            final uploadService = UploadService(
+                              authService: authService,
+                            );
 
-                      uploadedMediaId = await uploadService.upload(
-                        imagePath: _selectedImagePath!,
-                        latitude: lat,
-                        longitude: lng,
-                        source: 'IN_APP_CAMERA',
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      setState(() {
-                        _isUploadingImageLocal = false;
-                      });
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Lỗi tải ảnh lên: $e')),
-                        );
-                      }
-                      return;
-                    }
-                  }
+                            uploadedMediaId = await uploadService.upload(
+                              imagePath: _selectedImagePath!,
+                              latitude: lat,
+                              longitude: lng,
+                              source: 'IN_APP_CAMERA',
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            setState(() {
+                              _isUploadingImageLocal = false;
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Lỗi tải ảnh lên: $e')),
+                              );
+                            }
+                            return;
+                          }
+                        }
 
-                  String finalContent = _commentController.text.trim();
-                  if (_selectedTags.isNotEmpty) {
-                    final String tagsString = _selectedTags.map((e) => '#$e').join(' ');
-                    finalContent = finalContent.isEmpty
-                        ? tagsString
-                        : '$finalContent\n$tagsString';
-                  }
+                        String finalContent = _commentController.text.trim();
+                        if (_selectedTags.isNotEmpty) {
+                          final String tagsString = _selectedTags
+                              .map((e) => '#$e')
+                              .join(' ');
+                          finalContent = finalContent.isEmpty
+                              ? tagsString
+                              : '$finalContent\n$tagsString';
+                        }
 
-                  final String visibilityParam = _isPrivate ? 'PRIVATE' : 'FRIENDS';
+                        final String visibilityParam = _isPrivate
+                            ? 'PRIVATE'
+                            : 'FRIENDS';
 
-                  final Map<String, dynamic> apiPayload = {
-                    'placeId': widget.placeId,
-                    'candidateId': null,
-                    'rating': _rating,
-                    'content': finalContent.isEmpty ? null : finalContent,
-                    'visibility': visibilityParam,
-                    if (uploadedMediaId != null) 'mediaIds': [uploadedMediaId],
-                  };
+                        final Map<String, dynamic> apiPayload = {
+                          'placeId': widget.placeId,
+                          'candidateId': null,
+                          'rating': _rating,
+                          'content': finalContent.isEmpty ? null : finalContent,
+                          'visibility': visibilityParam,
+                          if (uploadedMediaId != null)
+                            'mediaIds': [uploadedMediaId],
+                        };
 
-                  final isSuccess = await ref
-                      .read(reviewControllerProvider.notifier)
-                      .submitReview(apiPayload);
+                        final isSuccess = await ref
+                            .read(reviewControllerProvider.notifier)
+                            .submitReview(apiPayload);
 
-                  if (isSuccess && context.mounted) {
-                    final submittedReview = <String, dynamic>{
-                      'id': uploadedMediaId ?? DateTime.now().toIso8601String(),
-                      'userName': widget.userName,
-                      'rating': _rating,
-                      'content': finalContent,
-                      'createdAt': DateTime.now().toIso8601String(),
-                      'mediaIds': uploadedMediaId == null
-                          ? const <String>[]
-                          : <String>[uploadedMediaId],
-                    };
-                    Navigator.pop(context);
-                    widget.onSuccess(submittedReview);
+                        if (isSuccess && context.mounted) {
+                          final submittedReview = <String, dynamic>{
+                            'id':
+                                uploadedMediaId ??
+                                DateTime.now().toIso8601String(),
+                            'userName': widget.userName,
+                            'rating': _rating,
+                            'content': finalContent,
+                            'createdAt': DateTime.now().toIso8601String(),
+                            'mediaIds': uploadedMediaId == null
+                                ? const <String>[]
+                                : <String>[uploadedMediaId],
+                          };
+                          Navigator.pop(context);
+                          widget.onSuccess(submittedReview);
 
-                    ref.read(reviewControllerProvider.notifier).resetState();
-                  } else {
-                    if (!mounted) return;
-                    setState(() {
-                      _isUploadingImageLocal = false;
-                    });
-                  }
-                },
+                          ref
+                              .read(reviewControllerProvider.notifier)
+                              .resetState();
+                        } else {
+                          if (!mounted) return;
+                          setState(() {
+                            _isUploadingImageLocal = false;
+                          });
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEF484F),
                   shape: RoundedRectangleBorder(
@@ -2572,19 +2756,22 @@ class _NewRatingBottomSheetState extends ConsumerState<NewRatingBottomSheet> {
                 ),
                 child: isBusy
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                  'Xác nhận',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                        'Xác nhận',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ],

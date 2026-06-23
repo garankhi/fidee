@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -20,11 +21,15 @@ import 'services/revenuecat_service.dart';
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  await dotenv.load(fileName: 'assets/env/mobile.env', isOptional: true);
+  if (!kReleaseMode) {
+    await dotenv.load(fileName: 'assets/env/mobile.env', isOptional: true);
+  }
   try {
     await const RevenueCatService().configure();
   } catch (error) {
-    debugPrint('RevenueCat is not configured for this runtime: $error');
+    if (kDebugMode) {
+      debugPrint('RevenueCat is not configured for this runtime: $error');
+    }
   }
   runApp(const ProviderScope(child: FideeApp()));
 }
@@ -52,7 +57,7 @@ class _FideeAppState extends ConsumerState<FideeApp> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
 
-    // Kick off location init ngay từ đầu, chạy song song với auth.
+    // Kick off location status check ngay từ đầu, chạy song song với auth.
     // Riverpod sẽ cache kết quả (keepAlive), HomeScreen dùng lại mà không phải chờ.
     final locationState = ref.watch(locationControllerProvider);
     final keepNativeSplash = shouldKeepNativeSplash(authState, locationState);

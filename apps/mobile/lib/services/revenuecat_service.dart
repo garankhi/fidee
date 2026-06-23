@@ -20,31 +20,45 @@ class RevenueCatService {
       );
     }
 
-    debugPrint(
-      '[RevenueCat] configure platform=$_platformLabel '
-      'key=${_maskApiKey(apiKey)} length=${apiKey.length}',
-    );
-    await Purchases.setLogLevel(LogLevel.debug);
+    if (kDebugMode) {
+      debugPrint(
+        '[RevenueCat] configure platform=$_platformLabel '
+        'key=${_maskApiKey(apiKey)} length=${apiKey.length}',
+      );
+    }
+    await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
     await Purchases.configure(PurchasesConfiguration(apiKey));
-    debugPrint('[RevenueCat] configured appUserId=${await Purchases.appUserID}');
+    if (kDebugMode) {
+      debugPrint(
+        '[RevenueCat] configured appUserId=${await Purchases.appUserID}',
+      );
+    }
   }
 
   Future<void> logIn(String appUserId) async {
     final trimmedUserId = appUserId.trim();
     if (trimmedUserId.isEmpty) return;
-    debugPrint('[RevenueCat] logIn appUserId=$trimmedUserId');
+    if (kDebugMode) {
+      debugPrint('[RevenueCat] logIn appUserId=$trimmedUserId');
+    }
     final result = await Purchases.logIn(trimmedUserId);
-    debugPrint(
-      '[RevenueCat] logIn success created=${result.created} '
-      'currentAppUserId=${await Purchases.appUserID} '
-      'originalAppUserId=${result.customerInfo.originalAppUserId} '
-      'activeEntitlements=${result.customerInfo.entitlements.active.keys.toList()} '
-      'purchasedProducts=${result.customerInfo.allPurchasedProductIdentifiers}',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '[RevenueCat] logIn success created=${result.created} '
+        'currentAppUserId=${await Purchases.appUserID} '
+        'originalAppUserId=${result.customerInfo.originalAppUserId} '
+        'activeEntitlements=${result.customerInfo.entitlements.active.keys.toList()} '
+        'purchasedProducts=${result.customerInfo.allPurchasedProductIdentifiers}',
+      );
+    }
   }
 
   Future<void> logOut() async {
-    debugPrint('[RevenueCat] logOut currentAppUserId=${await Purchases.appUserID}');
+    if (kDebugMode) {
+      debugPrint(
+        '[RevenueCat] logOut currentAppUserId=${await Purchases.appUserID}',
+      );
+    }
     await Purchases.logOut();
   }
 
@@ -65,7 +79,9 @@ class RevenueCatService {
   }
 
   bool hasPro(CustomerInfo info) {
-    return info.entitlements.active.containsKey(Config.revenueCatEntitlementPro);
+    return info.entitlements.active.containsKey(
+      Config.revenueCatEntitlementPro,
+    );
   }
 
   String _apiKeyForPlatform() {

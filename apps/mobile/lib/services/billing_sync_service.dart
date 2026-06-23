@@ -28,11 +28,9 @@ class BillingSyncService {
   final AuthService _authService;
   final http.Client _client;
 
-  BillingSyncService({
-    required AuthService authService,
-    http.Client? client,
-  })  : _authService = authService,
-        _client = client ?? http.Client();
+  BillingSyncService({required AuthService authService, http.Client? client})
+    : _authService = authService,
+      _client = client ?? http.Client();
 
   Future<void> syncRevenueCat({
     required String appUserId,
@@ -55,10 +53,12 @@ class BillingSyncService {
       expiresAt: expiresAt,
       customerInfo: customerInfo,
     );
-    debugPrint(
-      '[RevenueCat] sync request url=${Config.apiBaseUrl}/billing/revenuecat/sync '
-      'payload=$payload tokenPresent=${token.isNotEmpty}',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '[RevenueCat] sync request url=${Config.apiBaseUrl}/billing/revenuecat/sync '
+        'payload=$payload tokenPresent=${token.isNotEmpty}',
+      );
+    }
 
     final response = await _client.post(
       Uri.parse('${Config.apiBaseUrl}/billing/revenuecat/sync'),
@@ -66,9 +66,11 @@ class BillingSyncService {
       body: jsonEncode(payload),
     );
 
-    debugPrint(
-      '[RevenueCat] sync response status=${response.statusCode} body=${response.body}',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '[RevenueCat] sync response status=${response.statusCode} body=${response.body}',
+      );
+    }
 
     if (response.statusCode != 200) {
       throw BillingSyncException(

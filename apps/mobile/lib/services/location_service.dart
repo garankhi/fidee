@@ -67,9 +67,9 @@ class LocationService {
   Stream<LatLng> get positionUpdates => _positionUpdates.stream;
   bool get isStreamingPositionUpdates => _positionSubscription != null;
 
-  /// Request/check location permission and get the current position once.
+  /// Check location permission and optionally request it from an explicit user action.
   /// Realtime listening is foreground-owned and starts via startPositionUpdates().
-  Future<void> initialize() async {
+  Future<void> initialize({bool requestPermission = true}) async {
     if (_isDisposed) return;
 
     final serviceEnabled = await _readServiceEnabled();
@@ -79,7 +79,9 @@ class LocationService {
       return;
     }
 
-    final permissionStatus = await _ensurePermission();
+    final permissionStatus = await _readPermission(
+      requestIfNeeded: requestPermission,
+    );
     if (permissionStatus.isGranted) {
       _status = LocationStatus.granted;
       await _fetchPosition(emitUpdate: false);
@@ -99,9 +101,11 @@ class LocationService {
     }
   }
 
-  Future<PermissionStatus> _ensurePermission() async {
+  Future<PermissionStatus> _readPermission({
+    required bool requestIfNeeded,
+  }) async {
     final current = await _permissionStatusReader();
-    if (current.isGranted || current.isPermanentlyDenied) {
+    if (current.isGranted || current.isPermanentlyDenied || !requestIfNeeded) {
       return current;
     }
     return _permissionRequester();

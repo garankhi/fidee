@@ -535,12 +535,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  String _formatPrice(int value) {
-    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 1000) return '${(value / 1000).round()}k';
-    return value.toString();
-  }
-
   Widget _buildHotPlacesRow(List<DashboardPlace> places) {
     if (places.isEmpty) {
       return const Padding(

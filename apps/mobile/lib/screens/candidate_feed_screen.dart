@@ -63,9 +63,9 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
 
   String _formatPrice(dynamic min, dynamic max) {
     if (min == null && max == null) return 'Chưa cập nhật giá';
-    if (min != null && max == null) return 'Từ ${min}đ';
-    if (min == null && max != null) return 'Đến ${max}đ';
-    return '${min}đ - ${max}đ';
+    if (min != null && max == null) return 'Từ $minđ';
+    if (min == null && max != null) return 'Đến $maxđ';
+    return '$minđ - $maxđ';
   }
 
   void _openComments(CandidatePlace candidate) {
@@ -265,7 +265,7 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                             width: 160,
                             height: 200,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildImagePlaceholder(),
                           )
                         : _buildImagePlaceholder(),
