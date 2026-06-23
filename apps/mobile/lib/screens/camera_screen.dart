@@ -33,6 +33,7 @@ import 'gallery_asset_picker_sheet.dart';
 import 'gallery_permission_sheet.dart';
 import 'gallery_preview_button.dart';
 import 'premium_upgrade_sheet.dart';
+import 'profile_screen.dart';
 import 'send_image_screen.dart';
 
 List<CameraDescription>? globalCameras;
@@ -182,6 +183,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       MaterialPageRoute<void>(
         builder: (context) => const CameraChatInboxScreen(),
       ),
+    );
+  }
+
+  void _openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (context) => const ProfileScreen()),
     );
   }
 
@@ -582,6 +590,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       currentUserInitials: currentUserInitials,
                       onMapTap: () => Navigator.pop(context),
                       onFriendsTap: () => showCameraFriendsSheet(context),
+                      onProfileTap: _openProfile,
                       onAudienceSelected: (audience) =>
                           unawaited(_selectFeedAudience(audience)),
                     ),
@@ -746,6 +755,7 @@ class _CameraTopBar extends StatelessWidget {
   final String currentUserInitials;
   final VoidCallback onMapTap;
   final VoidCallback onFriendsTap;
+  final VoidCallback onProfileTap;
   final ValueChanged<CameraFeedAudience> onAudienceSelected;
 
   const _CameraTopBar({
@@ -758,6 +768,7 @@ class _CameraTopBar extends StatelessWidget {
     required this.currentUserInitials,
     required this.onMapTap,
     required this.onFriendsTap,
+    required this.onProfileTap,
     required this.onAudienceSelected,
   });
 
@@ -797,20 +808,24 @@ class _CameraTopBar extends StatelessWidget {
                   requestCount: friendRequestCount,
                   onTap: onFriendsTap,
                 ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Colors.blueAccent,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'Tôi',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          GestureDetector(
+            key: const ValueKey('camera-profile-button'),
+            onTap: onProfileTap,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(
+                color: Colors.blueAccent,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  'Tôi',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
