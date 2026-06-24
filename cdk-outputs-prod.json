@@ -1,0 +1,26 @@
+{
+  "Fidee-prod-MediaWaf": {
+    "MediaWebAclArn": "arn:aws:wafv2:us-east-1:305018987075:global/webacl/fidee-prod-media-waf/e27be0f9-f9a6-41e1-b46e-d729a44d529a"
+  },
+  "Fidee-prod": {
+    "BastionHostId": "i-0c0509167f36ed4b9",
+    "MediaBucketName": "fidee-prod-media-305018987075-ap-southeast-1",
+    "FriendRealtimeApiId": "z4cxfjooong6bhyqivuggttt7q",
+    "DbClusterEndpoint": "fidee-prod-db.cluster-c34mqc2o2yzk.ap-southeast-1.rds.amazonaws.com",
+    "FriendRealtimeGraphqlUrl": "https://mzz4bt67njgbbgvqiz6frk22qi.appsync-api.ap-southeast-1.amazonaws.com/graphql",
+    "UserProfilesTableName": "fidee-prod-user-profiles",
+    "ApiEndpoint4F160690": "https://e2f57i13n0.execute-api.ap-southeast-1.amazonaws.com/prod/",
+    "UserPoolClientId": "2uj3lu6n8j2o7oruj92s9hd9g3",
+    "CustomApiUrl": "https://api.fidee.site/",
+    "ApiUrl": "https://e2f57i13n0.execute-api.ap-southeast-1.amazonaws.com/prod/",
+    "UserPoolId": "ap-southeast-1_GP2dlOObW",
+    "VpcId": "vpc-07ebbb273c88ff463",
+    "PlacesTableName": "fidee-prod-places",
+    "DbSecretArn": "arn:aws:secretsmanager:ap-southeast-1:305018987075:secret:DatabaseSecret3B817195-rAu0v3hQypmx-RXIUt2",
+    "MediaUploadEventsQueueUrl": "https://sqs.ap-southeast-1.amazonaws.com/305018987075/fidee-prod-media-upload-events",
+    "MediaWebAclArn": "arn:aws:wafv2:us-east-1:305018987075:global/webacl/fidee-prod-media-waf/e27be0f9-f9a6-41e1-b46e-d729a44d529a",
+    "BastionHostBastionHostIdC743CBD6": "i-0c0509167f36ed4b9",
+    "MediaDistributionDomainName": "d2v3gezgotgvk9.cloudfront.net",
+    "ApiWebAclArn": "arn:aws:wafv2:ap-southeast-1:305018987075:regional/webacl/fidee-prod-api-waf/5d6a47ae-620a-4528-8776-165a1e00fb1b"
+  }
+}

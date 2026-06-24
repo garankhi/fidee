@@ -899,7 +899,7 @@ export class FideeStack extends cdk.Stack {
     );
 
     const rootDomain = 'fidee.site';
-    const apiDomainName = `api.${rootDomain}`;
+    const apiDomainName = isProd(stage) ? `api.${rootDomain}` : `api-${stage}.${rootDomain}`;
 
     const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
       domainName: rootDomain,

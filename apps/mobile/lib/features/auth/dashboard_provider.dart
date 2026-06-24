@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../config.dart';
 import '../../models/dashboard_place.dart';
 import '../../services/discovery_feed_service.dart';
 import 'auth_providers.dart';
@@ -256,6 +257,6 @@ class DashboardController extends _$DashboardController {
     if (mediaId == null || mediaId.isEmpty) {
       return 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500';
     }
-    return 'https://api.fidee.site/media/$mediaId';
+    return '${Config.apiBaseUrl}/media/$mediaId';
   }
 }

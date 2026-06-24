@@ -17,7 +17,8 @@
     "cdk:synth": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- synth Fidee-dev-MediaWaf Fidee-dev --context stage=dev",
     "cdk:diff": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- diff Fidee-dev-MediaWaf Fidee-dev --context stage=dev",
     "cdk:deploy:dev": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- deploy Fidee-dev-MediaWaf Fidee-dev --context stage=dev",
-    "cdk:diff:prod": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- diff Fidee-prod-MediaWaf Fidee-prod --context stage=prod"
+    "cdk:diff:prod": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- diff Fidee-prod-MediaWaf Fidee-prod --context stage=prod",
+    "cdk:deploy:prod": "npm run build -w services/api && npm run build -w infra/cdk && npm run cdk -w infra/cdk -- deploy Fidee-prod-MediaWaf Fidee-prod --context stage=prod --outputs-file ../../cdk-outputs-prod.json"
   },
   "engines": {
     "node": ">=20.0.0"

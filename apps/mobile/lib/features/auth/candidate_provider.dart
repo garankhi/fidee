@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../config.dart';
 import 'auth_providers.dart';
 
 part 'candidate_provider.g.dart';
@@ -114,9 +115,9 @@ class CandidateController extends _$CandidateController {
       final authService = ref.read(authServiceProvider);
       final token = await authService.getToken();
 
-      final uri = Uri.parse('https://api.fidee.site/place-candidates').replace(
-        queryParameters: status == null ? null : {'status': status},
-      );
+      final uri = Uri.parse(
+        '${Config.apiBaseUrl}/place-candidates',
+      ).replace(queryParameters: status == null ? null : {'status': status});
 
       final response = await http.get(
         uri,

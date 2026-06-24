@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../config.dart';
 import 'auth_providers.dart';
 
 part 'place_provider.g.dart';
@@ -134,7 +135,7 @@ class PlaceController extends _$PlaceController {
     final authService = ref.read(authServiceProvider);
     final token = await authService.getToken();
 
-    const baseUrl = 'https://api.fidee.site/places';
+    const baseUrl = '${Config.apiBaseUrl}/places';
 
     try {
       final response = await http.get(
@@ -166,8 +167,16 @@ class PlaceController extends _$PlaceController {
         isCreator: data['isCreator'] == true,
         isCandidate: data['isCandidate'] == true,
 
-        lat: double.tryParse(coordinates['lat']?.toString() ?? data['lat']?.toString() ?? '') ?? 0,
-        lng: double.tryParse(coordinates['lng']?.toString() ?? data['lng']?.toString() ?? '') ?? 0,
+        lat:
+            double.tryParse(
+              coordinates['lat']?.toString() ?? data['lat']?.toString() ?? '',
+            ) ??
+            0,
+        lng:
+            double.tryParse(
+              coordinates['lng']?.toString() ?? data['lng']?.toString() ?? '',
+            ) ??
+            0,
 
         openTime: _formatTime(data['openTime']?.toString()),
         closeTime: _formatTime(data['closeTime']?.toString()),
@@ -176,16 +185,34 @@ class PlaceController extends _$PlaceController {
         priceMax: int.tryParse(data['priceMax']?.toString() ?? ''),
 
         description: data['description']?.toString(),
-        avgRating: double.tryParse(data['avgRating']?.toString() ?? data['avg_rating']?.toString() ?? '') ?? 0,
+        avgRating:
+            double.tryParse(
+              data['avgRating']?.toString() ??
+                  data['avg_rating']?.toString() ??
+                  '',
+            ) ??
+            0,
         ratingCount: int.tryParse(data['ratingCount']?.toString() ?? '') ?? 0,
-        checkinCount: int.tryParse(data['checkinCount']?.toString() ?? data['checkin_count']?.toString() ?? '') ?? 0,
+        checkinCount:
+            int.tryParse(
+              data['checkinCount']?.toString() ??
+                  data['checkin_count']?.toString() ??
+                  '',
+            ) ??
+            0,
 
         vibes: List<String>.from(data['vibes'] as Iterable? ?? []),
         services: List<String>.from(data['services'] as Iterable? ?? []),
 
-        friendCheckins: List<dynamic>.from(data['friendCheckins'] as Iterable? ?? []),
-        friendReviews: List<dynamic>.from(data['friendReviews'] as Iterable? ?? []),
-        otherReviews: List<dynamic>.from(data['otherReviews'] as Iterable? ?? []),
+        friendCheckins: List<dynamic>.from(
+          data['friendCheckins'] as Iterable? ?? [],
+        ),
+        friendReviews: List<dynamic>.from(
+          data['friendReviews'] as Iterable? ?? [],
+        ),
+        otherReviews: List<dynamic>.from(
+          data['otherReviews'] as Iterable? ?? [],
+        ),
         photos: List<dynamic>.from(data['photos'] as Iterable? ?? []),
       );
     } catch (e, stackTrace) {
@@ -216,7 +243,7 @@ class PlaceFeedController extends _$PlaceFeedController {
     final authService = ref.read(authServiceProvider);
     final token = await authService.getToken();
 
-    const url = 'https://api.fidee.site/places';
+    const url = '${Config.apiBaseUrl}/places';
 
     try {
       final response = await http.get(
@@ -248,12 +275,21 @@ class PlaceFeedController extends _$PlaceFeedController {
           category: item['category']?.toString(),
           address: item['address']?.toString(),
 
-          coverMediaId: item['coverMediaId']?.toString() ?? imageUrlFromMetadata,
+          coverMediaId:
+              item['coverMediaId']?.toString() ?? imageUrlFromMetadata,
           isCreator: item['isCreator'] == true,
           isCandidate: item['isCandidate'] == true,
 
-          lat: double.tryParse(coordinates['lat']?.toString() ?? item['lat']?.toString() ?? '') ?? 0,
-          lng: double.tryParse(coordinates['lng']?.toString() ?? item['lng']?.toString() ?? '') ?? 0,
+          lat:
+              double.tryParse(
+                coordinates['lat']?.toString() ?? item['lat']?.toString() ?? '',
+              ) ??
+              0,
+          lng:
+              double.tryParse(
+                coordinates['lng']?.toString() ?? item['lng']?.toString() ?? '',
+              ) ??
+              0,
 
           openTime: _formatTime(item['openTime']?.toString()),
           closeTime: _formatTime(item['closeTime']?.toString()),
@@ -262,19 +298,36 @@ class PlaceFeedController extends _$PlaceFeedController {
           priceMax: int.tryParse(item['priceMax']?.toString() ?? ''),
           description: item['description']?.toString(),
 
-          avgRating: double.tryParse(item['avgRating']?.toString() ?? item['avg_rating']?.toString() ?? '') ?? 0,
+          avgRating:
+              double.tryParse(
+                item['avgRating']?.toString() ??
+                    item['avg_rating']?.toString() ??
+                    '',
+              ) ??
+              0,
           ratingCount: int.tryParse(item['ratingCount']?.toString() ?? '') ?? 0,
-          checkinCount: int.tryParse(item['checkinCount']?.toString() ?? item['checkin_count']?.toString() ?? '') ?? 0,
+          checkinCount:
+              int.tryParse(
+                item['checkinCount']?.toString() ??
+                    item['checkin_count']?.toString() ??
+                    '',
+              ) ??
+              0,
 
           vibes: List<String>.from(item['vibes'] as Iterable? ?? []),
           services: List<String>.from(item['services'] as Iterable? ?? []),
-          friendCheckins: List<dynamic>.from(item['friendCheckins'] as Iterable? ?? []),
-          friendReviews: List<dynamic>.from(item['friendReviews'] as Iterable? ?? []),
-          otherReviews: List<dynamic>.from(item['otherReviews'] as Iterable? ?? []),
+          friendCheckins: List<dynamic>.from(
+            item['friendCheckins'] as Iterable? ?? [],
+          ),
+          friendReviews: List<dynamic>.from(
+            item['friendReviews'] as Iterable? ?? [],
+          ),
+          otherReviews: List<dynamic>.from(
+            item['otherReviews'] as Iterable? ?? [],
+          ),
           photos: List<dynamic>.from(item['photos'] as Iterable? ?? []),
         );
       }).toList();
-
     } catch (e, stackTrace) {
       debugPrint('Error fetching places feed: $e\n$stackTrace');
       rethrow;
