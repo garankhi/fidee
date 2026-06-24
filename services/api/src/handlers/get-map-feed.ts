@@ -156,7 +156,16 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         FROM place_candidates pc
         JOIN users creator ON creator.id = pc.created_by
         WHERE pc.location IS NOT NULL
-          AND (pc.visibility = 'FRIENDS' OR pc.created_by = $1)
+          AND (
+            pc.created_by = $1
+            OR (
+              pc.visibility = 'FRIENDS'
+              AND pc.created_by IN (
+                SELECT friend_id FROM friendships
+                WHERE user_id = $1 AND status = 'ACCEPTED'
+              )
+            )
+          )
           AND ST_DWithin(pc.location, ST_MakePoint($2, $3)::geography, $4)
           AND NOT EXISTS (
             SELECT 1 FROM check_ins ci_existing

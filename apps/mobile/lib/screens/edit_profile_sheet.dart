@@ -10,10 +10,12 @@ class EditProfileSheet extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String preferredUsername;
+  final String bio;
   final Future<AuthResult> Function({
     required String firstName,
     required String lastName,
     required String preferredUsername,
+    required String bio,
   })
   onSave;
   final Future<UsernameAvailabilityResult> Function(String username)
@@ -25,6 +27,7 @@ class EditProfileSheet extends StatefulWidget {
     required this.firstName,
     required this.lastName,
     required this.preferredUsername,
+    required this.bio,
     required this.onSave,
     required this.onCheckUsername,
     required this.onSaved,
@@ -41,6 +44,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _usernameController;
+  late final TextEditingController _bioController;
   bool _isSaving = false;
   String? _saveErrorMessage;
   Timer? _usernameDebounce;
@@ -56,12 +60,14 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _firstNameController = TextEditingController(text: widget.firstName);
     _lastNameController = TextEditingController(text: widget.lastName);
     _usernameController = TextEditingController(text: widget.preferredUsername);
+    _bioController = TextEditingController(text: widget.bio);
     _initialNormalizedUsername = widget.preferredUsername.trim().toLowerCase();
     _usernameStatus = _isValidUsername(_initialNormalizedUsername)
         ? _UsernameAvailabilityStatus.available
         : _UsernameAvailabilityStatus.idle;
     _firstNameController.addListener(_onProfileFieldChanged);
     _lastNameController.addListener(_onProfileFieldChanged);
+    _bioController.addListener(_onProfileFieldChanged);
     _usernameController.addListener(_onUsernameChanged);
   }
 
@@ -70,10 +76,12 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _usernameDebounce?.cancel();
     _firstNameController.removeListener(_onProfileFieldChanged);
     _lastNameController.removeListener(_onProfileFieldChanged);
+    _bioController.removeListener(_onProfileFieldChanged);
     _usernameController.removeListener(_onUsernameChanged);
     _firstNameController.dispose();
     _lastNameController.dispose();
     _usernameController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -175,6 +183,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
       preferredUsername: _usernameController.text.trim(),
+      bio: _bioController.text.trim(),
     );
 
     if (!mounted) return;
@@ -210,6 +219,13 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       return 'Username chỉ gồm chữ thường, số, dấu . hoặc _, 3-30 ký tự';
     }
 
+    return null;
+  }
+
+  String? _bioMessage(String? value) {
+    if ((value ?? '').trim().length > 160) {
+      return 'Bio tối đa 160 ký tự';
+    }
     return null;
   }
 
@@ -274,10 +290,19 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                     controller: _usernameController,
                     label: 'Tên đăng nhập',
                     prefixText: '@',
-                    textInputAction: TextInputAction.done,
+                    textInputAction: TextInputAction.next,
                     enabled: !_isSaving,
                     validator: _usernameMessage,
-                    onFieldSubmitted: (_) => _save(),
+                  ),
+                  const SizedBox(height: 14),
+                  _ProfileTextField(
+                    controller: _bioController,
+                    label: 'Bio',
+                    textInputAction: TextInputAction.newline,
+                    enabled: !_isSaving,
+                    validator: _bioMessage,
+                    maxLines: 3,
+                    maxLength: 160,
                   ),
                   if (_usernameAvailabilityMessage != null) ...[
                     const SizedBox(height: 10),
@@ -445,7 +470,8 @@ class _ProfileTextField extends StatelessWidget {
   final TextInputAction textInputAction;
   final bool enabled;
   final String? Function(String?) validator;
-  final ValueChanged<String>? onFieldSubmitted;
+  final int maxLines;
+  final int? maxLength;
 
   const _ProfileTextField({
     required this.controller,
@@ -453,8 +479,9 @@ class _ProfileTextField extends StatelessWidget {
     required this.textInputAction,
     required this.enabled,
     required this.validator,
+    this.maxLines = 1,
+    this.maxLength,
     this.prefixText,
-    this.onFieldSubmitted,
   });
 
   @override
@@ -463,7 +490,10 @@ class _ProfileTextField extends StatelessWidget {
       controller: controller,
       enabled: enabled,
       textInputAction: textInputAction,
-      onFieldSubmitted: onFieldSubmitted,
+      keyboardType: maxLines > 1 ? TextInputType.multiline : TextInputType.text,
+      minLines: maxLines,
+      maxLines: maxLines,
+      maxLength: maxLength,
       validator: validator,
       cursorColor: const Color(0xFFEF4050),
       style: const TextStyle(

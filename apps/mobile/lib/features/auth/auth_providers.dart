@@ -19,6 +19,7 @@ class AuthUiState {
   final String? lastName;
   final String? preferredUsername;
   final String? avatarUrl;
+  final String? bio;
   final String? since;
 
   const AuthUiState({
@@ -33,6 +34,7 @@ class AuthUiState {
     this.lastName,
     this.preferredUsername,
     this.avatarUrl,
+    this.bio,
     this.since,
   });
 
@@ -54,6 +56,7 @@ class AuthUiState {
       lastName: service.lastName,
       preferredUsername: service.preferredUsername,
       avatarUrl: service.avatarUrl,
+      bio: service.bio,
       since: service.since,
     );
   }
@@ -70,6 +73,7 @@ class AuthUiState {
     String? lastName,
     String? preferredUsername,
     String? avatarUrl,
+    String? bio,
     String? since,
     bool clearError = false,
   }) {
@@ -86,6 +90,7 @@ class AuthUiState {
       lastName: lastName ?? this.lastName,
       preferredUsername: preferredUsername ?? this.preferredUsername,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
       since: since ?? this.since,
     );
   }
@@ -262,6 +267,7 @@ class AuthController extends _$AuthController {
     String? lastName,
     String? preferredUsername,
     String? avatarUrl,
+    String? bio,
   }) async {
     final current = _currentState();
     state = AsyncData(current.copyWith(isSubmitting: true, clearError: true));
@@ -272,6 +278,7 @@ class AuthController extends _$AuthController {
       lastName: lastName,
       preferredUsername: preferredUsername,
       avatarUrl: avatarUrl,
+      bio: bio,
     );
     state = AsyncData(
       AuthUiState.fromService(

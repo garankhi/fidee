@@ -65,6 +65,7 @@ describe('update-profile handler', () => {
           display_name: 'Nguyen Minh',
           username: 'minh',
           avatar_url: null,
+          bio: 'Coffee hunter',
           plan: 'FREE',
           created_at: '2026-01-02T00:00:00.000Z',
         },
@@ -73,7 +74,12 @@ describe('update-profile handler', () => {
     mockCognitoSend.mockResolvedValueOnce({});
 
     const result = await handler(
-      mockEvent({ firstName: ' Nguyen ', lastName: 'Minh', username: 'Minh' }),
+      mockEvent({
+        firstName: ' Nguyen ',
+        lastName: 'Minh',
+        username: 'Minh',
+        bio: 'Coffee hunter',
+      }),
     );
 
     expect(result.statusCode).toBe(200);
@@ -83,6 +89,7 @@ describe('update-profile handler', () => {
       'minh',
       'user@example.com',
       null,
+      'Coffee hunter',
     ]);
     expect(mockCognitoSend).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -94,6 +101,7 @@ describe('update-profile handler', () => {
       expect.objectContaining({ abortSignal: expect.any(Object) }),
     );
     expect(JSON.parse(result.body).profile.username).toBe('minh');
+    expect(JSON.parse(result.body).profile.bio).toBe('Coffee hunter');
   });
 
   it('does not block the profile response when Cognito mirror hangs', async () => {
@@ -106,6 +114,7 @@ describe('update-profile handler', () => {
           display_name: 'Nguyen Minh',
           username: 'minh',
           avatar_url: null,
+          bio: null,
           plan: 'FREE',
           created_at: '2026-01-02T00:00:00.000Z',
         },
@@ -151,6 +160,7 @@ describe('update-profile handler', () => {
           display_name: 'Nguyen Minh',
           username: 'current',
           avatar_url: null,
+          bio: null,
           plan: 'FREE',
           created_at: '2026-01-02T00:00:00.000Z',
         },
@@ -173,6 +183,7 @@ describe('update-profile handler', () => {
           display_name: 'Nguyen Minh',
           username: 'newuser',
           avatar_url: null,
+          bio: null,
           plan: 'FREE',
           created_at: '2026-01-02T00:00:00.000Z',
         },
@@ -190,6 +201,7 @@ describe('update-profile handler', () => {
       'Nguyen Minh',
       'newuser',
       'user@example.com',
+      null,
       null,
     ]);
     expect(JSON.parse(result.body).profile.username).toBe('newuser');

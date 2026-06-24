@@ -877,4 +877,9 @@ CREATE TRIGGER trg_comments_updated
   BEFORE UPDATE ON comments
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 `,
+
+  '019_add_checkin_count_to_places': `
+ALTER TABLE places
+  ADD COLUMN IF NOT EXISTS checkin_count INTEGER NOT NULL DEFAULT 0;
+`
 };

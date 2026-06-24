@@ -172,6 +172,7 @@ class AuthService {
   String? _lastName;
   String? _preferredUsername;
   String? _avatarUrl;
+  String? _bio;
   String? _since;
   String? _pendingSignUpEmail;
   String? _pendingSignUpPassword;
@@ -180,6 +181,7 @@ class AuthService {
   String? get lastName => _lastName;
   String? get preferredUsername => _preferredUsername;
   String? get avatarUrl => _avatarUrl;
+  String? get bio => _bio;
   String? get since => _since;
 
   late CognitoUserPool _userPool;
@@ -239,6 +241,7 @@ class AuthService {
     _lastName = null;
     _preferredUsername = null;
     _avatarUrl = null;
+    _bio = null;
     _since = null;
   }
 
@@ -252,6 +255,7 @@ class AuthService {
     _lastName = details.lastName;
     _preferredUsername = details.preferredUsername;
     _avatarUrl = details.avatarUrl;
+    _bio = details.bio;
     _tier = details.tier;
     _since = details.since;
   }
@@ -833,16 +837,21 @@ class AuthService {
     String? lastName,
     String? preferredUsername,
     String? avatarUrl,
+    String? bio,
   }) async {
     if (isTestMode) {
       if (firstName != null) _firstName = firstName;
       if (lastName != null) _lastName = lastName;
       if (preferredUsername != null) _preferredUsername = preferredUsername;
       if (avatarUrl != null) _avatarUrl = avatarUrl;
+      if (bio != null) _bio = bio;
       return const AuthResult(success: true);
     }
 
-    if (firstName != null || lastName != null || preferredUsername != null) {
+    if (firstName != null ||
+        lastName != null ||
+        preferredUsername != null ||
+        bio != null) {
       final currentFirstName = firstName ?? _firstName ?? '';
       final currentLastName = lastName ?? _lastName ?? '';
       final currentUsername = preferredUsername ?? _preferredUsername ?? '';
@@ -851,6 +860,7 @@ class AuthService {
         firstName: currentFirstName,
         lastName: currentLastName,
         username: currentUsername,
+        bio: bio ?? _bio ?? '',
       );
     }
 
@@ -902,6 +912,7 @@ class AuthService {
     required String firstName,
     required String lastName,
     required String username,
+    String bio = '',
   }) async {
     final token = await getToken();
     if (token == null) {
@@ -919,6 +930,7 @@ class AuthService {
           'firstName': firstName.trim(),
           'lastName': lastName.trim(),
           'username': username.trim(),
+          'bio': bio.trim(),
         }),
       );
 
@@ -931,6 +943,7 @@ class AuthService {
         _preferredUsername =
             profile?['username'] as String? ?? username.trim().toLowerCase();
         _avatarUrl = profile?['avatarUrl'] as String? ?? _avatarUrl;
+        _bio = profile?['bio'] as String? ?? bio.trim();
 
         final plan = profile?['plan'] as String?;
         _tier = plan == 'PRO' ? UserTier.pro : UserTier.free;

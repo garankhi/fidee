@@ -6,6 +6,7 @@ class ProfileDetails {
     this.lastName,
     this.preferredUsername,
     this.avatarUrl,
+    this.bio,
     this.since,
     required this.tier,
   });
@@ -14,6 +15,7 @@ class ProfileDetails {
   final String? lastName;
   final String? preferredUsername;
   final String? avatarUrl;
+  final String? bio;
   final String? since;
   final UserTier tier;
 
@@ -34,6 +36,7 @@ class ProfileDetails {
       lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : null,
       preferredUsername: json['username'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
+      bio: json['bio'] as String?,
       tier: json['plan'] == 'PRO' ? UserTier.pro : UserTier.free,
       since: since,
     );
