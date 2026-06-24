@@ -79,7 +79,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     `;
     const hotResult = await query(hotSql, [lng, lat]);
 
-    // 2. Recommended Places — same categories user frequents but hasn't visited
+    // 2. Recommended Places — same categories user frequents but hasn't visited (with fallback for new users)
     const recSql = `
       WITH user_categories AS (
         SELECT DISTINCT COALESCE(p.category, pc.category) AS category
@@ -90,6 +90,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       ),
       visited_places AS (
         SELECT DISTINCT place_id FROM check_ins WHERE user_id = $3 AND place_id IS NOT NULL
+      ),
+      has_history AS (
+        SELECT EXISTS(SELECT 1 FROM user_categories) AS val
       )
       SELECT
         p.id AS "placeId",
@@ -105,10 +108,16 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         false AS "isCandidate"
       FROM places p
       JOIN place_settings ps ON ps.place_id = p.id
+      CROSS JOIN has_history hh
       WHERE ps.status = 'APPROVED'
-        AND p.category IN (SELECT category FROM user_categories)
+        AND (
+          hh.val = false 
+          OR p.category IN (SELECT category FROM user_categories)
+        )
         AND p.id NOT IN (SELECT place_id FROM visited_places)
-      ORDER BY "distanceMeters" ASC
+      ORDER BY 
+        CASE WHEN hh.val = false THEN COALESCE(p.avg_rating, 0) ELSE 0 END DESC,
+        "distanceMeters" ASC
       LIMIT 10;
     `;
     const recResult = await query(recSql, [lng, lat, userId]);
