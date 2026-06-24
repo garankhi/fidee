@@ -1,15 +1,30 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Config {
-  // Configured via AWS CDK outputs
-  static const String cognitoUserPoolId = 'ap-southeast-1_KSHDSpl6f';
-  static const String cognitoClientId = '35jeemfqql648mt950s6bs3qli';
-  static const String apiBaseUrl = 'https://api.fidee.site';
+  // Client-safe AWS values are injected from CDK outputs via --dart-define.
+  static const String cognitoUserPoolId = String.fromEnvironment(
+    'COGNITO_USER_POOL_ID',
+    defaultValue: 'ap-southeast-1_KSHDSpl6f',
+  );
+  static const String cognitoClientId = String.fromEnvironment(
+    'COGNITO_CLIENT_ID',
+    defaultValue: '35jeemfqql648mt950s6bs3qli',
+  );
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.fidee.site',
+  );
   static const String awsRegion = 'ap-southeast-1';
-  static const String appSyncGraphqlUrl =
-      'https://3mweqov3bvfr5npo34mwyosdoy.appsync-api.ap-southeast-1.amazonaws.com/graphql';
-  static const String appSyncRealtimeUrl =
-      'wss://3mweqov3bvfr5npo34mwyosdoy.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql';
+  static const String appSyncGraphqlUrl = String.fromEnvironment(
+    'APPSYNC_GRAPHQL_URL',
+    defaultValue:
+        'https://3mweqov3bvfr5npo34mwyosdoy.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+  );
+  static const String appSyncRealtimeUrl = String.fromEnvironment(
+    'APPSYNC_REALTIME_URL',
+    defaultValue:
+        'wss://3mweqov3bvfr5npo34mwyosdoy.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
+  );
 
   static const String revenueCatEntitlementPro = 'pro';
   static const String revenueCatMonthlyProductId = 'fidee_pro_monthly';

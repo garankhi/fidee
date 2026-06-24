@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
@@ -25,7 +26,6 @@ class PlaceDetailsFriends extends ConsumerStatefulWidget {
 }
 
 class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
-  static const String _serverBaseUrl = 'https://api.fidee.site';
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _reviewsKey = GlobalKey();
   bool _isUploadingCover = false;
@@ -41,7 +41,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
       return value;
     }
 
-    return '$_serverBaseUrl/media/$value';
+    return '${Config.apiBaseUrl}/media/$value';
   }
 
   String _formatDisplayTime(String? timeStr) {

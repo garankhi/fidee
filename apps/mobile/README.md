@@ -65,20 +65,22 @@ storeFile=app/upload-keystore.jks
 
 ### 2. Production Defines
 
-Do not bundle `assets/env/mobile.env` into Play builds. Pass client-safe production values at build time:
+Do not bundle `assets/env/mobile.env` into Play builds. Deploy prod CDK first, then build with the script that reads client-safe values from CloudFormation outputs in `Fidee-prod`.
 
 ```powershell
+cd D:\Project\mapvibe
+npm run cdk:diff:prod
+npm run cdk:deploy:prod
+
+$env:GOONG_MAPTILES_KEY = '<prod-goong-maptiles-key>'
+$env:GOONG_API_KEY = '<prod-goong-api-key>'
+$env:REVENUECAT_ANDROID_API_KEY = '<prod-revenuecat-android-sdk-key>'
+
 cd D:\Project\mapvibe\apps\mobile
-flutter build appbundle --release `
-  --build-name 1.0.0 `
-  --build-number 1 `
-  --dart-define=GOONG_MAPTILES_KEY=<prod-goong-maptiles-key> `
-  --dart-define=GOONG_API_KEY=<prod-goong-api-key> `
-  --dart-define=GOONG_STYLE_URL=https://tiles.goong.io/assets/goong_map_web.json `
-  --dart-define=REVENUECAT_ANDROID_API_KEY=<prod-revenuecat-android-sdk-key>
+.\scripts\build-prod.ps1 -BuildName 1.0.0 -BuildNumber 1
 ```
 
-Increment `--build-number` for every Play upload. Use `--build-name` for the user-facing version.
+The script maps `CustomApiUrl`/`ApiUrl`, `UserPoolId`, `UserPoolClientId`, and `FriendRealtimeGraphqlUrl` to Flutter `--dart-define` values, then derives `APPSYNC_REALTIME_URL`. Increment `-BuildNumber` for every Play upload and use `-BuildName` for the user-facing version.
 
 ### 3. Billing Setup
 
