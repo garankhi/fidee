@@ -1,0 +1,528 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../features/auth/auth_providers.dart';
+import '../features/auth/chat_provider.dart';
+import '../services/user_chat_service.dart';
+import 'camera_bottom_section.dart';
+import 'camera_story_history_screen.dart';
+import 'chat_thread_screen.dart';
+import 'profile_screen.dart';
+
+class CameraChatThread {
+  final String id;
+  final String? conversationId;
+  final String name;
+  final String lastMessage;
+  final String updatedAtLabel;
+  final String? avatarUrl;
+
+  const CameraChatThread({
+    required this.id,
+    this.conversationId,
+    required this.name,
+    required this.lastMessage,
+    required this.updatedAtLabel,
+    this.avatarUrl,
+  });
+
+  factory CameraChatThread.fromConversation(UserChatConversation conversation) {
+    return CameraChatThread(
+      id: conversation.otherUser.id,
+      conversationId: conversation.id,
+      name: conversation.otherUser.name,
+      lastMessage: conversation.lastMessage?.body ?? 'Bắt đầu trò chuyện',
+      updatedAtLabel: _relativeTimeLabel(conversation.updatedAt),
+      avatarUrl: conversation.otherUser.avatarUrl,
+    );
+  }
+
+  CameraChatThread copyWith({
+    String? lastMessage,
+    String? updatedAtLabel,
+    String? avatarUrl,
+  }) {
+    return CameraChatThread(
+      id: id,
+      conversationId: conversationId,
+      name: name,
+      lastMessage: lastMessage ?? this.lastMessage,
+      updatedAtLabel: updatedAtLabel ?? this.updatedAtLabel,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+    );
+  }
+}
+
+class CameraChatInboxScreen extends StatelessWidget {
+  final List<CameraChatThread>? threads;
+
+  const CameraChatInboxScreen({super.key, this.threads});
+
+  @override
+  Widget build(BuildContext context) {
+    final localThreads = threads;
+    if (localThreads != null) {
+      return _CameraChatInboxScaffold(
+        threadRows: localThreads,
+        isLoading: false,
+        unreadCount: 0,
+      );
+    }
+
+    return Consumer(
+      builder: (context, ref, child) {
+        final inboxState = ref.watch(chatInboxControllerProvider);
+        return _CameraChatInboxScaffold(
+          threadRows: inboxState.conversations
+              .map(CameraChatThread.fromConversation)
+              .toList(growable: false),
+          isLoading: inboxState.isLoading,
+          unreadCount: inboxState.totalUnreadCount,
+        );
+      },
+    );
+  }
+}
+
+class CameraChatInboxContent extends ConsumerWidget {
+  final List<CameraChatThread>? threadRows;
+  final bool isLoading;
+  final EdgeInsetsGeometry listPadding;
+
+  const CameraChatInboxContent({
+    super.key,
+    this.threadRows,
+    this.isLoading = false,
+    this.listPadding = const EdgeInsets.fromLTRB(28, 26, 24, 26),
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUiState = ref.watch(authControllerProvider).valueOrNull;
+    final currentUserInitials = _chatInitialsForName(
+      authUiState?.firstName,
+      authUiState?.lastName,
+      fallback: authUiState?.preferredUsername ?? 'Bạn',
+    );
+    final localRows = threadRows;
+    final rows =
+        localRows ??
+        ref
+            .watch(chatInboxControllerProvider)
+            .conversations
+            .map(CameraChatThread.fromConversation)
+            .toList(growable: false);
+    final loading = localRows == null
+        ? ref.watch(
+            chatInboxControllerProvider.select((state) => state.isLoading),
+          )
+        : isLoading;
+
+    return Column(
+      key: const ValueKey('camera-chat-inbox-content'),
+      children: [
+        _CameraChatHeader(
+          currentUserAvatarUrl: authUiState?.avatarUrl,
+          currentUserInitials: currentUserInitials,
+        ),
+        Expanded(
+          child: loading && rows.isEmpty
+              ? _CameraChatInboxSkeleton(padding: listPadding)
+              : rows.isEmpty
+              ? const _CameraChatEmptyState()
+              : ListView.separated(
+                  padding: listPadding,
+                  itemBuilder: (context, index) {
+                    final thread = rows[index];
+                    return _CameraChatThreadRow(
+                      thread: thread,
+                      onTap: thread.conversationId == null
+                          ? null
+                          : () => Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (context) => ChatThreadScreen(
+                                  conversationId: thread.conversationId!,
+                                  friendName: thread.name,
+                                  avatarUrl: thread.avatarUrl,
+                                ),
+                              ),
+                            ),
+                    );
+                  },
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 30),
+                  itemCount: rows.length,
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CameraChatInboxScaffold extends StatelessWidget {
+  final List<CameraChatThread> threadRows;
+  final bool isLoading;
+  final int unreadCount;
+
+  const _CameraChatInboxScaffold({
+    required this.threadRows,
+    required this.isLoading,
+    required this.unreadCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF101B1F),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: CameraChatInboxContent(
+                    threadRows: threadRows,
+                    isLoading: isLoading,
+                  ),
+                ),
+                CameraBottomSection(
+                  activeTab: CameraBottomTab.chat,
+                  showHistory: false,
+                  unreadCount: unreadCount,
+                  onHomeTap: () => Navigator.pop(context),
+                  onHistoryTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const CameraStoryHistoryScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _relativeTimeLabel(DateTime value) {
+  final diff = DateTime.now().difference(value);
+  if (diff.inMinutes < 1) return 'vừa xong';
+  if (diff.inHours < 1) return '${diff.inMinutes} phút';
+  if (diff.inDays < 1) return '${diff.inHours} giờ';
+  return '${diff.inDays} ngày';
+}
+
+String _chatInitialsForName(
+  String? firstName,
+  String? lastName, {
+  required String fallback,
+}) {
+  final first = firstName?.trim();
+  final last = lastName?.trim();
+  if (first != null && first.isNotEmpty) {
+    final firstLetter = first.characters.first.toUpperCase();
+    final lastLetter = last == null || last.isEmpty
+        ? ''
+        : last.characters.first.toUpperCase();
+    return '$firstLetter$lastLetter';
+  }
+
+  final normalizedFallback = fallback.trim();
+  if (normalizedFallback.isEmpty) return 'B';
+  return normalizedFallback.characters.first.toUpperCase();
+}
+
+class _CameraChatHeader extends StatelessWidget {
+  final String? currentUserAvatarUrl;
+  final String currentUserInitials;
+
+  const _CameraChatHeader({
+    required this.currentUserAvatarUrl,
+    required this.currentUserInitials,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 8),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Text(
+            'Trò chuyện',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: _CameraChatProfileAvatar(
+                key: const ValueKey('camera-chat-me-avatar'),
+                avatarUrl: currentUserAvatarUrl,
+                initials: currentUserInitials,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraChatProfileAvatar extends StatelessWidget {
+  final String? avatarUrl;
+  final String initials;
+
+  const _CameraChatProfileAvatar({
+    super.key,
+    required this.avatarUrl,
+    required this.initials,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedAvatarUrl = avatarUrl?.trim();
+
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(shape: BoxShape.circle),
+      clipBehavior: Clip.antiAlias,
+      child: normalizedAvatarUrl == null || normalizedAvatarUrl.isEmpty
+          ? _CameraChatProfileInitials(initials: initials)
+          : Image.network(
+              normalizedAvatarUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  _CameraChatProfileInitials(initials: initials),
+            ),
+    );
+  }
+}
+
+class _CameraChatProfileInitials extends StatelessWidget {
+  final String initials;
+
+  const _CameraChatProfileInitials({required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.blueAccent,
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraChatThreadRow extends StatelessWidget {
+  final CameraChatThread thread;
+  final VoidCallback? onTap;
+
+  const _CameraChatThreadRow({required this.thread, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        key: ValueKey('camera-chat-thread-${thread.id}'),
+        children: [
+          _ThreadAvatar(thread: thread),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        thread.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      thread.updatedAtLabel,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.44),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  thread.lastMessage,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.68),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: Colors.white.withValues(alpha: 0.58),
+            size: 38,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThreadAvatar extends StatelessWidget {
+  final CameraChatThread thread;
+
+  const _ThreadAvatar({required this.thread});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = thread.name.trim().isEmpty
+        ? '?'
+        : thread.name.trim().characters.first.toUpperCase();
+
+    return Container(
+      width: 60,
+      height: 60,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF243135),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 4,
+        ),
+      ),
+      child: CircleAvatar(
+        backgroundColor: const Color(0xFF303E42),
+        backgroundImage: thread.avatarUrl == null
+            ? null
+            : NetworkImage(thread.avatarUrl!),
+        child: thread.avatarUrl == null
+            ? Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+class _CameraChatInboxSkeleton extends StatelessWidget {
+  final EdgeInsetsGeometry padding;
+
+  const _CameraChatInboxSkeleton({
+    this.padding = const EdgeInsets.fromLTRB(28, 26, 24, 26),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: padding,
+      itemBuilder: (context, index) => Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              color: Color(0xFF243135),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 22,
+                  width: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 18,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      separatorBuilder: (context, index) => const SizedBox(height: 30),
+      itemCount: 5,
+    );
+  }
+}
+
+class _CameraChatEmptyState extends StatelessWidget {
+  const _CameraChatEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'Chưa có tin nhắn',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.68),
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}

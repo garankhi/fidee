@@ -1,4 +1,4 @@
-# Quy trình phát triển MapVibe
+# Quy trình phát triển Fidee
 
 > Hướng dẫn từng bước: từ nhận ticket → code → test → tạo PR → deploy.
 
@@ -138,10 +138,10 @@ describe('get-place handler', () => {
 #### 3c. Nếu cần thêm infrastructure (Lambda + API Gateway route)
 
 ```typescript
-// infra/cdk/lib/mapvibe-stack.ts — thêm vào cuối constructor
+// infra/cdk/lib/fidee-stack.ts — thêm vào cuối constructor
 
 const getPlaceFn = new lambda.Function(this, 'GetPlaceFunction', {
-  functionName: `mapvibe-get-place-${stage}`,
+  functionName: `fidee-get-place-${stage}`,
   runtime: lambda.Runtime.NODEJS_20_X,
   handler: 'handlers/get-place.handler',
   code: lambda.Code.fromAsset('../../services/api/dist'),
@@ -252,7 +252,7 @@ Thêm endpoint GET /places/:id trả về chi tiết một place.
 ## Thay đổi
 - [x] `services/api/src/handlers/get-place.ts` — handler mới
 - [x] `services/api/src/handlers/get-place.test.ts` — unit test
-- [x] `infra/cdk/lib/mapvibe-stack.ts` — thêm Lambda + API route
+- [x] `infra/cdk/lib/fidee-stack.ts` — thêm Lambda + API route
 
 ## Test
 - `npm run test` — 12/12 passed

@@ -1,4 +1,4 @@
-# MapVibe
+# Fidee
 
 **AI-driven map discovery platform** — Find the perfect place using natural language.
 
@@ -9,7 +9,7 @@
 ## Repository Structure
 
 ```
-mapvibe/
+fidee/
 ├── apps/
 │   ├── mobile/       # Flutter mobile app (Android)
 │   └── admin/        # React + TypeScript admin dashboard (Vite)
@@ -36,7 +36,7 @@ mapvibe/
 
 ```bash
 # 1. Clone the repo
-git clone <repo-url> && cd mapvibe
+git clone <repo-url> && cd fidee
 
 # 2. Install JS/TS dependencies (admin, api, cdk)
 npm install
@@ -89,8 +89,8 @@ npm run build -w infra/cdk       # Build CDK only
 >
 > | Stage       | AWS Account / Profile | Purpose                        |
 > |-------------|----------------------|--------------------------------|
-> | `dev`       | `mapvibe-dev`        | Daily development & debugging  |
-> | `prod`      | `mapvibe-prod`       | Production (deploy via CI/CD)  |
+> | `dev`       | `fidee-dev`        | Daily development & debugging  |
+> | `prod`      | `fidee-prod`       | Production (deploy via CI/CD)  |
 >
 > **Rationale:** LocalStack introduces behavioral differences that mask real
 > IAM, networking, and service-limit issues. Given our strict $200 budget,
@@ -134,12 +134,12 @@ Jira issues do not need a required component or folder field; use acceptance cri
 
 ## Architecture
 
-MapVibe is a **serverless, event-driven** application running on **AWS ap-southeast-1**.
+Fidee is a **serverless, event-driven** application running on **AWS ap-southeast-1**.
 
 Key services: **API Gateway → Lambda → DynamoDB**, **Amazon Bedrock** (AI search),
 **Rekognition** (image moderation), **Cognito** (auth), **S3** (media), **CloudFront** (CDN).
 
-See [System Architecture](docs/System_Architechture.png) and [PRD](docs/MapVibe_PRD.md) for details.
+See [System Architecture](docs/System_Architechture.png) and [PRD](docs/Fidee_PRD.md) for details.
 
 ---
 

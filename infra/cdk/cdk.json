@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node bin/mapvibe-app.ts",
+  "app": "npx ts-node bin/fidee-app.ts",
   "watch": {
     "include": ["**"],
     "exclude": ["README.md", "cdk*.json", "**/*.d.ts", "**/*.js", "tsconfig.json", "node_modules"]

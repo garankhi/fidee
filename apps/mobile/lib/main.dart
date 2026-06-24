@@ -1,122 +1,166 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-void main() {
-  runApp(const MyApp());
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'features/auth/auth_providers.dart';
+import 'features/auth/chat_provider.dart';
+import 'features/auth/friend_realtime_provider.dart';
+import 'features/auth/friends_provider.dart';
+import 'features/auth/login_page.dart';
+import 'features/auth/screens/complete_profile_page.dart';
+import 'screens/home_screen.dart';
+import 'screens/location_gate_screen1.dart';
+import 'services/auth_service.dart';
+import 'services/location_service.dart';
+
+Future<void> main() async {
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  if (!kReleaseMode) {
+    await dotenv.load(fileName: 'assets/env/mobile.env', isOptional: true);
+  }
+  // MVP publish: RevenueCat/payment is intentionally disabled.
+  // try {
+  //   await const RevenueCatService().configure();
+  // } catch (error) {
+  //   if (kDebugMode) {
+  //     debugPrint('RevenueCat is not configured for this runtime: $error');
+  //   }
+  // }
+  runApp(const ProviderScope(child: FideeApp()));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+bool shouldKeepNativeSplash(
+  AsyncValue<AuthUiState> authState,
+  AsyncValue<LocationService> locationState,
+) {
+  return (authState.isLoading && !authState.hasValue) ||
+      (locationState.isLoading && !locationState.hasValue);
+}
 
-  // This widget is the root of your application.
+class FideeApp extends ConsumerStatefulWidget {
+  const FideeApp({super.key});
+
+  @override
+  ConsumerState<FideeApp> createState() => _FideeAppState();
+}
+
+class _FideeAppState extends ConsumerState<FideeApp> {
+  bool _nativeSplashRemoved = false;
+  String? _lastUserScopedProviderSub;
+
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+
+    // Kick off location status check ngay từ đầu, chạy song song với auth.
+    // Riverpod sẽ cache kết quả (keepAlive), HomeScreen dùng lại mà không phải chờ.
+    final locationState = ref.watch(locationControllerProvider);
+    final keepNativeSplash = shouldKeepNativeSplash(authState, locationState);
+
+    if (!keepNativeSplash) {
+      _removeNativeSplashAfterReadyFrame();
+    }
+
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Fidee',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0A0E17),
+        primaryColor: const Color(0xFFEF4050),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFEF4050),
+          secondary: Color(0xFFEF4050),
+          surface: Color(0xFF1A1F2E),
+          error: Color(0xFFEF4444),
+        ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFFEF4050),
+          selectionColor: Color(0x4DEF4050),
+          selectionHandleColor: Color(0xFFEF4050),
+        ),
+        fontFamily: 'SF Pro',
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      // Native splash stays on top until auth and location both resolve.
+      // Flutter renders a blank placeholder behind it to avoid a second splash screen.
+      home: _buildHome(authState, locationState, keepNativeSplash),
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  void _removeNativeSplashAfterReadyFrame() {
+    if (_nativeSplashRemoved) {
+      return;
+    }
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+    _nativeSplashRemoved = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
+  Widget _buildHome(
+    AsyncValue<AuthUiState> authState,
+    AsyncValue<LocationService> locationState,
+    bool keepNativeSplash,
+  ) {
+    if (keepNativeSplash) {
+      return const SizedBox.expand();
+    }
+
+    // Auth lỗi → về LoginPage
+    if (authState.hasError) {
+      return const LoginPage();
+    }
+
+    final state = authState.value!;
+
+    if (state.authState == AuthState.authenticated) {
+      unawaited(ref.read(friendRealtimeControllerProvider).connect());
+      unawaited(ref.read(chatRealtimeControllerProvider).connect());
+      unawaited(_refreshUserScopedProviders());
+
+      // Location đã resolve (hoặc lỗi được bỏ qua với fallback mặc định)
+      final locationService = locationState.valueOrNull ?? LocationService();
+
+      // Nếu location chưa được cấp phép → hiển thị gate screen trước khi vào map
+      if (locationService.status != LocationStatus.granted) {
+        return LocationGateScreen(locationService: locationService);
+      }
+
+      return HomeScreen(locationService: locationService);
+    } else if (state.authState == AuthState.incompleteProfile) {
+      _lastUserScopedProviderSub = null;
+      unawaited(ref.read(friendRealtimeControllerProvider).disconnect());
+      unawaited(ref.read(chatRealtimeControllerProvider).disconnect());
+
+      // Authenticated user is missing required profile fields.
+      // Keep this outside the register wizard so users do not feel sent back to signup.
+      return CompleteProfilePage(
+        initialFirstName: state.firstName,
+        initialLastName: state.lastName,
+        initialUsername: state.preferredUsername,
+      );
+    } else {
+      _lastUserScopedProviderSub = null;
+      unawaited(ref.read(friendRealtimeControllerProvider).disconnect());
+      unawaited(ref.read(chatRealtimeControllerProvider).disconnect());
+      return const LoginPage();
+    }
+  }
+
+  Future<void> _refreshUserScopedProviders() async {
+    final authService = ref.read(authServiceProvider);
+    final userId = await authService.getCurrentUserSub();
+    if (!mounted || userId == null || userId.isEmpty) return;
+    if (_lastUserScopedProviderSub == userId) return;
+
+    _lastUserScopedProviderSub = userId;
+    unawaited(ref.read(friendsControllerProvider.notifier).load());
+    unawaited(ref.read(chatInboxControllerProvider.notifier).load());
   }
 }
