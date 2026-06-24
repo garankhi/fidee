@@ -22,12 +22,14 @@ void main() {
         'displayName': 'Minh Nguyen',
         'username': 'minh.nguyen',
         'avatarUrl': 'https://cdn.example.com/avatar.jpg',
+        'bio': 'Coffee hunter',
         'plan': 'PRO',
         'createdAt': '2026-01-15T08:30:00.000Z',
       });
 
       final updatedState = AuthUiState.fromService(service);
       expect(updatedState.avatarUrl, 'https://cdn.example.com/avatar.jpg');
+      expect(updatedState.bio, 'Coffee hunter');
       expect(updatedState.since, '2026');
       expect(updatedState.tier, UserTier.pro);
     });

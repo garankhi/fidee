@@ -66,7 +66,9 @@ describe('get-map-feed handler', () => {
     expect(sql).toContain('FROM place_candidates pc');
     expect(sql).toContain("NOT EXISTS (");
     expect(sql).toContain("'candidate-' || pc.id");
-    expect(sql).toContain("pc.visibility = 'FRIENDS' OR pc.created_by = $1");
+    expect(sql).toContain('pc.created_by = $1');
+    expect(sql).toContain("pc.visibility = 'FRIENDS'");
+    expect(sql).toContain("WHERE user_id = $1 AND status = 'ACCEPTED'");
     expect(sql).toContain('ST_DWithin(pc.location, ST_MakePoint($2, $3)::geography, $4)');
   });
 

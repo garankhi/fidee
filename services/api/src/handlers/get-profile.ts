@@ -26,7 +26,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     // 1. Fetch user core info & stats
     const userResult = await query(
-      `SELECT id, display_name, username, avatar_url, plan, created_at, friend_count, place_count, checkin_count 
+      `SELECT id, display_name, username, avatar_url, bio, plan, created_at, friend_count, place_count, checkin_count 
        FROM users WHERE id = $1`,
       [userId],
     );
@@ -117,6 +117,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       displayName: userRow.display_name || 'User',
       username: userRow.username || null,
       avatarUrl: userRow.avatar_url || null,
+      bio: userRow.bio || null,
       plan: userRow.plan || 'FREE',
       createdAt: userRow.created_at,
       title,

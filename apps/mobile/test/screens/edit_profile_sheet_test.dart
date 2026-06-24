@@ -9,6 +9,7 @@ void main() {
       required String firstName,
       required String lastName,
       required String preferredUsername,
+      required String bio,
     })
     onSave,
     Future<UsernameAvailabilityResult> Function(String username)?
@@ -20,6 +21,7 @@ void main() {
           firstName: 'Nguyen',
           lastName: 'Minh',
           preferredUsername: 'minh',
+          bio: 'Coffee hunter',
           onSave: onSave,
           onCheckUsername:
               onCheckUsername ??
@@ -43,6 +45,7 @@ void main() {
               required firstName,
               required lastName,
               required preferredUsername,
+              required bio,
             }) async {
               return const AuthResult(
                 success: false,
@@ -73,6 +76,7 @@ void main() {
               required firstName,
               required lastName,
               required preferredUsername,
+              required bio,
             }) async {
               return const AuthResult(success: true);
             },
@@ -107,6 +111,7 @@ void main() {
               required firstName,
               required lastName,
               required preferredUsername,
+              required bio,
             }) async {
               return const AuthResult(success: true);
             },
@@ -128,6 +133,7 @@ void main() {
               required firstName,
               required lastName,
               required preferredUsername,
+              required bio,
             }) async {
               savedUsername = preferredUsername;
               return const AuthResult(success: true);

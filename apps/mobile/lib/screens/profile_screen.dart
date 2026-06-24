@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../config.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/friends_provider.dart';
+import '../features/auth/login_page.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../services/auth_service.dart';
 import 'edit_profile_sheet.dart';
@@ -136,6 +137,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String firstName,
     required String lastName,
     required String preferredUsername,
+    required String bio,
   }) async {
     return ref
         .read(authControllerProvider.notifier)
@@ -143,6 +145,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           firstName: firstName,
           lastName: lastName,
           preferredUsername: preferredUsername,
+          bio: bio,
         );
   }
 
@@ -156,6 +159,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String firstName,
     required String lastName,
     required String preferredUsername,
+    required String bio,
   }) {
     showModalBottomSheet<void>(
       context: context,
@@ -166,9 +170,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           firstName: firstName,
           lastName: lastName,
           preferredUsername: preferredUsername,
+          bio: bio,
           onSave: _updateProfileInfo,
           onCheckUsername: _checkUsernameAvailability,
-          onSaved: () {},
+          onSaved: () {
+            ref.read(authControllerProvider.notifier).refreshProfileDetails();
+          },
         );
       },
     );
@@ -254,6 +261,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ? 'Người dùng Fidee'
         : fullNameList.join(' ');
     final preferredUsername = authState?.preferredUsername ?? 'user';
+    final bio = authState?.bio?.trim() ?? '';
     final tier = authState?.tier == UserTier.pro ? 'Cao cấp' : 'Miễn phí';
     final since = authState?.since ?? '2026';
     final avatarUrl = authState?.avatarUrl;
@@ -456,6 +464,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          if (bio.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              bio,
+                              style: const TextStyle(
+                                color: Color(0xFF4D4D4D),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                height: 1.25,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           Align(
                             alignment: Alignment.centerLeft,
@@ -464,6 +486,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 firstName: firstName,
                                 lastName: lastName,
                                 preferredUsername: preferredUsername,
+                                bio: bio,
                               ),
                               icon: const Icon(Icons.edit_rounded, size: 15),
                               label: const Text('Sửa thông tin'),
@@ -764,9 +787,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     if (confirm == true) {
                       await ref.read(authControllerProvider.notifier).signOut();
                       if (context.mounted) {
-                        Navigator.of(
-                          context,
-                        ).popUntil((route) => route.isFirst);
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LoginPage(),
+                          ),
+                          (route) => false,
+                        );
                       }
                     }
                   },

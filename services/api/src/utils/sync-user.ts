@@ -32,7 +32,9 @@ export async function syncUserToDatabases({
     return;
   }
 
-  const displayName = [givenName, familyName].filter(Boolean).join(' ') || email || 'User';
+  const displayNameFromClaims = [givenName, familyName].filter(Boolean).join(' ');
+  const displayNameForInsert = displayNameFromClaims || email || 'User';
+  const displayNameForUpdate = displayNameFromClaims || null;
   const username = preferredUsername?.trim().toLowerCase() || null;
 
   // 1. Sync to PostgreSQL
@@ -53,7 +55,7 @@ export async function syncUserToDatabases({
       'FREE'
     ON CONFLICT (id) DO UPDATE
     SET 
-      display_name = EXCLUDED.display_name,
+      display_name = COALESCE($7::text, users.display_name),
       username = CASE
         WHEN users.username IS NULL AND EXCLUDED.username IS NOT NULL
         THEN EXCLUDED.username
@@ -62,7 +64,7 @@ export async function syncUserToDatabases({
       email = EXCLUDED.email,
       phone = COALESCE(EXCLUDED.phone, users.phone),
       avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
-    WHERE users.display_name != EXCLUDED.display_name
+    WHERE ($7::text IS NOT NULL AND users.display_name != $7::text)
        OR (users.username IS NULL AND EXCLUDED.username IS NOT NULL)
        OR users.email != EXCLUDED.email
        OR (users.phone IS NULL AND EXCLUDED.phone IS NOT NULL)
@@ -71,11 +73,27 @@ export async function syncUserToDatabases({
   `;
 
   try {
-    await query(sql, [sub, displayName, username, email || null, phone || null, picture || null]);
+    await query(sql, [
+      sub,
+      displayNameForInsert,
+      username,
+      email || null,
+      phone || null,
+      picture || null,
+      displayNameForUpdate,
+    ]);
   } catch (err) {
     if (isUniqueViolation(err)) {
       console.warn(`[Sync User] Skipped duplicate username sync for sub ${sub}`);
-      await query(sql, [sub, displayName, null, email || null, phone || null, picture || null]);
+      await query(sql, [
+        sub,
+        displayNameForInsert,
+        null,
+        email || null,
+        phone || null,
+        picture || null,
+        displayNameForUpdate,
+      ]);
       return;
     }
     console.error(`[Sync User] PostgreSQL upsert failed for sub ${sub}:`, err);
@@ -86,21 +104,31 @@ export async function syncUserToDatabases({
   const userProfilesTable = process.env.USER_PROFILES_TABLE;
   if (userProfilesTable) {
     try {
+      const updateExpressionParts = [
+        'email = :email',
+        'updatedAt = :updatedAt',
+        '#plan = if_not_exists(#plan, :defaultPlan)',
+      ];
+      const expressionAttributeValues: Record<string, string> = {
+        ':email': email || '',
+        ':updatedAt': new Date().toISOString(),
+        ':defaultPlan': 'FREE',
+      };
+
+      if (displayNameForUpdate) {
+        updateExpressionParts.unshift('displayName = :displayName');
+        expressionAttributeValues[':displayName'] = displayNameForUpdate;
+      }
+
       await dynamoClient.send(
         new UpdateCommand({
           TableName: userProfilesTable,
           Key: { userId: sub },
-          UpdateExpression:
-            'SET displayName = :displayName, email = :email, updatedAt = :updatedAt, #plan = if_not_exists(#plan, :defaultPlan)',
+          UpdateExpression: `SET ${updateExpressionParts.join(', ')}`,
           ExpressionAttributeNames: {
             '#plan': 'plan',
           },
-          ExpressionAttributeValues: {
-            ':displayName': displayName,
-            ':email': email || '',
-            ':updatedAt': new Date().toISOString(),
-            ':defaultPlan': 'FREE',
-          },
+          ExpressionAttributeValues: expressionAttributeValues,
         }),
       );
     } catch (err) {

@@ -15,6 +15,7 @@ type ProfileRow = {
   display_name: string;
   username: string | null;
   avatar_url: string | null;
+  bio: string | null;
   plan: string;
   created_at: string | Date;
 };
@@ -23,6 +24,7 @@ type UpdateProfileBody = {
   firstName?: unknown;
   lastName?: unknown;
   username?: unknown;
+  bio?: unknown;
 };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -79,6 +81,20 @@ function normalizeUsername(value: string): string {
   return username;
 }
 
+function readOptionalBio(body: UpdateProfileBody): string | null {
+  if (body.bio == null) return null;
+  if (typeof body.bio !== 'string') {
+    throw new ValidationError('bio must be a string');
+  }
+
+  const bio = body.bio.trim();
+  if (bio.length > 160) {
+    throw new ValidationError('bio must be 160 characters or less');
+  }
+
+  return bio.length === 0 ? null : bio;
+}
+
 function toProfileResponse(row: ProfileRow): Record<string, unknown> {
   const createdAt =
     row.created_at instanceof Date
@@ -90,6 +106,7 @@ function toProfileResponse(row: ProfileRow): Record<string, unknown> {
     displayName: row.display_name,
     username: row.username,
     avatarUrl: row.avatar_url,
+    bio: row.bio,
     plan: row.plan,
     createdAt,
   };
@@ -145,12 +162,13 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const firstName = readRequiredString(body, 'firstName');
     const lastName = readRequiredString(body, 'lastName');
     const username = normalizeUsername(readRequiredString(body, 'username'));
+    const bio = readOptionalBio(body);
     const displayName = [firstName, lastName].join(' ');
 
     const updateResult = await query<ProfileRow>(
       `
-        INSERT INTO users (id, display_name, username, email, phone, plan)
-        SELECT $1, $2, $3, $4, $5, 'FREE'
+        INSERT INTO users (id, display_name, username, email, phone, bio, plan)
+        SELECT $1, $2, $3, $4, $5, $6, 'FREE'
         WHERE NOT EXISTS (
           SELECT 1 FROM users
           WHERE username = $3 AND id <> $1
@@ -159,14 +177,15 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         SET display_name = EXCLUDED.display_name,
             username = EXCLUDED.username,
             email = COALESCE(EXCLUDED.email, users.email),
-            phone = COALESCE(EXCLUDED.phone, users.phone)
+            phone = COALESCE(EXCLUDED.phone, users.phone),
+            bio = EXCLUDED.bio
         WHERE NOT EXISTS (
           SELECT 1 FROM users
           WHERE username = EXCLUDED.username AND id <> users.id
         )
-        RETURNING id, display_name, username, avatar_url, plan, created_at;
+        RETURNING id, display_name, username, avatar_url, bio, plan, created_at;
       `,
-      [auth.sub, displayName, username, auth.email ?? null, auth.phone ?? null],
+      [auth.sub, displayName, username, auth.email ?? null, auth.phone ?? null, bio],
     );
 
     if (updateResult.rowCount === 0) {
