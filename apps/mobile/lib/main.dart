@@ -67,6 +67,7 @@ class _FideeAppState extends ConsumerState<FideeApp> {
     }
 
     return MaterialApp(
+      key: ValueKey(authState.valueOrNull?.authState ?? AuthState.loading),
       title: 'Fidee',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

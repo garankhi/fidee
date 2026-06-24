@@ -649,19 +649,21 @@ class AuthService {
   Future<void> signOut() async {
     try {
       if (!isTestMode && _cognitoUser != null) {
-        // This clears tokens from SecureCognitoStorage
         await _cognitoUser!.signOut();
       }
     } catch (e) {
       debugPrint('DEBUG [AuthService]: Remote signOut failed: $e');
-      try {
-        await _userPool.storage.clear();
-      } catch (storageError) {
-        debugPrint(
-          'DEBUG [AuthService]: Failed to clear storage: $storageError',
-        );
-      }
     } finally {
+      if (!isTestMode) {
+        try {
+          await _userPool.storage.clear();
+        } catch (storageError) {
+          debugPrint(
+            'DEBUG [AuthService]: Failed to clear storage: $storageError',
+          );
+        }
+      }
+
       _resetProfileDetails();
       _state = AuthState.unauthenticated;
       _username = null;

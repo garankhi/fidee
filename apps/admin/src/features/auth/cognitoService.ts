@@ -12,6 +12,18 @@ const poolData = {
 
 export const userPool = new CognitoUserPool(poolData);
 
+function clearAdminAuthStorage(): void {
+  localStorage.removeItem('admin_token');
+
+  const cognitoPrefix = `CognitoIdentityServiceProvider.${poolData.ClientId}`;
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(cognitoPrefix)) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
 /**
  * Đăng nhập Admin vào AWS Cognito User Pool.
  * Lấy ra token JWT (Access Token hoặc ID Token) thô và lưu vào LocalStorage.
@@ -54,7 +66,6 @@ export function loginAdmin(email: string, password: string): Promise<string> {
  * Đăng xuất Admin. Xóa token khỏi LocalStorage.
  */
 export function logoutAdmin(): void {
-  localStorage.removeItem('admin_token');
   try {
     const currentUser = userPool.getCurrentUser();
     if (currentUser) {
@@ -62,6 +73,8 @@ export function logoutAdmin(): void {
     }
   } catch (error) {
     console.error('Error during Cognito signOut:', error);
+  } finally {
+    clearAdminAuthStorage();
   }
 }
 

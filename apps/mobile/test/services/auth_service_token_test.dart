@@ -20,6 +20,27 @@ String _jwtWithPayload(Map<String, dynamic> payload) {
 }
 
 void main() {
+  group('SecureCognitoStorage', () {
+    test('clear removes only Cognito keys', () async {
+      final values = <String, String>{};
+      final storage = SecureCognitoStorage.custom(
+        read: (key) async => values[key],
+        readAll: () async => Map<String, String>.from(values),
+        write: (key, value) async => values[key] = value,
+        delete: (key) async => values.remove(key),
+      );
+
+      await storage.setItem('CognitoIdentityServiceProvider.client.user', {
+        'token': 'jwt',
+      });
+      await storage.setItem('other', {'keep': true});
+
+      await storage.clear();
+
+      expect(values.keys, ['other']);
+    });
+  });
+
   group('AuthService.getCurrentUserSub', () {
     test('returns sub from current JWT payload', () async {
       final service = _TokenAuthService(_jwtWithPayload({'sub': 'user-sub-1'}));
@@ -84,28 +105,31 @@ void main() {
       expect(service.tier, UserTier.free);
     });
 
-    test('requires real first name, last name, and username to be complete', () async {
-      final service = AuthService(isTestMode: true);
+    test(
+      'requires real first name, last name, and username to be complete',
+      () async {
+        final service = AuthService(isTestMode: true);
 
-      await service.applyProfileDetailsForTesting(<String, dynamic>{
-        'displayName': 'User',
-        'plan': 'FREE',
-      });
-      expect(service.hasCompleteProfileForTesting, isFalse);
+        await service.applyProfileDetailsForTesting(<String, dynamic>{
+          'displayName': 'User',
+          'plan': 'FREE',
+        });
+        expect(service.hasCompleteProfileForTesting, isFalse);
 
-      await service.applyProfileDetailsForTesting(<String, dynamic>{
-        'displayName': 'Alice',
-        'username': 'alice',
-        'plan': 'FREE',
-      });
-      expect(service.hasCompleteProfileForTesting, isFalse);
+        await service.applyProfileDetailsForTesting(<String, dynamic>{
+          'displayName': 'Alice',
+          'username': 'alice',
+          'plan': 'FREE',
+        });
+        expect(service.hasCompleteProfileForTesting, isFalse);
 
-      await service.applyProfileDetailsForTesting(<String, dynamic>{
-        'displayName': 'Alice Nguyen',
-        'username': 'alice',
-        'plan': 'FREE',
-      });
-      expect(service.hasCompleteProfileForTesting, isTrue);
-    });
+        await service.applyProfileDetailsForTesting(<String, dynamic>{
+          'displayName': 'Alice Nguyen',
+          'username': 'alice',
+          'plan': 'FREE',
+        });
+        expect(service.hasCompleteProfileForTesting, isTrue);
+      },
+    );
   });
 }
