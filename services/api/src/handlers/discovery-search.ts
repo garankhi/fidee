@@ -10,28 +10,60 @@ const CORS_HEADERS = {
 };
 
 type VibeFilter = {
-  vibes: string[];
-  services?: string[];
+  terms: string[];
   categories?: string[];
 };
 
 const VIBE_MAP: Record<string, VibeFilter> = {
-  hen_ho: { vibes: ['Dating'] },
-  nhom_ban: { vibes: ['Group'] },
-  nhom: { vibes: ['Group'] },
-  hoc_lam_viec: { vibes: ['Study'] },
-  chill: { vibes: ['Chill'] },
-  lang_man: { vibes: ['Acoustic', 'Dating'] },
-  khong_gian_xanh: { vibes: ['Outdoor'], services: ['Outdoor'] },
-  acoustic: { vibes: ['Acoustic'] },
-  cafe: { vibes: ['Cafe'], categories: ['cafe'] },
-  ngot_ngao: { vibes: ['Cozy', 'Cafe'] },
-  dating: { vibes: ['Dating'] },
-  group: { vibes: ['Group'] },
-  study: { vibes: ['Study'] },
-  outdoor: { vibes: ['Outdoor'], services: ['Outdoor'] },
-  cozy: { vibes: ['Cozy', 'Cafe'] },
-  healthy: { vibes: ['Healthy'] },
+  hen_ho: {
+    terms: ['hẹn hò', 'hen ho', 'lãng mạn', 'lang man', 'romantic', 'couple', 'thân mật', 'intimate', 'ánh nến', 'kỷ niệm'],
+  },
+  nhom_ban: {
+    terms: ['nhóm', 'nhom', 'bạn bè', 'ban be', 'tụ tập', 'tu tap', 'họp mặt', 'hop mat', 'gia đình', 'gia dinh', 'liên hoan', 'lien hoan', 'sinh nhật', 'sinh nhat', 'tiệc công ty', 'tiec cong ty', 'phòng riêng', 'phong rieng', 'boardgame', 'karaoke'],
+  },
+  nhom: {
+    terms: ['nhóm', 'nhom', 'bạn bè', 'ban be', 'tụ tập', 'tu tap', 'họp mặt', 'hop mat', 'gia đình', 'gia dinh', 'phòng riêng', 'phong rieng'],
+  },
+  hoc_lam_viec: {
+    terms: ['học', 'hoc', 'làm việc', 'lam viec', 'work', 'work-friendly', 'workbench', 'deadline', 'tập trung', 'tap trung', 'yên tĩnh', 'yen tinh', 'ổ cắm', 'o cam', 'phòng riêng yên tĩnh', 'phong rieng yen tinh', 'máy chiếu', 'may chieu'],
+  },
+  chill: {
+    terms: ['chill', 'thư giãn', 'thu gian', 'relaxed', 'nhẹ nhàng', 'nhe nhang', 'yên tĩnh', 'yen tinh', 'lộng gió', 'long gio', 'thoáng đãng', 'thoang dang', 'ấm cúng', 'am cung', 'hoài cổ', 'hoai co', 'vintage'],
+  },
+  lang_man: {
+    terms: ['lãng mạn', 'lang man', 'romantic', 'hẹn hò', 'hen ho', 'ánh nến', 'anh nen', 'thân mật', 'than mat', 'intimate', 'kỷ niệm', 'ky niem', 'sang trọng', 'sang trong'],
+  },
+  khong_gian_xanh: {
+    terms: ['không gian xanh', 'khong gian xanh', 'sân vườn', 'san vuon', 'ngoài trời', 'ngoai troi', 'thiên nhiên', 'thien nhien', 'cây xanh', 'cay xanh', 'hồ cá', 'ho ca', 'koi', 'ven sông', 'ven song', 'sông nước', 'song nuoc', 'rooftop', 'sân thượng', 'san thuong', 'terrace'],
+  },
+  acoustic: {
+    terms: ['acoustic', 'nhạc sống', 'nhac song', 'live music', 'nhạc jazz', 'nhac jazz', 'jazz', 'âm nhạc', 'am nhac', 'music', 'nhạc nền', 'nhac nen'],
+  },
+  cafe: {
+    terms: ['cafe', 'coffee', 'cà phê', 'ca phe', 'barista', 'cold brew', 'espresso', 'trà', 'tra', 'tea'],
+    categories: ['cafe'],
+  },
+  ngot_ngao: {
+    terms: ['ngọt', 'ngot', 'bánh', 'banh', 'dessert', 'cake', 'trà sữa', 'tra sua', 'bubble tea', 'hồng trà', 'hong tra', 'kem', 'chè', 'che'],
+  },
+  dating: {
+    terms: ['hẹn hò', 'hen ho', 'lãng mạn', 'lang man', 'romantic', 'couple'],
+  },
+  group: {
+    terms: ['nhóm', 'nhom', 'bạn bè', 'ban be', 'tụ tập', 'tu tap', 'họp mặt', 'hop mat', 'gia đình', 'gia dinh'],
+  },
+  study: {
+    terms: ['học', 'hoc', 'làm việc', 'lam viec', 'work', 'deadline', 'tập trung', 'tap trung', 'yên tĩnh', 'yen tinh', 'ổ cắm', 'o cam'],
+  },
+  outdoor: {
+    terms: ['ngoài trời', 'ngoai troi', 'sân vườn', 'san vuon', 'rooftop', 'sân thượng', 'san thuong', 'terrace'],
+  },
+  cozy: {
+    terms: ['ấm cúng', 'am cung', 'cozy', 'thân mật', 'than mat', 'hoài cổ', 'hoai co'],
+  },
+  healthy: {
+    terms: ['healthy', 'lành mạnh', 'lanh manh', 'chay', 'rau', 'salad'],
+  },
 };
 
 const CATEGORIES = new Set([
@@ -102,10 +134,17 @@ function normalizeSearchText(value: string): string {
 function resolveVibe(value: string | undefined): VibeFilter | null {
   if (!value?.trim()) return null;
   const trimmed = value.trim();
+  const normalized = normalizeSearchText(trimmed);
   return (
-    VIBE_MAP[normalizeSearchText(trimmed).replace(/[\s/]+/g, '_')] ?? {
-      vibes: [trimmed],
+    VIBE_MAP[normalized.replace(/[\s/]+/g, '_')] ?? {
+      terms: [...new Set([trimmed, normalized])],
     }
+  );
+}
+
+function wildcardTerms(terms: string[]): string[] {
+  return [...new Set(terms.map((term) => term.trim()).filter(Boolean))].map(
+    (term) => `%${term}%`,
   );
 }
 
@@ -184,16 +223,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
     if (vibeFilter) {
       const vibeConditions: string[] = [];
-      if (vibeFilter.vibes.length > 0) {
-        sqlParams.push(vibeFilter.vibes);
+      if (vibeFilter.terms.length > 0) {
+        sqlParams.push(wildcardTerms(vibeFilter.terms));
         vibeConditions.push(
-          `COALESCE(p.metadata->'vibes', '[]'::jsonb) ?| $${sqlParams.length}::text[]`,
-        );
-      }
-      if (vibeFilter.services?.length) {
-        sqlParams.push(vibeFilter.services);
-        vibeConditions.push(
-          `COALESCE(p.metadata->'services', '[]'::jsonb) ?| $${sqlParams.length}::text[]`,
+          `concat_ws(' ', p.category, p.name, p.normalized_name, p.description, p.metadata->>'vibe', p.metadata->>'features', p.metadata->>'vibes', p.metadata->>'services') ILIKE ANY($${sqlParams.length}::text[])`,
         );
       }
       if (vibeFilter.categories?.length) {
@@ -268,7 +301,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         p.category,
         p.address,
         p.description,
-        COALESCE(p.avg_rating, 0) AS "avgRating",
+        COALESCE(p.avg_rating, 0)::float AS "avgRating",
         COALESCE(p.rating_count, 0) AS "ratingCount",
         (SELECT COUNT(*)::integer FROM check_ins ci WHERE ci.place_id = p.id) AS "checkinCount",
         p.cover_media_id AS "coverMediaId",

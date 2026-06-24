@@ -270,14 +270,9 @@ class AuthService {
 
   bool _hasCompleteProfile() {
     final firstName = _firstName?.trim() ?? '';
-    final lastName = _lastName?.trim() ?? '';
     final username = _preferredUsername?.trim() ?? '';
 
-    return firstName.isNotEmpty &&
-        lastName.isNotEmpty &&
-        username.isNotEmpty &&
-        firstName.toLowerCase() != 'user' &&
-        !firstName.contains('@');
+    return firstName.isNotEmpty && username.isNotEmpty && !firstName.contains('@');
   }
 
   Future<bool> _hydrateAuthenticatedProfile() async {
