@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:native_exif/native_exif.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../features/auth/camera_checkin_feed_provider.dart';
@@ -15,11 +13,7 @@ import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
-import '../services/camera_startup_permission_flow.dart';
 import '../services/friend_service.dart';
-import '../services/gallery_asset_picker_service.dart';
-import '../services/gallery_permission_service.dart';
-import '../services/gallery_preview_service.dart';
 import '../utils/error.dart';
 import 'camera_audience_selector.dart';
 import 'camera_bottom_section.dart';
@@ -28,15 +22,14 @@ import 'camera_checkin_feed.dart';
 import 'camera_feed_message_composer.dart';
 import 'camera_friends_sheet.dart';
 import 'camera_viewfinder_pager.dart';
-import 'gallery_asset_picker_sheet.dart';
-import 'gallery_permission_sheet.dart';
-import 'gallery_preview_button.dart';
 import 'profile_screen.dart';
 import 'send_image_screen.dart';
 
 List<CameraDescription>? globalCameras;
 
 const int cameraVideoMaxDurationMs = 3000;
+const double _cameraBaseZoomLevel = 1.0;
+const double _cameraZoomedLevel = 1.5;
 
 bool canRecordVideo({required bool isPro, required bool cameraReady}) {
   return isPro && cameraReady;
@@ -57,13 +50,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _selectedCameraIndex = 0;
   bool _isFlashOn = false;
   bool _isLoading = false;
-  late final GalleryPermissionService _galleryPermissionService =
-      const GalleryPermissionService();
-  late final GalleryPreviewService _galleryPreviewService =
-      GalleryPreviewService(permissionService: _galleryPermissionService);
-  List<Uint8List> _galleryThumbnails = const <Uint8List>[];
-  GalleryPermissionStatus _galleryPermissionStatus =
-      GalleryPermissionStatus.notDetermined;
+  double _zoomLevel = _cameraBaseZoomLevel;
   CameraCheckinFeedItem? _activeFeedItem;
   bool _showFeedAudienceSelector = false;
   CameraBottomTab _activeBottomTab = CameraBottomTab.home;
@@ -77,7 +64,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   @override
   void initState() {
     super.initState();
-    unawaited(_initCameraAndGalleryPreview());
+    unawaited(_initCamera());
 
     _animationController = AnimationController(
       vsync: this,
@@ -223,30 +210,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
-  Future<void> _loadGalleryPreview() async {
-    final result = await _galleryPreviewService.loadRecentThumbnails();
+  Future<void> _initCamera() async {
+    var cameraStatus = await Permission.camera.status;
+    if (cameraStatus.isDenied) {
+      cameraStatus = await Permission.camera.request();
+    }
+
     if (!mounted) return;
 
-    setState(() {
-      _galleryPermissionStatus = result.permissionStatus;
-      _galleryThumbnails = result.thumbnails;
-    });
-  }
-
-  Future<void> _initCameraAndGalleryPreview() async {
-    final startupFlow = CameraStartupPermissionFlow.live(
-      galleryPreviewService: _galleryPreviewService,
-    );
-
-    final startupResult = await startupFlow.resolve();
-    if (!mounted) return;
-
-    setState(() {
-      _galleryPermissionStatus = startupResult.galleryPreview.permissionStatus;
-      _galleryThumbnails = startupResult.galleryPreview.thumbnails;
-    });
-
-    if (!startupResult.cameraGranted) {
+    if (!cameraStatus.isGranted && !cameraStatus.isLimited) {
       ErrorDialogs.showPermissionDeniedError(context, 'Camera');
       return;
     }
@@ -261,162 +233,29 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     if (_cameras == null || _cameras!.isEmpty) return;
 
     final camera = _cameras![index];
-    _controller = CameraController(
+    final controller = CameraController(
       camera,
       ResolutionPreset.max,
       enableAudio: false,
     );
+    _controller = controller;
 
     try {
-      await _controller!.initialize();
-      if (mounted) setState(() {});
+      await controller.initialize();
+      final minZoom = await controller.getMinZoomLevel();
+      final maxZoom = await controller.getMaxZoomLevel();
+      final baseZoom = _cameraBaseZoomLevel.clamp(minZoom, maxZoom).toDouble();
+      await controller.setZoomLevel(baseZoom);
+      if (!mounted) return;
+      setState(() {
+        _zoomLevel = baseZoom;
+      });
     } catch (e) {
       debugPrint('Camera error: $e');
     }
   }
 
-  Future<void> _pickFromGallery() async {
-    final hasGalleryAccess = await _ensureGalleryPermissionForUpload();
-    if (!hasGalleryAccess) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final hideNotice = prefs.getBool('hide_gallery_gps_notice') ?? false;
-
-    if (!hideNotice) {
-      if (!mounted) return;
-      final shouldContinue = await showDialog<bool>(
-        context: context,
-        builder: (context) => const GalleryGpsNoticeDialog(),
-      );
-      if (shouldContinue != true) return;
-    }
-
-    if (!mounted) return;
-    final selectedAsset =
-        await showModalBottomSheet<GalleryAssetPickerSelection>(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => GalleryAssetPickerSheet(
-            loadAssets: () => GalleryAssetPickerService(
-              permissionService: _galleryPermissionService,
-            ).loadRecentImages(),
-          ),
-        );
-
-    if (mounted) unawaited(_loadGalleryPreview());
-    if (selectedAsset == null) return;
-
-    if (selectedAsset.mediaType == GalleryAssetMediaType.video) {
-      // MVP publish: video upload is hidden, so ignore any stale video item.
-      // final upgraded = await _showProFeatureDialog();
-      return;
-    }
-
-    await _handleGallerySelection(selectedAsset);
-  }
-
-  Future<void> _handleGallerySelection(
-    GalleryAssetPickerSelection selectedAsset,
-  ) async {
-    _setLoading(true);
-    try {
-      final gpsCoordinates =
-          selectedAsset.mediaType == GalleryAssetMediaType.video
-          ? selectedAsset.gpsCoordinates?.toList()
-          : await _gpsCoordinatesFromImageExif(selectedAsset.path);
-
-      if (gpsCoordinates == null) {
-        _setLoading(false);
-        debugPrint('Missing gallery GPS data');
-        if (mounted) ErrorDialogs.showMissingGpsError(context);
-        return;
-      }
-
-      _setLoading(false);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder<void>(
-          transitionDuration: const Duration(milliseconds: 300),
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              SendImageScreen(
-                imagePath: selectedAsset.path,
-                source: selectedAsset.source,
-                gpsCoordinates: gpsCoordinates,
-                durationMs: selectedAsset.durationMs,
-              ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
-    } catch (e) {
-      _setLoading(false);
-      debugPrint('Lỗi đọc metadata media: $e');
-      if (mounted) ErrorDialogs.showMissingGpsError(context);
-    }
-  }
-
-  Future<List<double>?> _gpsCoordinatesFromImageExif(String imagePath) async {
-    final exif = await Exif.fromPath(imagePath);
-    try {
-      final latLong = await exif.getLatLong();
-      if (latLong == null) return null;
-      debugPrint(
-        'Tọa độ GPS của ảnh: Lat: ${latLong.latitude}, Lng: ${latLong.longitude}',
-      );
-      return [latLong.latitude, latLong.longitude];
-    } finally {
-      await exif.close();
-    }
-  }
-
-  Future<bool> _ensureGalleryPermissionForUpload() async {
-    var status = _galleryPermissionStatus;
-    status = await _galleryPermissionService.currentStatus();
-    if (!mounted) return false;
-
-    setState(() {
-      _galleryPermissionStatus = status;
-    });
-
-    if (status.hasAccess) return true;
-
-    final action = await showModalBottomSheet<GalleryPermissionAction>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => GalleryPermissionSheet(status: status),
-    );
-
-    if (!mounted || action == null || action == GalleryPermissionAction.deny) {
-      return false;
-    }
-
-    switch (action) {
-      case GalleryPermissionAction.requestAccess:
-        status = await _galleryPermissionService.requestAccess();
-        break;
-      case GalleryPermissionAction.selectMore:
-        status = await _galleryPermissionService.presentLimitedPicker();
-        break;
-      case GalleryPermissionAction.openSettings:
-        await _galleryPermissionService.openPhotoSettings();
-        status = await _galleryPermissionService.currentStatus();
-        break;
-      case GalleryPermissionAction.deny:
-        return false;
-    }
-
-    if (!mounted) return false;
-    setState(() {
-      _galleryPermissionStatus = status;
-    });
-    await _loadGalleryPreview();
-
-    return status.hasAccess;
-  }
+  // Upload ảnh từ thư viện đang được tắt ở camera screen.
 
   // MVP publish: Pro/payment upgrade UI is hidden until subscriptions return.
   // Future<bool> _showProFeatureDialog() async {
@@ -432,7 +271,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   void _switchCamera() {
     if (_cameras == null || _cameras!.length < 2) return;
     _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras!.length;
-    _setCamera(_selectedCameraIndex);
+    setState(() {
+      _zoomLevel = _cameraBaseZoomLevel;
+    });
+    unawaited(_setCamera(_selectedCameraIndex));
   }
 
   void _toggleFlash() {
@@ -441,6 +283,28 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       _isFlashOn = !_isFlashOn;
       _controller!.setFlashMode(_isFlashOn ? FlashMode.torch : FlashMode.off);
     });
+  }
+
+  Future<void> _toggleZoom() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final nextZoom = _zoomLevel >= _cameraZoomedLevel
+        ? _cameraBaseZoomLevel
+        : _cameraZoomedLevel;
+
+    try {
+      final minZoom = await controller.getMinZoomLevel();
+      final maxZoom = await controller.getMaxZoomLevel();
+      final clampedZoom = nextZoom.clamp(minZoom, maxZoom).toDouble();
+      await controller.setZoomLevel(clampedZoom);
+      if (!mounted) return;
+      setState(() {
+        _zoomLevel = clampedZoom;
+      });
+    } catch (e) {
+      debugPrint('Camera zoom error: $e');
+    }
   }
 
   Future<void> _handleCapture() async {
@@ -594,13 +458,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                   ),
                                   cameraOverlay: _CameraPreviewControls(
                                     isFlashOn: _isFlashOn,
+                                    zoomLevel: _zoomLevel,
                                     onToggleFlash: _toggleFlash,
+                                    onToggleZoom: () =>
+                                        unawaited(_toggleZoom()),
                                   ),
                                   cameraControls: _CameraCaptureControls(
-                                    thumbnails: _galleryThumbnails,
                                     animationController: _animationController,
                                     shrinkAnimation: _shrinkAnimation,
-                                    onGalleryTap: _pickFromGallery,
                                     onCapture: _handleCapture,
                                     isRecordingVideo: _isRecordingVideo,
                                     onSwitchCamera: _switchCamera,
@@ -813,11 +678,15 @@ class _CameraProfileInitials extends StatelessWidget {
 
 class _CameraPreviewControls extends StatelessWidget {
   final bool isFlashOn;
+  final double zoomLevel;
   final VoidCallback onToggleFlash;
+  final VoidCallback onToggleZoom;
 
   const _CameraPreviewControls({
     required this.isFlashOn,
+    required this.zoomLevel,
     required this.onToggleFlash,
+    required this.onToggleZoom,
   });
 
   @override
@@ -847,17 +716,20 @@ class _CameraPreviewControls extends StatelessWidget {
         Positioned(
           top: 16,
           right: 16,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
-            ),
-            child: const Text(
-              '1x',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          child: GestureDetector(
+            onTap: onToggleZoom,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                zoomLevel >= _cameraZoomedLevel - 0.01 ? '1.5x' : '1x',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -898,19 +770,15 @@ class _NonDistortingCameraPreview extends StatelessWidget {
 }
 
 class _CameraCaptureControls extends StatelessWidget {
-  final List<Uint8List> thumbnails;
   final AnimationController animationController;
   final Animation<double> shrinkAnimation;
-  final VoidCallback onGalleryTap;
   final Future<void> Function() onCapture;
   final bool isRecordingVideo;
   final VoidCallback onSwitchCamera;
 
   const _CameraCaptureControls({
-    required this.thumbnails,
     required this.animationController,
     required this.shrinkAnimation,
-    required this.onGalleryTap,
     required this.onCapture,
     required this.isRecordingVideo,
     required this.onSwitchCamera,
@@ -939,10 +807,7 @@ class _CameraCaptureControls extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    GalleryPreviewButton(
-                      thumbnails: thumbnails,
-                      onTap: onGalleryTap,
-                    ),
+                    const SizedBox(width: 55),
                     AnimatedBuilder(
                       animation: animationController,
                       builder: (context, child) {
@@ -1061,105 +926,6 @@ class _FriendsCountPill extends StatelessWidget {
   }
 }
 
-class GalleryGpsNoticeDialog extends StatefulWidget {
-  const GalleryGpsNoticeDialog({super.key});
-
-  @override
-  State<GalleryGpsNoticeDialog> createState() => _GalleryGpsNoticeDialogState();
-}
-
-class _GalleryGpsNoticeDialogState extends State<GalleryGpsNoticeDialog> {
-  bool _dontShowAgain = false;
-
-  void _onContinue() async {
-    if (_dontShowAgain) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('hide_gallery_gps_notice', true);
-    }
-    if (mounted) Navigator.pop(context, true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF252020),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
-        'Lưu ý về vị trí',
-        style: TextStyle(
-          color: Colors.white,
-          fontFamily: 'SF Pro',
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Ảnh tải lên từ thư viện bắt buộc phải được bật Vị trí (GPS) lúc chụp để xác thực điểm check-in.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontFamily: 'SF Pro',
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Theme(
-            data: Theme.of(
-              context,
-            ).copyWith(unselectedWidgetColor: Colors.white54),
-            child: CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: const Color(0xFFEF484F),
-              title: const Text(
-                'Không hiện lại',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'SF Pro',
-                  fontSize: 15,
-                ),
-              ),
-              value: _dontShowAgain,
-              onChanged: (value) {
-                setState(() {
-                  _dontShowAgain = value ?? false;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text(
-            'Hủy',
-            style: TextStyle(color: Colors.white54, fontFamily: 'SF Pro'),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _onContinue,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFEF484F),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-          ),
-          child: const Text(
-            'Tiếp tục',
-            style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'SF Pro',
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _CameraSkeleton extends StatelessWidget {
   const _CameraSkeleton();
 
@@ -1268,29 +1034,7 @@ class _CameraSkeleton extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                SizedBox(
-                                  width: 55,
-                                  height: 55,
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Container(
-                                      width: 45,
-                                      height: 45,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0x1FFFFFFF),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: const Color(0x2EFFFFFF),
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.photo_library_outlined,
-                                        color: Color(0xB3FFFFFF),
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                const SizedBox(width: 55),
                                 Container(
                                   width: compactHeight ? 78 : 86,
                                   height: compactHeight ? 78 : 86,
