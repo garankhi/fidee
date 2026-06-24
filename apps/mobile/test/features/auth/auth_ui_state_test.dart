@@ -33,5 +33,23 @@ void main() {
       expect(updatedState.since, '2026');
       expect(updatedState.tier, UserTier.pro);
     });
+
+    test('single-part display name with username counts as complete profile', () async {
+      final service = AuthService(isTestMode: true);
+      await service.initialize();
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Tydapchai',
+        'username': 'tydapchai',
+        'plan': 'FREE',
+      });
+
+      expect(service.hasCompleteProfileForTesting, isTrue);
+
+      final state = AuthUiState.fromService(service);
+      expect(state.firstName, 'Tydapchai');
+      expect(state.lastName, '');
+      expect(state.preferredUsername, 'tydapchai');
+    });
   });
 }

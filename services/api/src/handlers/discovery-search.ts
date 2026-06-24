@@ -268,7 +268,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         p.category,
         p.address,
         p.description,
-        COALESCE(p.avg_rating, 0) AS "avgRating",
+        COALESCE(p.avg_rating, 0)::float AS "avgRating",
         COALESCE(p.rating_count, 0) AS "ratingCount",
         (SELECT COUNT(*)::integer FROM check_ins ci WHERE ci.place_id = p.id) AS "checkinCount",
         p.cover_media_id AS "coverMediaId",
