@@ -58,4 +58,21 @@ void main() {
 
     expect(capturedUri?.queryParameters['q'], 'coffee');
   });
+
+  test(
+    'fetchNearby throws instead of returning an empty fallback on API error',
+    () async {
+      final service = NearbyService(
+        _TokenAuthService(),
+        client: MockClient(
+          (request) async => http.Response('Unauthorized', 401),
+        ),
+      );
+
+      expect(
+        service.fetchNearby(lat: 10.7738, lng: 106.7035, radius: 1000),
+        throwsA(isA<NearbyException>()),
+      );
+    },
+  );
 }

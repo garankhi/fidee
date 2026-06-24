@@ -114,6 +114,28 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     return [position.latitude, position.longitude];
   }
 
+  Future<List<double>> _freshPlaceLookupCoordinates() async {
+    final gps = widget.gpsCoordinates;
+    if (gps != null && gps.length >= 2) return [gps[0], gps[1]];
+
+    final locationService = ref.read(locationControllerProvider).valueOrNull;
+    if (locationService != null) {
+      if (!locationService.hasRealLocation) {
+        await locationService.refreshPosition();
+      }
+      if (locationService.hasRealLocation) {
+        final position = locationService.currentPosition;
+        return [position.latitude, position.longitude];
+      }
+    }
+
+    final coordinates = _placeLookupCoordinates();
+    debugPrint(
+      'Nearby place lookup uses fallback coordinates: ${coordinates[0]},${coordinates[1]}',
+    );
+    return coordinates;
+  }
+
   Future<void> _loadNearbySpots() async {
     setState(() {
       _isLoadingNearbySpots = true;
@@ -143,7 +165,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
   }
 
   Future<List<NearbyPlace>> _fetchNearbySpots({String? query}) async {
-    final coordinates = _placeLookupCoordinates();
+    final coordinates = await _freshPlaceLookupCoordinates();
     final authService = ref.read(authServiceProvider);
     final nearbyService = NearbyService(authService);
 

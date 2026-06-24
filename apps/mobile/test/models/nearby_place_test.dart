@@ -53,4 +53,22 @@ void main() {
 
     expect(customPlace.isCustomFallback, isFalse);
   });
+
+  test('parses numeric strings from nearby API', () {
+    final place = NearbyPlace.fromJson({
+      'id': 'place-1',
+      'place_id': 'place-1',
+      'source': 'internal',
+      'display_name': 'Approved Coffee',
+      'address': '456 Nguyen Hue',
+      'category': 'restaurant',
+      'distance_meters': '42.4',
+      'confidence': 'medium',
+      'coordinates': {'lat': '10.7738', 'lng': '106.7035'},
+    });
+
+    expect(place.distanceMeters, 42);
+    expect(place.coordinates.lat, 10.7738);
+    expect(place.coordinates.lng, 106.7035);
+  });
 }

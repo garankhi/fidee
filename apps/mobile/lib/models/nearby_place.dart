@@ -9,11 +9,19 @@ class NearbyPlaceCoordinates {
 
   factory NearbyPlaceCoordinates.fromJson(Map<String, dynamic> json) {
     return NearbyPlaceCoordinates(
-      lat: (json['lat'] as num).toDouble(),
-      lng: (json['lng'] as num).toDouble(),
+      lat: _toDouble(json['lat']),
+      lng: _toDouble(json['lng']),
     );
   }
 }
+
+double _toDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.parse(value);
+  throw FormatException('Expected numeric value, got $value');
+}
+
+int _toInt(Object? value) => _toDouble(value).round();
 
 class NearbyPlaceActions {
   final String primary;
@@ -64,7 +72,7 @@ class NearbyPlace {
           ? (json['address'] as String).trim()
           : 'Địa điểm tùy chỉnh',
       category: json['category'] as String,
-      distanceMeters: json['distance_meters'] as int,
+      distanceMeters: _toInt(json['distance_meters']),
       confidence: json['confidence'] as String,
       coordinates: NearbyPlaceCoordinates.fromJson(
         json['coordinates'] as Map<String, dynamic>,
