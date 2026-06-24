@@ -75,8 +75,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         p.name AS display_name,
         p.category,
         p.address,
-        p.source,
-        p.goong_place_id AS place_id,
+        'internal' AS source,
+        p.id AS place_id,
         p.open_time,
         p.close_time,
         p.price_min,
@@ -137,8 +137,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const allResults = [
       ...publicResult.rows.map((r: any) => ({
         id: r.id,
-        place_id: r.place_id || null,
-        source: r.source || 'custom',
+        place_id: r.place_id || r.id,
+        source: 'internal',
         display_name: r.display_name,
         address: r.address || null,
         category: r.category,

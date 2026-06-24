@@ -83,4 +83,40 @@ describe('getNearbyPlaces handler', () => {
     ]);
     expect(JSON.parse(result.body).metadata.query).toBe('coffee');
   });
+
+  it('returns approved places with internal check-in identity', async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'place-1',
+            place_id: 'place-1',
+            source: 'internal',
+            display_name: 'Approved Coffee',
+            address: '456 Nguyen Hue',
+            category: 'restaurant',
+            distance_meters: '42.4',
+            lat: '10.774',
+            lng: '106.704',
+            open_time: null,
+            close_time: null,
+            price_min: null,
+            price_max: null,
+            metadata: {},
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await handler(nearbyEvent('1000', 'coffee'));
+    const body = JSON.parse(result.body);
+
+    expect(result.statusCode).toBe(200);
+    expect(body.data[0]).toMatchObject({
+      id: 'place-1',
+      place_id: 'place-1',
+      source: 'internal',
+      display_name: 'Approved Coffee',
+    });
+  });
 });

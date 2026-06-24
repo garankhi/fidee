@@ -31,6 +31,19 @@ const customCandidatePlace = NearbyPlace(
   actions: NearbyPlaceActions(primary: 'select'),
 );
 
+const approvedRemotePlace = NearbyPlace(
+  id: 'place-1',
+  placeId: 'place-1',
+  source: 'internal',
+  displayName: 'Approved Coffee',
+  address: '456 Nguyen Hue, TP.HCM',
+  category: 'restaurant',
+  distanceMeters: 120,
+  confidence: 'low',
+  coordinates: NearbyPlaceCoordinates(lat: 10.3, lng: 106.3),
+  actions: NearbyPlaceActions(primary: 'select'),
+);
+
 void main() {
   Widget buildSheet({
     List<NearbyPlace> places = const [samplePlace],
@@ -39,10 +52,12 @@ void main() {
       String name,
       String visibility,
       String? address,
-    )? onCreateCustomPlace,
+    )?
+    onCreateCustomPlace,
     Future<String?> Function()? onResolveCustomAddress,
     Future<CustomAddressValidation?> Function(String address)?
-        onValidateCustomAddress,
+    onValidateCustomAddress,
+    Future<List<NearbyPlace>> Function(String query)? onSearchPlaces,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -52,6 +67,7 @@ void main() {
           onCreateCustomPlace: onCreateCustomPlace,
           onResolveCustomAddress: onResolveCustomAddress,
           onValidateCustomAddress: onValidateCustomAddress,
+          onSearchPlaces: onSearchPlaces,
         ),
       ),
     );
@@ -108,7 +124,10 @@ void main() {
     expect(find.byKey(const ValueKey('place-search-field')), findsNothing);
     expect(find.text('Bạn bè'), findsOneWidget);
     expect(find.text('Riêng tư'), findsOneWidget);
-    expect(find.byKey(const ValueKey('custom-place-address-field')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('custom-place-address-field')),
+      findsOneWidget,
+    );
     await tester.enterText(
       find.byKey(const ValueKey('custom-place-name-field')),
       'Há Há Há',
@@ -235,5 +254,39 @@ void main() {
 
     expect(find.text('Há Há Há'), findsOneWidget);
     expect(find.text('Marukame Udon'), findsNothing);
+  });
+
+  testWidgets('searches remote approved places by search text', (tester) async {
+    SelectedPlaceTag? selected;
+    String? submittedQuery;
+
+    await tester.pumpWidget(
+      buildSheet(
+        places: const [samplePlace],
+        onSelected: (place) => selected = place,
+        onSearchPlaces: (query) async {
+          submittedQuery = query;
+          return const [approvedRemotePlace];
+        },
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('place-search-field')),
+      'approved',
+    );
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump();
+
+    expect(submittedQuery, 'approved');
+    expect(find.text('Approved Coffee'), findsOneWidget);
+    expect(find.text('Marukame Udon'), findsNothing);
+
+    await tester.tap(find.text('Approved Coffee'));
+    await tester.pump();
+
+    expect(selected?.id, 'place-1');
+    expect(selected?.placeId, 'place-1');
+    expect(selected?.source, 'internal');
   });
 }

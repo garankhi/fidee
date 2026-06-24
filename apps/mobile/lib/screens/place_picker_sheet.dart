@@ -17,10 +17,12 @@ class PlacePickerSheetContent extends StatefulWidget {
     String name,
     String visibility,
     String? address,
-  )? onCreateCustomPlace;
+  )?
+  onCreateCustomPlace;
   final Future<String?> Function()? onResolveCustomAddress;
   final Future<CustomAddressValidation?> Function(String address)?
-      onValidateCustomAddress;
+  onValidateCustomAddress;
+  final Future<List<NearbyPlace>> Function(String query)? onSearchPlaces;
   final bool isLoading;
   final String? errorMessage;
 
@@ -43,6 +45,7 @@ class PlacePickerSheetContent extends StatefulWidget {
     this.onCreateCustomPlace,
     this.onResolveCustomAddress,
     this.onValidateCustomAddress,
+    this.onSearchPlaces,
     this.isLoading = false,
     this.errorMessage,
     this.autocompleteService,
@@ -76,7 +79,9 @@ class _VisibilityOption extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? _PlacePickerSheetContentState._accent : Colors.transparent,
+          color: selected
+              ? _PlacePickerSheetContentState._accent
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -85,13 +90,17 @@ class _VisibilityOption extends StatelessWidget {
             Icon(
               icon,
               size: 15,
-              color: selected ? Colors.white : _PlacePickerSheetContentState._mutedText,
+              color: selected
+                  ? Colors.white
+                  : _PlacePickerSheetContentState._mutedText,
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : _PlacePickerSheetContentState._mutedText,
+                color: selected
+                    ? Colors.white
+                    : _PlacePickerSheetContentState._mutedText,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -110,7 +119,8 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
 
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _customNameController = TextEditingController();
-  final TextEditingController _customAddressController = TextEditingController();
+  final TextEditingController _customAddressController =
+      TextEditingController();
   String _searchQuery = '';
   bool _isCreatingCustom = false;
   bool _isSavingCustom = false;
@@ -118,6 +128,11 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
   String? _customError;
   String? _customWarning;
   bool _addressWarningAcknowledged = false;
+  List<NearbyPlace> _remotePlaces = [];
+  bool _isSearchingPlaces = false;
+  String? _placeSearchError;
+  Timer? _placeSearchDebounceTimer;
+  String _activePlaceSearchQuery = '';
 
   // --- Autocomplete state ---
 
@@ -263,10 +278,10 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
                                       top: Radius.circular(10),
                                     )
                                   : (index == min(_suggestions.length, 5) - 1
-                                      ? const BorderRadius.vertical(
-                                          bottom: Radius.circular(10),
-                                        )
-                                      : BorderRadius.zero),
+                                        ? const BorderRadius.vertical(
+                                            bottom: Radius.circular(10),
+                                          )
+                                        : BorderRadius.zero),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
@@ -481,11 +496,14 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
     // Cancel any pending debounce so it cannot fire after the widget is gone.
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    _placeSearchDebounceTimer?.cancel();
+    _placeSearchDebounceTimer = null;
 
     // Stale in-flight results are discarded by the mounted/query guard inside
     // _fetchSuggestions, so no explicit cancellation is needed beyond clearing
     // the query tracker so any result that arrives sees a mismatch.
     _currentQuery = '';
+    _activePlaceSearchQuery = '';
 
     // Remove the overlay if it is still shown (e.g. user dismissed the sheet
     // by swiping while the overlay was open).
@@ -518,7 +536,7 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
         .round();
   }
 
-  List<NearbyPlace> get _filteredPlaces {
+  List<NearbyPlace> get _localFilteredPlaces {
     final query = _searchQuery.trim().toLowerCase();
     if (query.isEmpty) return widget.places;
 
@@ -526,6 +544,87 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
       return place.displayName.toLowerCase().contains(query) ||
           place.address.toLowerCase().contains(query);
     }).toList();
+  }
+
+  List<NearbyPlace> get _filteredPlaces {
+    final query = _searchQuery.trim();
+    if (query.isEmpty) return widget.places;
+
+    final merged = <NearbyPlace>[];
+    final seen = <String>{};
+
+    void addIfNew(NearbyPlace place) {
+      final placeId = place.placeId;
+      final key = placeId != null && placeId.isNotEmpty
+          ? 'place:$placeId'
+          : '${place.source}:${place.id}';
+      if (seen.add(key)) merged.add(place);
+    }
+
+    for (final place in _localFilteredPlaces) {
+      addIfNew(place);
+    }
+    for (final place in _remotePlaces) {
+      addIfNew(place);
+    }
+
+    return merged;
+  }
+
+  void _onPlaceSearchTextChanged(String value) {
+    final query = value.trim();
+    setState(() {
+      _searchQuery = value;
+      _placeSearchError = null;
+    });
+
+    _placeSearchDebounceTimer?.cancel();
+
+    final onSearch = widget.onSearchPlaces;
+    if (onSearch == null || query.length < 2) {
+      _activePlaceSearchQuery = '';
+      if (_remotePlaces.isNotEmpty || _isSearchingPlaces) {
+        setState(() {
+          _remotePlaces = [];
+          _isSearchingPlaces = false;
+        });
+      }
+      return;
+    }
+
+    _placeSearchDebounceTimer = Timer(
+      const Duration(milliseconds: 400),
+      () => _fetchRemotePlaces(query),
+    );
+  }
+
+  Future<void> _fetchRemotePlaces(String query) async {
+    final onSearch = widget.onSearchPlaces;
+    if (onSearch == null) return;
+
+    _activePlaceSearchQuery = query;
+    setState(() {
+      _isSearchingPlaces = true;
+      _placeSearchError = null;
+    });
+
+    try {
+      final places = await onSearch(query);
+      if (!mounted || _activePlaceSearchQuery != query) return;
+
+      setState(() {
+        _remotePlaces = places;
+        _isSearchingPlaces = false;
+      });
+    } catch (error) {
+      if (!mounted || _activePlaceSearchQuery != query) return;
+
+      setState(() {
+        _remotePlaces = [];
+        _isSearchingPlaces = false;
+        _placeSearchError = 'Không tìm được địa điểm, thử lại nhé';
+      });
+    }
   }
 
   Future<void> _startCustomPlaceCreation() async {
@@ -599,8 +698,16 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
     final devLat = _deviceLat;
     final devLng = _deviceLng;
 
-    if (coords != null && devLat != null && devLng != null && !_addressWarningAcknowledged) {
-      final distance = _haversineDistanceMeters(devLat, devLng, coords.lat, coords.lng);
+    if (coords != null &&
+        devLat != null &&
+        devLng != null &&
+        !_addressWarningAcknowledged) {
+      final distance = _haversineDistanceMeters(
+        devLat,
+        devLng,
+        coords.lat,
+        coords.lng,
+      );
 
       if (distance > 500) {
         // Req 6.2 — show warning with whole-meter distance, ask to save again.
@@ -675,11 +782,7 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
       _customWarning = null;
     });
 
-    final created = await onCreate(
-      name,
-      _customVisibility,
-      address,
-    );
+    final created = await onCreate(name, _customVisibility, address);
     if (!mounted) return;
 
     setState(() => _isSavingCustom = false);
@@ -726,6 +829,14 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
               textAlign: TextAlign.center,
             ),
           ],
+          if (_placeSearchError != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _placeSearchError!,
+              style: const TextStyle(color: _accent, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 18),
           if (_isCreatingCustom)
             _buildCustomPlaceForm()
@@ -734,6 +845,8 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
               padding: EdgeInsets.symmetric(vertical: 48),
               child: CircularProgressIndicator(color: _accent),
             )
+          else if (_filteredPlaces.isEmpty && _isSearchingPlaces)
+            _buildSearchLoadingState()
           else if (_filteredPlaces.isEmpty)
             _buildEmptyState()
           else
@@ -759,7 +872,7 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
             child: TextField(
               key: const ValueKey('place-search-field'),
               controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
+              onChanged: _onPlaceSearchTextChanged,
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 15,
@@ -776,6 +889,35 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
                 ),
               ),
             ),
+          ),
+          if (_isSearchingPlaces) ...[
+            const SizedBox(width: 10),
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(color: _accent, strokeWidth: 2),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchLoadingState() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 36),
+      child: Column(
+        children: [
+          CircularProgressIndicator(color: _accent, strokeWidth: 2),
+          SizedBox(height: 14),
+          Text(
+            'Đang tìm thêm địa điểm...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

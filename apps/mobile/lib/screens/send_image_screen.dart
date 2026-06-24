@@ -142,7 +142,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     }
   }
 
-  Future<List<NearbyPlace>> _fetchNearbySpots() async {
+  Future<List<NearbyPlace>> _fetchNearbySpots({String? query}) async {
     final coordinates = _placeLookupCoordinates();
     final authService = ref.read(authServiceProvider);
     final nearbyService = NearbyService(authService);
@@ -152,9 +152,14 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       lng: coordinates[1],
       mediaId: 'send_image_${DateTime.now().millisecondsSinceEpoch}',
       radius: 1000,
+      query: query,
     );
 
     return res.data.where((p) => !p.isCustomFallback).toList();
+  }
+
+  Future<List<NearbyPlace>> _searchNearbySpots(String query) {
+    return _fetchNearbySpots(query: query);
   }
 
   Future<String?> _resolveCustomPlaceAddress() async {
@@ -346,6 +351,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
           onCreateCustomPlace: _createCustomPlaceTag,
           onResolveCustomAddress: _resolveCustomPlaceAddress,
           onValidateCustomAddress: _validateCustomPlaceAddress,
+          onSearchPlaces: _searchNearbySpots,
           deviceLat: coords[0],
           deviceLng: coords[1],
           onSelected: (place) {
