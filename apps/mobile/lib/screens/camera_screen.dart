@@ -15,7 +15,6 @@ import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
-import '../services/auth_service.dart';
 import '../services/camera_startup_permission_flow.dart';
 import '../services/friend_service.dart';
 import '../services/gallery_asset_picker_service.dart';
@@ -32,7 +31,6 @@ import 'camera_viewfinder_pager.dart';
 import 'gallery_asset_picker_sheet.dart';
 import 'gallery_permission_sheet.dart';
 import 'gallery_preview_button.dart';
-import 'premium_upgrade_sheet.dart';
 import 'profile_screen.dart';
 import 'send_image_screen.dart';
 
@@ -69,9 +67,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   CameraCheckinFeedItem? _activeFeedItem;
   bool _showFeedAudienceSelector = false;
   CameraBottomTab _activeBottomTab = CameraBottomTab.home;
-  Timer? _recordingTimer;
-  bool _isRecordingVideo = false;
-  DateTime? _recordingStartedAt;
+  final bool _isRecordingVideo = false;
+  // Timer? _recordingTimer;
+  // DateTime? _recordingStartedAt;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -278,9 +276,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _pickFromGallery() async {
-    final authState = ref.read(authControllerProvider).valueOrNull;
-    final isPro = authState?.tier == UserTier.pro;
-
     final hasGalleryAccess = await _ensureGalleryPermissionForUpload();
     if (!hasGalleryAccess) return;
 
@@ -305,16 +300,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           builder: (_) => GalleryAssetPickerSheet(
             loadAssets: () => GalleryAssetPickerService(
               permissionService: _galleryPermissionService,
-            ).loadRecentMedia(),
+            ).loadRecentImages(),
           ),
         );
 
     if (mounted) unawaited(_loadGalleryPreview());
     if (selectedAsset == null) return;
 
-    if (selectedAsset.mediaType == GalleryAssetMediaType.video && !isPro) {
-      final upgraded = await _showProFeatureDialog();
-      if (!mounted || !upgraded) return;
+    if (selectedAsset.mediaType == GalleryAssetMediaType.video) {
+      // MVP publish: video upload is hidden, so ignore any stale video item.
+      // final upgraded = await _showProFeatureDialog();
+      return;
     }
 
     await _handleGallerySelection(selectedAsset);
@@ -422,15 +418,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     return status.hasAccess;
   }
 
-  Future<bool> _showProFeatureDialog() async {
-    final upgraded = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const PremiumUpgradeSheet(),
-    );
-    return upgraded == true;
-  }
+  // MVP publish: Pro/payment upgrade UI is hidden until subscriptions return.
+  // Future<bool> _showProFeatureDialog() async {
+  //   final upgraded = await showModalBottomSheet<bool>(
+  //     context: context,
+  //     isScrollControlled: true,
+  //     backgroundColor: Colors.transparent,
+  //     builder: (context) => const PremiumUpgradeSheet(),
+  //   );
+  //   return upgraded == true;
+  // }
 
   void _switchCamera() {
     if (_cameras == null || _cameras!.length < 2) return;
@@ -479,93 +476,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
-  Future<void> _startVideoRecording() async {
-    var isPro =
-        ref.read(authControllerProvider).valueOrNull?.tier == UserTier.pro;
-    final controller = _controller;
-    final cameraReady = controller?.value.isInitialized ?? false;
-
-    if (!isPro) {
-      final upgraded = await _showProFeatureDialog();
-      if (!mounted || !upgraded) return;
-      isPro = true;
-    }
-    if (!canRecordVideo(isPro: isPro, cameraReady: cameraReady) ||
-        controller == null ||
-        _isRecordingVideo) {
-      return;
-    }
-
-    try {
-      await controller.startVideoRecording();
-      if (!mounted) return;
-      setState(() {
-        _isRecordingVideo = true;
-        _recordingStartedAt = DateTime.now();
-      });
-      _recordingTimer?.cancel();
-      _recordingTimer = Timer(
-        const Duration(milliseconds: cameraVideoMaxDurationMs),
-        () => unawaited(_stopVideoRecording()),
-      );
-    } catch (error) {
-      debugPrint('Start video recording failed: $error');
-    }
-  }
-
-  Future<void> _stopVideoRecording() async {
-    final controller = _controller;
-    if (!_isRecordingVideo || controller == null) return;
-
-    _recordingTimer?.cancel();
-    _recordingTimer = null;
-
-    final startedAt = _recordingStartedAt;
-    final durationMs = startedAt == null
-        ? cameraVideoMaxDurationMs
-        : math.max(
-            1,
-            math.min(
-              cameraVideoMaxDurationMs,
-              DateTime.now().difference(startedAt).inMilliseconds,
-            ),
-          );
-
-    try {
-      final video = await controller.stopVideoRecording();
-      if (!mounted) return;
-      setState(() {
-        _isRecordingVideo = false;
-        _recordingStartedAt = null;
-      });
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder<void>(
-          transitionDuration: const Duration(milliseconds: 300),
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              SendImageScreen(
-                imagePath: video.path,
-                source: 'IN_APP_CAMERA_VIDEO',
-                durationMs: durationMs,
-              ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
-    } catch (error) {
-      debugPrint('Stop video recording failed: $error');
-      if (!mounted) return;
-      setState(() {
-        _isRecordingVideo = false;
-        _recordingStartedAt = null;
-      });
-    }
-  }
+  // MVP publish: long-press video recording is disabled.
+  // Future<void> _startVideoRecording() { ... }
+  // Future<void> _stopVideoRecording() async { ... }
 
   @override
   void dispose() {
-    _recordingTimer?.cancel();
+    // MVP publish: video recording timer is dormant with video disabled.
+    // _recordingTimer?.cancel();
     _animationController.dispose();
     _controller?.dispose();
     _pageController.dispose();
@@ -684,8 +602,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                     shrinkAnimation: _shrinkAnimation,
                                     onGalleryTap: _pickFromGallery,
                                     onCapture: _handleCapture,
-                                    onStartVideoRecording: _startVideoRecording,
-                                    onStopVideoRecording: _stopVideoRecording,
                                     isRecordingVideo: _isRecordingVideo,
                                     onSwitchCamera: _switchCamera,
                                   ),
@@ -987,8 +903,6 @@ class _CameraCaptureControls extends StatelessWidget {
   final Animation<double> shrinkAnimation;
   final VoidCallback onGalleryTap;
   final Future<void> Function() onCapture;
-  final Future<void> Function() onStartVideoRecording;
-  final Future<void> Function() onStopVideoRecording;
   final bool isRecordingVideo;
   final VoidCallback onSwitchCamera;
 
@@ -998,8 +912,6 @@ class _CameraCaptureControls extends StatelessWidget {
     required this.shrinkAnimation,
     required this.onGalleryTap,
     required this.onCapture,
-    required this.onStartVideoRecording,
-    required this.onStopVideoRecording,
     required this.isRecordingVideo,
     required this.onSwitchCamera,
   });
@@ -1041,10 +953,11 @@ class _CameraCaptureControls extends StatelessWidget {
 
                         return GestureDetector(
                           onTap: () => unawaited(onCapture()),
-                          onLongPressStart: (_) =>
-                              unawaited(onStartVideoRecording()),
-                          onLongPressEnd: (_) =>
-                              unawaited(onStopVideoRecording()),
+                          // MVP publish: video recording is hidden/disabled.
+                          // onLongPressStart: (_) =>
+                          //     unawaited(onStartVideoRecording()),
+                          // onLongPressEnd: (_) =>
+                          //     unawaited(onStopVideoRecording()),
                           child: Container(
                             width: captureOuterSize,
                             height: captureOuterSize,

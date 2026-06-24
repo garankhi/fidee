@@ -265,8 +265,7 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                             width: 160,
                             height: 200,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) =>
-                                _buildImagePlaceholder(),
+                            errorBuilder: (_, _, _) => _buildImagePlaceholder(),
                           )
                         : _buildImagePlaceholder(),
                   ),
@@ -339,28 +338,30 @@ class _CandidateFeedScreenState extends ConsumerState<CandidateFeedScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 20),
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      Icons.send_outlined,
-                      color: Colors.grey[700],
-                      size: 20,
-                    ),
-                    onPressed: () {},
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      Icons.bookmark_border_rounded,
-                      color: Colors.grey[700],
-                      size: 22,
-                    ),
-                    onPressed: () {},
-                  ),
+                  // TODO: Re-enable send when the feed sharing flow is ready.
+                  // const SizedBox(width: 20),
+                  // IconButton(
+                  //   padding: EdgeInsets.zero,
+                  //   constraints: const BoxConstraints(),
+                  //   icon: Icon(
+                  //     Icons.send_outlined,
+                  //     color: Colors.grey[700],
+                  //     size: 20,
+                  //   ),
+                  //   onPressed: () {},
+                  // ),
+                  // const Spacer(),
+                  // TODO: Re-enable save when the feed bookmark flow is ready.
+                  // IconButton(
+                  //   padding: EdgeInsets.zero,
+                  //   constraints: const BoxConstraints(),
+                  //   icon: Icon(
+                  //     Icons.bookmark_border_rounded,
+                  //     color: Colors.grey[700],
+                  //     size: 22,
+                  //   ),
+                  //   onPressed: () {},
+                  // ),
                 ],
               ),
             ),

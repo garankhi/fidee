@@ -93,8 +93,19 @@ class GalleryAssetPickerService {
 
   Future<List<GalleryAssetPickerItem>> loadRecentImages({
     int limit = 60,
-  }) {
-    return loadRecentMedia(limit: limit);
+  }) async {
+    if (limit <= 0) return const <GalleryAssetPickerItem>[];
+
+    try {
+      final status = await permissionService.currentStatus();
+      if (!status.hasAccess) return const <GalleryAssetPickerItem>[];
+
+      return _loadRecentImageItems(limit);
+    } catch (error, stackTrace) {
+      debugPrint('Gallery image picker load failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return const <GalleryAssetPickerItem>[];
+    }
   }
 
   Future<List<GalleryAssetPickerItem>> loadRecentMedia({
@@ -158,6 +169,48 @@ class GalleryAssetPickerService {
               ? asset.duration * 1000
               : null,
           gpsCoordinates: gpsCoordinates,
+          loadPath: () async => (await asset.originFile)?.path,
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  static Future<List<GalleryAssetPickerItem>> _loadRecentImageItems(
+    int limit,
+  ) async {
+    final recentImageFilter = FilterOptionGroup(
+      orders: const [OrderOption(type: OrderOptionType.createDate, asc: false)],
+    );
+
+    final paths = await PhotoManager.getAssetPathList(
+      onlyAll: true,
+      type: RequestType.image,
+      filterOption: recentImageFilter,
+    );
+    if (paths.isEmpty) return const <GalleryAssetPickerItem>[];
+
+    final assets = await paths.first.getAssetListRange(start: 0, end: limit);
+    if (assets.isEmpty) return const <GalleryAssetPickerItem>[];
+
+    final items = <GalleryAssetPickerItem>[];
+    for (final asset in assets) {
+      if (asset.type != AssetType.image) continue;
+
+      final thumbnail = await asset.thumbnailDataWithSize(
+        const ThumbnailSize.square(220),
+        quality: 85,
+      );
+      if (thumbnail == null) continue;
+
+      items.add(
+        GalleryAssetPickerItem(
+          id: asset.id,
+          title: asset.title,
+          thumbnail: thumbnail,
+          mediaType: GalleryAssetMediaType.image,
+          gpsCoordinates: await _gpsForAsset(asset),
           loadPath: () async => (await asset.originFile)?.path,
         ),
       );

@@ -47,8 +47,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() {
         _nearbySpots = res.data.where((p) => !p.isCustomFallback).toList();
       });
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   void _onAddSpot() {
@@ -91,11 +90,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final filterFuture = ref
         .read(dashboardControllerProvider.notifier)
         .applyFilters(
-      categories: result.categories,
-      priceRanges: result.priceRanges,
-      disRanges: result.disRanges,
-      sortOptions: result.sortOptions,
-    );
+          categories: result.categories,
+          priceRanges: result.priceRanges,
+          disRanges: result.disRanges,
+          sortOptions: result.sortOptions,
+        );
     if (result.isEmpty) {
       await filterFuture;
       return;
@@ -141,10 +140,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildDashboardBody(
-      BuildContext context,
-      DashboardState dashboardState,
-      String? userAvatarUrl,
-      ) {
+    BuildContext context,
+    DashboardState dashboardState,
+    String? userAvatarUrl,
+  ) {
     final places = dashboardState.hotPlaces;
     final friendPlaces = dashboardState.friendActivities;
     final systemPadding = MediaQuery.of(context).padding;
@@ -218,11 +217,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const SizedBox(height: 15),
           _buildHotPlacesRow(places),
           const SizedBox(height: 28),
-          _buildSubSectionHeader('Dành riêng cho bạn'),
+          _buildSubSectionHeader(
+            'Dành riêng cho bạn',
+            onViewAll: dashboardState.recommendedPlaces.isEmpty
+                ? null
+                : () => _openPlaceList(
+                    title: 'Dành riêng cho bạn',
+                    places: dashboardState.recommendedPlaces,
+                  ),
+          ),
           const SizedBox(height: 15),
           _buildHotPlacesRow(dashboardState.recommendedPlaces),
           const SizedBox(height: 28),
-          _buildSubSectionHeader('Dựa trên hoạt động của bạn bè'),
+          _buildSubSectionHeader(
+            'Dựa trên hoạt động của bạn bè',
+            onViewAll: friendPlaces.isEmpty
+                ? null
+                : () => _openPlaceList(
+                    title: 'Dựa trên hoạt động của bạn bè',
+                    places: friendPlaces,
+                  ),
+          ),
           const SizedBox(height: 15),
           _buildFriendsActivityList(friendPlaces),
         ],
@@ -281,7 +296,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         controller: _searchController,
                         onSubmitted: _submitSearch,
                         textInputAction: TextInputAction.search,
-                        style: const TextStyle(color: Colors.black, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 13,
+                        ),
                         decoration: const InputDecoration(
                           hintText: 'Tìm nhà hàng, quán ăn..',
                           hintStyle: TextStyle(
@@ -300,7 +318,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           _searchController.clear();
                           setState(() {});
                         },
-                        icon: const Icon(Icons.close, size: 18, color: Colors.black,),
+                        icon: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.black,
+                        ),
                       ),
                   ],
                 ),
@@ -311,12 +333,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               tooltip: 'Lọc địa điểm',
               onPressed: () => _showFilters(state),
               style: IconButton.styleFrom(
-                backgroundColor:
-                _hasAdvancedFilters(state)
+                backgroundColor: _hasAdvancedFilters(state)
                     ? const Color(0xFFEF484F)
                     : Colors.grey[100],
-                foregroundColor:
-                _hasAdvancedFilters(state)
+                foregroundColor: _hasAdvancedFilters(state)
                     ? Colors.white
                     : const Color(0xFFEF484F),
               ),
@@ -356,6 +376,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  void _openPlaceDetails(DashboardPlace place) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => PlaceDetailsFriends(placeId: place.id),
+      ),
+    );
+  }
+
+  void _openPlaceList({
+    required String title,
+    required List<DashboardPlace> places,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => _DashboardPlaceListScreen(title: title, places: places),
+      ),
     );
   }
 
@@ -555,14 +596,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final place = places[index];
 
           return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => PlaceDetailsFriends(placeId: place.id),
-                ),
-              );
-            },
+            onTap: () => _openPlaceDetails(place),
             child: Container(
               width: 260,
               margin: const EdgeInsets.only(right: 15),
@@ -708,100 +742,103 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Column(
       children: places.take(3).map((place) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 15),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  place.imageUrl,
-                  width: 75,
-                  height: 75,
-                  fit: BoxFit.cover,
+        return InkWell(
+          onTap: () => _openPlaceDetails(place),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    place.imageUrl,
+                    width: 75,
+                    height: 75,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 15),
+                const SizedBox(width: 15),
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      place.name,
-                      style: const TextStyle(
-                        color: Color(0xFF1E1E1E),
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        place.name,
+                        style: const TextStyle(
+                          color: Color(0xFF1E1E1E),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${place.category} · ${place.distanceKm}km',
-                      style: const TextStyle(
-                        color: Color(0xFF8B8B8B),
-                        fontSize: 12,
+                      const SizedBox(height: 4),
+                      Text(
+                        '${place.category} · ${place.distanceKm}km',
+                        style: const TextStyle(
+                          color: Color(0xFF8B8B8B),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Minh và ${place.friendsCount} người khác đã ở đây',
+                        style: const TextStyle(
+                          color: Color(0xFFEF484F),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+                Column(
+                  children: [
+                    const Text(
+                      '5-7 phút',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      'Minh và ${place.friendsCount} người khác đã ở đây',
-                      style: const TextStyle(
-                        color: Color(0xFFEF484F),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        fontStyle: FontStyle.italic,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF484F),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Đến quán',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(width: 10),
-              Column(
-                children: [
-                  const Text(
-                    '5-7 phút',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF484F),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Đến quán',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }).toList(),
     );
   }
 
-  Widget _buildSubSectionHeader(String title) {
+  Widget _buildSubSectionHeader(String title, {VoidCallback? onViewAll}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -817,18 +854,125 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Xem tất cả',
-            style: TextStyle(
-              color: Color(0xFFEF484F),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+        if (onViewAll != null)
+          TextButton(
+            onPressed: onViewAll,
+            child: const Text(
+              'Xem tất cả',
+              style: TextStyle(
+                color: Color(0xFFEF484F),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _DashboardPlaceListScreen extends StatelessWidget {
+  final String title;
+  final List<DashboardPlace> places;
+
+  const _DashboardPlaceListScreen({required this.title, required this.places});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        itemCount: places.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final place = places[index];
+          return InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => PlaceDetailsFriends(placeId: place.id),
+              ),
+            ),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      place.imageUrl,
+                      width: 76,
+                      height: 76,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 76,
+                        height: 76,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.storefront),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          place.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '${place.category} · ${place.distanceKm.toStringAsFixed(1)} km',
+                          style: const TextStyle(
+                            color: Color(0xFF6E7E91),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          '${place.friendsCount} bạn đã check-in',
+                          style: const TextStyle(
+                            color: Color(0xFFEF484F),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Color(0xFFB0B0B0)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -893,7 +1037,9 @@ class _DashboardFilterSheetState extends State<_DashboardFilterSheet> {
       // Định cấu hình màu nền theo trạng thái dựa trên source code ChoiceChip
       color: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
         if (states.contains(WidgetState.selected)) {
-          return const Color(0xFFEF484F); // Selected: Nền đỏ chủ đạo (hoặc màu tuỳ chọn)
+          return const Color(
+            0xFFEF484F,
+          ); // Selected: Nền đỏ chủ đạo (hoặc màu tuỳ chọn)
         }
         return Colors.grey[200]; // Unselected: Nền xám
       }),

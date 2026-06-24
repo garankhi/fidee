@@ -16,7 +16,6 @@ import 'screens/home_screen.dart';
 import 'screens/location_gate_screen1.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
-import 'services/revenuecat_service.dart';
 
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -24,13 +23,14 @@ Future<void> main() async {
   if (!kReleaseMode) {
     await dotenv.load(fileName: 'assets/env/mobile.env', isOptional: true);
   }
-  try {
-    await const RevenueCatService().configure();
-  } catch (error) {
-    if (kDebugMode) {
-      debugPrint('RevenueCat is not configured for this runtime: $error');
-    }
-  }
+  // MVP publish: RevenueCat/payment is intentionally disabled.
+  // try {
+  //   await const RevenueCatService().configure();
+  // } catch (error) {
+  //   if (kDebugMode) {
+  //     debugPrint('RevenueCat is not configured for this runtime: $error');
+  //   }
+  // }
   runApp(const ProviderScope(child: FideeApp()));
 }
 
