@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/auth_service.dart';
 import 'auth_providers.dart';
 import 'login_design.dart';
+import 'screens/register_step2_otp_page.dart';
 import 'widgets/login_form.dart';
 import 'widgets/login_header.dart';
 import 'widgets/login_panel.dart';
@@ -38,6 +40,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     final result = await controller.signIn(input, pwd);
     if (!mounted || !result.success) return;
+
+    final authState = ref.read(authControllerProvider).valueOrNull;
+    if (authState?.authState == AuthState.otpSent) {
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(builder: (_) => const RegisterStep2OtpPage()),
+      );
+    }
   }
 
   @override

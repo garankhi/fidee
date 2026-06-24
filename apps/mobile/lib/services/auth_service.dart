@@ -390,12 +390,24 @@ class AuthService {
         return const AuthResult(success: false, errorMessage: 'Login failed');
       }
     } on CognitoUserConfirmationNecessaryException {
+      _pendingSignUpEmail = _username;
+      _pendingSignUpPassword = password;
       _state = AuthState.otpSent;
       _lastOtpSent = DateTime.now();
       _destination = _maskDestination(_username!);
       // Cần verify email
       return AuthResult(success: true, destination: _destination);
     } on CognitoClientException catch (e) {
+      if (e.code == 'UserNotConfirmedException') {
+        _pendingSignUpEmail = _username;
+        _pendingSignUpPassword = password;
+        _cognitoUser = CognitoUser(_username, _userPool);
+        _state = AuthState.otpSent;
+        _lastOtpSent = DateTime.now();
+        _destination = _maskDestination(_username!);
+        return AuthResult(success: true, destination: _destination);
+      }
+
       return AuthResult(
         success: false,
         errorMessage: e.message ?? 'Sai tài khoản hoặc mật khẩu',
