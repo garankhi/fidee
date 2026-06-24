@@ -173,6 +173,8 @@ class AuthService {
   String? _preferredUsername;
   String? _avatarUrl;
   String? _since;
+  String? _pendingSignUpEmail;
+  String? _pendingSignUpPassword;
 
   String? get firstName => _firstName;
   String? get lastName => _lastName;
@@ -238,6 +240,11 @@ class AuthService {
     _preferredUsername = null;
     _avatarUrl = null;
     _since = null;
+  }
+
+  void _clearPendingSignUpCredentials() {
+    _pendingSignUpEmail = null;
+    _pendingSignUpPassword = null;
   }
 
   void _applyProfileDetails(ProfileDetails details) {
@@ -337,6 +344,7 @@ class AuthService {
 
   Future<AuthResult> signIn(String email, String password) async {
     _resetProfileDetails();
+    _clearPendingSignUpCredentials();
     _username = email.trim();
 
     if (isTestMode) {
@@ -393,6 +401,8 @@ class AuthService {
       final attributes = [AttributeArg(name: 'email', value: _username)];
 
       await _userPool.signUp(_username!, password, userAttributes: attributes);
+      _pendingSignUpEmail = _username;
+      _pendingSignUpPassword = password;
 
       _cognitoUser = CognitoUser(_username, _userPool);
       _state = AuthState.otpSent;
@@ -545,7 +555,33 @@ class AuthService {
     try {
       final confirmed = await _cognitoUser!.confirmRegistration(code);
       if (confirmed) {
-        _state = AuthState.authenticated;
+        final email = _pendingSignUpEmail ?? _username;
+        final password = _pendingSignUpPassword;
+        if (email == null || password == null || password.isEmpty) {
+          _state = AuthState.incompleteProfile;
+          return const AuthResult(success: true);
+        }
+
+        _cognitoUser = CognitoUser(email, _userPool);
+        _cognitoUser!.setAuthenticationFlowType('USER_PASSWORD_AUTH');
+        final session = await _cognitoUser!.authenticateUser(
+          AuthenticationDetails(username: email, password: password),
+        );
+
+        if (session == null || !session.isValid()) {
+          return const AuthResult(
+            success: false,
+            errorMessage:
+                'Xác thực email thành công nhưng chưa đăng nhập được. Vui lòng đăng nhập lại.',
+          );
+        }
+
+        _username = _cognitoUser?.getUsername() ?? email;
+        _clearPendingSignUpCredentials();
+        final hasName = await _hydrateAuthenticatedProfile();
+        _state = hasName
+            ? AuthState.authenticated
+            : AuthState.incompleteProfile;
         return const AuthResult(success: true);
       } else {
         return const AuthResult(
@@ -611,6 +647,7 @@ class AuthService {
       _username = null;
       _cognitoUser = null;
       _destination = null;
+      _clearPendingSignUpCredentials();
     }
   }
 

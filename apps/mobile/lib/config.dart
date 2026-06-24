@@ -12,7 +12,7 @@ class Config {
   );
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.fidee.site',
+    defaultValue: 'https://api-dev.fidee.site',
   );
   static const String awsRegion = 'ap-southeast-1';
   static const String appSyncGraphqlUrl = String.fromEnvironment(
