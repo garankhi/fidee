@@ -47,7 +47,9 @@ describe('discovery search handler', () => {
 
     expect(result.statusCode).toBe(200);
     const [sql, values] = mockQuery.mock.calls[0];
-    expect(sql).toContain("COALESCE(p.metadata->'vibes', '[]'::jsonb) ?| $4::text[]");
+    expect(sql).toContain(
+      "concat_ws(' ', p.category, p.name, p.normalized_name, p.description, p.metadata->>'vibe', p.metadata->>'features', p.metadata->>'vibes', p.metadata->>'services') ILIKE ANY($4::text[])",
+    );
     expect(sql).toContain('p.category = ANY($5::text[])');
     expect(sql).toContain('COALESCE(p.price_min, p.price_max) <= $6');
     expect(sql).toContain('COALESCE(p.price_max, p.price_min) >= $7');
@@ -55,11 +57,13 @@ describe('discovery search handler', () => {
     expect(sql).toContain(
       'COALESCE(p.avg_rating, 0) DESC, p.price_min ASC NULLS LAST',
     );
-    expect(values).toEqual([
-      106.7,
-      10.77,
-      '%ca phe%',
-      ['Dating'],
+    expect(values[0]).toBe(106.7);
+    expect(values[1]).toBe(10.77);
+    expect(values[2]).toBe('%ca phe%');
+    expect(values[3]).toEqual(
+      expect.arrayContaining(['%hẹn hò%', '%lãng mạn%', '%romantic%']),
+    );
+    expect(values.slice(4)).toEqual([
       ['cafe', 'restaurant'],
       50000,
       100000,
@@ -100,29 +104,31 @@ describe('discovery search handler', () => {
 
     expect(result.statusCode).toBe(200);
     expect(mockQuery.mock.calls[0][0]).toContain('p.category = ANY($4::text[])');
+    expect(mockQuery.mock.calls[0][1][2]).toEqual(
+      expect.arrayContaining(['%cafe%', '%coffee%', '%cà phê%']),
+    );
     expect(mockQuery.mock.calls[0][1]).toEqual([
       106.7,
       10.77,
-      ['Cafe'],
+      mockQuery.mock.calls[0][1][2],
       ['cafe'],
       21,
     ]);
   });
 
-  it('matches green-space vibe from vibes or services metadata', async () => {
+  it('matches green-space vibe from textual metadata', async () => {
     const result = await handler(
       event({ lat: '10.77', lng: '106.70', vibe: 'khong_gian_xanh' }),
     );
 
     expect(result.statusCode).toBe(200);
     expect(mockQuery.mock.calls[0][0]).toContain(
-      "COALESCE(p.metadata->'services', '[]'::jsonb) ?| $4::text[]",
+      "p.metadata->>'vibe', p.metadata->>'features'",
     );
     expect(mockQuery.mock.calls[0][1]).toEqual([
       106.7,
       10.77,
-      ['Outdoor'],
-      ['Outdoor'],
+      expect.arrayContaining(['%không gian xanh%', '%sân vườn%', '%rooftop%']),
       21,
     ]);
   });
