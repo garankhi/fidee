@@ -2,16 +2,14 @@ import { PreSignUpTriggerEvent } from 'aws-lambda';
 
 /**
  * Cognito Pre Sign-Up trigger.
- * Auto-confirms new users so they don't need a separate confirmation step.
- * Phone/email verification is handled via the OTP challenge flow.
+ * Email/password users must stay unconfirmed so Cognito sends confirmation codes.
+ * Google users are verified by the custom auth challenge, then auto-confirmed here.
  */
 export const handler = async (event: PreSignUpTriggerEvent): Promise<PreSignUpTriggerEvent> => {
-  event.response.autoConfirmUser = true;
+  const provider = event.request.clientMetadata?.provider;
 
-  if (event.request.userAttributes.phone_number) {
-    event.response.autoVerifyPhone = true;
-  }
-  if (event.request.userAttributes.email) {
+  if (provider === 'google') {
+    event.response.autoConfirmUser = true;
     event.response.autoVerifyEmail = true;
   }
 

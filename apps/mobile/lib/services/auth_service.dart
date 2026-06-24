@@ -261,6 +261,21 @@ class AuthService {
     _applyProfileDetails(ProfileDetails.fromJson(data));
   }
 
+  @visibleForTesting
+  bool get hasCompleteProfileForTesting => _hasCompleteProfile();
+
+  bool _hasCompleteProfile() {
+    final firstName = _firstName?.trim() ?? '';
+    final lastName = _lastName?.trim() ?? '';
+    final username = _preferredUsername?.trim() ?? '';
+
+    return firstName.isNotEmpty &&
+        lastName.isNotEmpty &&
+        username.isNotEmpty &&
+        firstName.toLowerCase() != 'user' &&
+        !firstName.contains('@');
+  }
+
   Future<bool> _hydrateAuthenticatedProfile() async {
     _resetProfileDetails();
 
@@ -286,7 +301,7 @@ class AuthService {
     }
 
     await fetchProfileDetails();
-    return _firstName?.trim().isNotEmpty ?? false;
+    return _hasCompleteProfile();
   }
 
   /// Initialize: create persistent storage, restore session if available.
@@ -465,6 +480,7 @@ class AuthService {
           _username!,
           randomPassword,
           userAttributes: attributes,
+          clientMetadata: const {'provider': 'google'},
         );
       } on CognitoClientException catch (e) {
         if (e.code != 'UsernameExistsException') {

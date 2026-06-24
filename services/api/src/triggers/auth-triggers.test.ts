@@ -6,7 +6,9 @@ import {
   DefineAuthChallengeTriggerEvent,
   CreateAuthChallengeTriggerEvent,
   VerifyAuthChallengeResponseTriggerEvent,
+  PreSignUpTriggerEvent,
 } from 'aws-lambda';
+import * as preSignUp from './pre-sign-up';
 
 // Use vi.hoisted to declare mock variables before vi.mock hoisting
 const { mockSend } = vi.hoisted(() => ({
@@ -145,7 +147,9 @@ describe('create-auth-challenge', () => {
     expect(mockSend).toHaveBeenCalled();
     expect(result.response.challengeMetadata).toContain('OTP-');
     expect(result.response.privateChallengeParameters?.answer).toBeDefined();
-    expect(result.response.publicChallengeParameters?.destination).toBe('us***@example.com');
+    expect(result.response.publicChallengeParameters?.destination).toBe(
+      'us***@example.com',
+    );
   });
 });
 
@@ -270,5 +274,32 @@ describe('verify-auth-challenge', () => {
 
     const result = await verifyAuth.handler(event);
     expect(result.response.answerCorrect).toBe(false);
+  });
+});
+
+describe('pre-sign-up', () => {
+  it('does not auto-confirm email/password users so Cognito can send confirmation code', async () => {
+    const event = {
+      request: { userAttributes: { email: 'user@example.com' } },
+      response: {},
+    } as unknown as PreSignUpTriggerEvent;
+
+    const result = await preSignUp.handler(event);
+    expect(result.response.autoConfirmUser).toBeUndefined();
+    expect(result.response.autoVerifyEmail).toBeUndefined();
+  });
+
+  it('auto-confirms Google users verified by custom auth challenge', async () => {
+    const event = {
+      request: {
+        clientMetadata: { provider: 'google' },
+        userAttributes: { email: 'user@example.com' },
+      },
+      response: {},
+    } as unknown as PreSignUpTriggerEvent;
+
+    const result = await preSignUp.handler(event);
+    expect(result.response.autoConfirmUser).toBe(true);
+    expect(result.response.autoVerifyEmail).toBe(true);
   });
 });

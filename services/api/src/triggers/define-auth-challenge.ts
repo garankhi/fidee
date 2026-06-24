@@ -11,7 +11,7 @@ export const handler = async (
   event: DefineAuthChallengeTriggerEvent,
 ): Promise<DefineAuthChallengeTriggerEvent> => {
   const { session } = event.request;
-  const isGoogle = true; // Google is the only provider using CUSTOM_AUTH flow
+  const isGoogle = event.request.clientMetadata?.provider === 'google';
 
   if (session.length === 0) {
     // First call — issue a custom challenge (OTP or Google)

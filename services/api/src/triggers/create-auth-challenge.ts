@@ -13,7 +13,7 @@ function generateOtp(): string {
 export const handler = async (
   event: CreateAuthChallengeTriggerEvent,
 ): Promise<CreateAuthChallengeTriggerEvent> => {
-  const isGoogle = true; // Google is the only provider using CUSTOM_AUTH flow
+  const isGoogle = event.request.clientMetadata?.provider === 'google';
   const email = event.request.userAttributes.email;
 
   console.log('Auth challenge requested', {
@@ -32,7 +32,8 @@ export const handler = async (
   const otp = generateOtp();
 
   if (email) {
-    const senderEmail = process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev';
+    const senderEmail =
+      process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev';
     try {
       await resend.emails.send({
         from: senderEmail,

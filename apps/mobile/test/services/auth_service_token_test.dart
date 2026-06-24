@@ -83,5 +83,29 @@ void main() {
       expect(service.since, isNull);
       expect(service.tier, UserTier.free);
     });
+
+    test('requires real first name, last name, and username to be complete', () async {
+      final service = AuthService(isTestMode: true);
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'User',
+        'plan': 'FREE',
+      });
+      expect(service.hasCompleteProfileForTesting, isFalse);
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Alice',
+        'username': 'alice',
+        'plan': 'FREE',
+      });
+      expect(service.hasCompleteProfileForTesting, isFalse);
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Alice Nguyen',
+        'username': 'alice',
+        'plan': 'FREE',
+      });
+      expect(service.hasCompleteProfileForTesting, isTrue);
+    });
   });
 }
