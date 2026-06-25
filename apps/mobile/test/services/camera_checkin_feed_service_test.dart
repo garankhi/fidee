@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:fidee_mobile/config.dart';
-import 'package:fidee_mobile/models/camera_checkin_feed_item.dart';
-import 'package:fidee_mobile/services/auth_service.dart';
-import 'package:fidee_mobile/services/camera_checkin_feed_service.dart';
+import 'package:fidey_mobile/config.dart';
+import 'package:fidey_mobile/models/camera_checkin_feed_item.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
+import 'package:fidey_mobile/services/camera_checkin_feed_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

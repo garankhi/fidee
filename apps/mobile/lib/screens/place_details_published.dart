@@ -27,7 +27,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
         ? place.name!.trim()
         : 'địa điểm này';
     final address = place.address?.trim();
-    final buffer = StringBuffer('Xem $name trên Fidee');
+    final buffer = StringBuffer('Xem $name trên Fidey');
     if (address != null && address.isNotEmpty) {
       buffer.write('\n$address');
     }
@@ -47,7 +47,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   void _showShareSheet(Place place) {
     final name = place.name?.trim().isNotEmpty == true
         ? place.name!.trim()
-        : 'Địa điểm Fidee';
+        : 'Địa điểm Fidey';
     final address = place.address?.trim();
 
     showModalBottomSheet<void>(

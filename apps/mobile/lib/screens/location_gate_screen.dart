@@ -101,7 +101,7 @@ class _LocationGateScreenState extends State<LocationGateScreen>
 
                 // === TITLE ===
                 const Text(
-                  'Fidee cần biết\nbạn đang ở đâu',
+                  'Fidey cần biết\nbạn đang ở đâu',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,

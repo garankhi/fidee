@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/features/auth/billing_provider.dart';
+import 'package:fidey_mobile/features/auth/billing_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:fidee_mobile/models/map_feed_item.dart';
-import 'package:fidee_mobile/screens/home_screen.dart';
-import 'package:fidee_mobile/services/location_service.dart';
+import 'package:fidey_mobile/models/map_feed_item.dart';
+import 'package:fidey_mobile/screens/home_screen.dart';
+import 'package:fidey_mobile/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

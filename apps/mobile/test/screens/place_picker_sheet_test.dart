@@ -1,7 +1,7 @@
-import 'package:fidee_mobile/models/custom_address_validation.dart';
-import 'package:fidee_mobile/models/nearby_place.dart';
-import 'package:fidee_mobile/models/selected_place_tag.dart';
-import 'package:fidee_mobile/screens/place_picker_sheet.dart';
+import 'package:fidey_mobile/models/custom_address_validation.dart';
+import 'package:fidey_mobile/models/nearby_place.dart';
+import 'package:fidey_mobile/models/selected_place_tag.dart';
+import 'package:fidey_mobile/screens/place_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,5 +1,5 @@
-import 'package:fidee_mobile/services/auth_service.dart';
-import 'package:fidee_mobile/services/profile_details.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
+import 'package:fidey_mobile/services/profile_details.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

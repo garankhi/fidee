@@ -1,5 +1,5 @@
-import 'package:fidee_mobile/models/camera_checkin_feed_item.dart';
-import 'package:fidee_mobile/screens/camera_viewfinder_pager.dart';
+import 'package:fidey_mobile/models/camera_checkin_feed_item.dart';
+import 'package:fidey_mobile/screens/camera_viewfinder_pager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

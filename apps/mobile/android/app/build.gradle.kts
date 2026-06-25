@@ -15,7 +15,7 @@ val hasReleaseSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPas
     .all { !releaseKeystoreProperties.getProperty(it).isNullOrBlank() }
 
 android {
-    namespace = "com.fidee.fidee"
+    namespace = "com.fidey.fidey"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.fidee.fidee"
+        applicationId = "com.fidey.fidey"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

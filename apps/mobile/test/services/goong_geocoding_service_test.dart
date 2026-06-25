@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:fidee_mobile/services/goong_geocoding_service.dart';
+import 'package:fidey_mobile/services/goong_geocoding_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

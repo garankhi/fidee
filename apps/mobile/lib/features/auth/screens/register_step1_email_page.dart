@@ -195,7 +195,7 @@ class _RegisterStep1State extends ConsumerState<RegisterStep1EmailPage> {
           ),
           const SizedBox(height: 40),
           Text(
-            '© 2026 Bản quyền thuộc về Fidee',
+            '© 2026 Bản quyền thuộc về Fidey',
             textAlign: TextAlign.center,
             style: LoginTextStyles.footer(),
           ),

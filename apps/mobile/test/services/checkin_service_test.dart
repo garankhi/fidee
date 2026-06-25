@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:fidee_mobile/config.dart';
-import 'package:fidee_mobile/models/camera_share_audience.dart';
-import 'package:fidee_mobile/services/auth_service.dart';
-import 'package:fidee_mobile/services/checkin_service.dart';
-import 'package:fidee_mobile/services/friend_service.dart';
+import 'package:fidey_mobile/config.dart';
+import 'package:fidey_mobile/models/camera_share_audience.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
+import 'package:fidey_mobile/services/checkin_service.dart';
+import 'package:fidey_mobile/services/friend_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

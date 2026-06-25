@@ -1,5 +1,5 @@
-import 'package:fidee_mobile/models/camera_share_audience.dart';
-import 'package:fidee_mobile/services/friend_service.dart';
+import 'package:fidey_mobile/models/camera_share_audience.dart';
+import 'package:fidey_mobile/services/friend_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

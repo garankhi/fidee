@@ -40,7 +40,7 @@ class PremiumUpgradeSheet extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   const Text(
-                    'FIDEE Pro',
+                    'FIDEY Pro',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Color(0xFFEF484F),
@@ -73,7 +73,7 @@ class PremiumUpgradeSheet extends StatelessWidget {
                         ),
                         TextSpan(text: 'khi sử dụng '),
                         TextSpan(
-                          text: 'FIDEE',
+                          text: 'FIDEY',
                           style: TextStyle(
                             color: Color(0xFFEF484F),
                             fontWeight: FontWeight.bold,

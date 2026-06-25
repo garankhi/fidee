@@ -198,7 +198,7 @@ class ProPlanPickerShell extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             const Text(
-              'Chọn gói FIDEE Pro',
+              'Chọn gói FIDEY Pro',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,

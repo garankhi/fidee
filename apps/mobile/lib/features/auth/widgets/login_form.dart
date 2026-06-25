@@ -192,7 +192,7 @@ class LoginForm extends StatelessWidget {
             ),
             const SizedBox(height: 52),
             Text(
-              '© 2026 Bản quyền thuộc về FIDEE',
+              '© 2026 Bản quyền thuộc về FIDEY',
               textAlign: TextAlign.center,
               style: LoginTextStyles.footer().copyWith(fontFamily: 'SF Pro'),
             ),

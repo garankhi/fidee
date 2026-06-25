@@ -21,7 +21,7 @@ class _HomeAiSearchBarState extends State<HomeAiSearchBar> {
   static const _hintPrompts = [
     'Bạn muốn ăn gì hôm nay nào?',
     'Thời tiết khá là mát mẻ để ăn chè đó',
-    'Phân vân không biết lựa thì cứ hỏi Fidee',
+    'Phân vân không biết lựa thì cứ hỏi Fidey',
   ];
   static const _hintInterval = Duration(seconds: 7);
 
@@ -152,7 +152,7 @@ class _HomeAiSearchBarState extends State<HomeAiSearchBar> {
           ),
           IconButton(
             key: const ValueKey('home-ai-chat-button'),
-            tooltip: 'Mở Fidee AI',
+            tooltip: 'Mở Fidey AI',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             onPressed: widget.onOpenChat,

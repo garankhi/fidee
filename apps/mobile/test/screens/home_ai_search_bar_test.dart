@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/screens/home_ai_search_bar.dart';
+import 'package:fidey_mobile/screens/home_ai_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -33,7 +33,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(
-      find.text('Phân vân không biết lựa thì cứ hỏi Fidee'),
+      find.text('Phân vân không biết lựa thì cứ hỏi Fidey'),
       findsOneWidget,
     );
 

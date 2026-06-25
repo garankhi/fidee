@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:fidee_mobile/screens/ai_chat_screen.dart';
-import 'package:fidee_mobile/screens/candidate_feed_screen.dart';
-import 'package:fidee_mobile/screens/journey_screen.dart';
-import 'package:fidee_mobile/screens/place_details_friends.dart';
-import 'package:fidee_mobile/screens/profile_screen.dart';
-import 'package:fidee_mobile/screens/search_result_screen.dart';
+import 'package:fidey_mobile/screens/ai_chat_screen.dart';
+import 'package:fidey_mobile/screens/candidate_feed_screen.dart';
+import 'package:fidey_mobile/screens/journey_screen.dart';
+import 'package:fidey_mobile/screens/place_details_friends.dart';
+import 'package:fidey_mobile/screens/profile_screen.dart';
+import 'package:fidey_mobile/screens/search_result_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

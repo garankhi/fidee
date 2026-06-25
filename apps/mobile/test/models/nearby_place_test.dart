@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/models/nearby_place.dart';
+import 'package:fidey_mobile/models/nearby_place.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

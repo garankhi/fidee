@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:fidee_mobile/screens/gallery_asset_picker_sheet.dart';
-import 'package:fidee_mobile/services/gallery_asset_picker_service.dart';
+import 'package:fidey_mobile/screens/gallery_asset_picker_sheet.dart';
+import 'package:fidey_mobile/services/gallery_asset_picker_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

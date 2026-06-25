@@ -195,7 +195,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         content: const Text(
-          'Hành động này sẽ xóa quyền đăng nhập và ẩn thông tin cá nhân của bạn khỏi Fidee. Bạn có chắc chắn muốn tiếp tục?',
+          'Hành động này sẽ xóa quyền đăng nhập và ẩn thông tin cá nhân của bạn khỏi Fidey. Bạn có chắc chắn muốn tiếp tục?',
           style: TextStyle(color: Color(0xFF8D8D8D), height: 1.4),
         ),
         actions: [
@@ -258,7 +258,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       lastName,
     ].where((name) => name.trim().isNotEmpty).toList();
     final fullName = fullNameList.isEmpty
-        ? 'Người dùng Fidee'
+        ? 'Người dùng Fidey'
         : fullNameList.join(' ');
     final preferredUsername = authState?.preferredUsername ?? 'user';
     final bio = authState?.bio?.trim() ?? '';

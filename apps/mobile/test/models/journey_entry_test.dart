@@ -1,5 +1,5 @@
-import 'package:fidee_mobile/config.dart';
-import 'package:fidee_mobile/models/journey_entry.dart';
+import 'package:fidey_mobile/config.dart';
+import 'package:fidey_mobile/models/journey_entry.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

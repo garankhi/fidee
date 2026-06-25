@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/services/location_service.dart';
+import 'package:fidey_mobile/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -91,7 +91,7 @@ class _LocationGateScreenState extends ConsumerState<LocationGateScreen>
               const Padding(
                 padding: EdgeInsetsGeometry.symmetric(horizontal: 40),
                 child: Text(
-                  'FIDEE chỉ truy cập vị trí của bạn\nchỉ khi bạn sử dụng ứng dụng',
+                  'FIDEY chỉ truy cập vị trí của bạn\nchỉ khi bạn sử dụng ứng dụng',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Color(0xFF646982),

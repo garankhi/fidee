@@ -1,8 +1,8 @@
-import 'package:fidee_mobile/features/auth/auth_providers.dart';
-import 'package:fidee_mobile/features/auth/friends_provider.dart';
-import 'package:fidee_mobile/screens/profile_screen.dart';
-import 'package:fidee_mobile/services/auth_service.dart';
-import 'package:fidee_mobile/services/friend_service.dart';
+import 'package:fidey_mobile/features/auth/auth_providers.dart';
+import 'package:fidey_mobile/features/auth/friends_provider.dart';
+import 'package:fidey_mobile/screens/profile_screen.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
+import 'package:fidey_mobile/services/friend_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,7 +66,7 @@ void main() {
     expect(find.text('Nguyen Minh'), findsOneWidget);
     expect(find.text('Premium'), findsOneWidget);
     expect(find.text('@minh.nguyen · SINCE 2026'), findsOneWidget);
-    expect(find.text('Fidee User'), findsNothing);
+    expect(find.text('Fidey User'), findsNothing);
     expect(find.text('@user · SINCE 2026'), findsNothing);
   });
 

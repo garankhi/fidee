@@ -1,4 +1,4 @@
-name: fidee_mobile
+name: fidey_mobile
 description: 'A new Flutter project.'
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -140,7 +140,7 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: '#EF4050'
-  image: assets/native_splash/splash_logo.png
+  image: assets/native_splash/splash_logo_red.png
   android: true
   ios: true
   web: false
@@ -148,5 +148,5 @@ flutter_native_splash:
   ios_content_mode: center
   android_12:
     color: '#EF4050'
-    image: assets/native_splash/android12_splash.png
+    image: assets/native_splash/splash_logo_red.png
     icon_background_color: '#EF4050'

@@ -63,7 +63,7 @@ class GalleryPermissionSheet extends StatelessWidget {
                   const SizedBox(height: 20),
                   Text(
                     _isLimited
-                        ? 'Bạn đang chỉ chia sẻ một số ảnh với Fidee'
+                        ? 'Bạn đang chỉ chia sẻ một số ảnh với Fidey'
                         : 'Chia sẻ ảnh từ thư viện',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -76,8 +76,8 @@ class GalleryPermissionSheet extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     _isLimited
-                        ? 'Bạn có thể chọn thêm ảnh hoặc mở cài đặt để cho Fidee truy cập toàn bộ thư viện.'
-                        : 'Fidee cần quyền thư viện để hiển thị ảnh preview và chọn ảnh upload.',
+                        ? 'Bạn có thể chọn thêm ảnh hoặc mở cài đặt để cho Fidey truy cập toàn bộ thư viện.'
+                        : 'Fidey cần quyền thư viện để hiển thị ảnh preview và chọn ảnh upload.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),

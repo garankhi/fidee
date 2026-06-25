@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:fidee_mobile/services/camera_startup_permission_flow.dart';
-import 'package:fidee_mobile/services/gallery_permission_service.dart';
-import 'package:fidee_mobile/services/gallery_preview_service.dart';
+import 'package:fidey_mobile/services/camera_startup_permission_flow.dart';
+import 'package:fidey_mobile/services/gallery_permission_service.dart';
+import 'package:fidey_mobile/services/gallery_preview_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
 

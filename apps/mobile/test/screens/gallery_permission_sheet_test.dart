@@ -1,5 +1,5 @@
-import 'package:fidee_mobile/screens/gallery_permission_sheet.dart';
-import 'package:fidee_mobile/services/gallery_permission_service.dart';
+import 'package:fidey_mobile/screens/gallery_permission_sheet.dart';
+import 'package:fidey_mobile/services/gallery_permission_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -55,7 +55,7 @@ void main() {
     await showPermissionSheet(tester, GalleryPermissionStatus.limited);
 
     expect(
-      find.text('Bạn đang chỉ chia sẻ một số ảnh với Fidee'),
+      find.text('Bạn đang chỉ chia sẻ một số ảnh với Fidey'),
       findsOneWidget,
     );
     expect(find.text('Chọn thêm ảnh'), findsOneWidget);

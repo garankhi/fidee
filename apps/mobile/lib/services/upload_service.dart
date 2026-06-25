@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:fidee_mobile/config.dart';
-import 'package:fidee_mobile/services/auth_service.dart';
+import 'package:fidey_mobile/config.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

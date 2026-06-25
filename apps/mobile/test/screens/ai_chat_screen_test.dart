@@ -1,5 +1,5 @@
-import 'package:fidee_mobile/screens/ai_chat_screen.dart';
-import 'package:fidee_mobile/services/ai_search_service.dart';
+import 'package:fidey_mobile/screens/ai_chat_screen.dart';
+import 'package:fidey_mobile/services/ai_search_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,7 +15,7 @@ void main() {
           capturedContexts?.add(contextPlaces);
           return AiSearchResult(
             answer:
-                'Fidee đã tìm qua /search cho "$prompt". Đây là vài gợi ý hợp vibe.',
+                'Fidey đã tìm qua /search cho "$prompt". Đây là vài gợi ý hợp vibe.',
             results: const [
               AiPlaceResult(
                 id: 'place-1',
@@ -33,12 +33,12 @@ void main() {
     );
   }
 
-  testWidgets('uses Vietnamese Fidee AI copy', (tester) async {
+  testWidgets('uses Vietnamese Fidey AI copy', (tester) async {
     await tester.pumpWidget(buildScreen());
 
-    expect(find.text('Fidee AI'), findsOneWidget);
+    expect(find.text('Fidey AI'), findsOneWidget);
     expect(find.text('Đang hoạt động'), findsOneWidget);
-    expect(find.textContaining('Chào bạn, mình là Fidee'), findsOneWidget);
+    expect(find.textContaining('Chào bạn, mình là Fidey'), findsOneWidget);
     expect(find.text('Gợi ý 3 quán gần tôi'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Chỉ món không cay'),
@@ -71,11 +71,11 @@ void main() {
       );
       expect(find.text('Tìm quán bún chả yên tĩnh'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.textContaining('Fidee đã tìm qua /search'),
+        find.textContaining('Fidey đã tìm qua /search'),
         120,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.textContaining('Fidee đã tìm qua /search'), findsOneWidget);
+      expect(find.textContaining('Fidey đã tìm qua /search'), findsOneWidget);
       expect(find.text('Quán Trà Sữa Test'), findsOneWidget);
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller?.text,
@@ -99,11 +99,11 @@ void main() {
     );
     expect(find.text('Tìm cafe yên tĩnh gần tôi'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.textContaining('Fidee đã tìm qua /search'),
+      find.textContaining('Fidey đã tìm qua /search'),
       120,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.textContaining('Fidee đã tìm qua /search'), findsOneWidget);
+    expect(find.textContaining('Fidey đã tìm qua /search'), findsOneWidget);
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller?.text,
       isEmpty,

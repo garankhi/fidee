@@ -180,7 +180,7 @@ class AiSearchService {
   }) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
-      throw const AiSearchException('Bạn cần đăng nhập lại để dùng Fidee AI');
+      throw const AiSearchException('Bạn cần đăng nhập lại để dùng Fidey AI');
     }
 
     final response = await _client.post(
@@ -209,7 +209,7 @@ class AiSearchService {
       '[AiSearchService] HTTP ${response.statusCode}: ${response.body}',
     );
     throw AiSearchException(
-      decoded['error'] as String? ?? 'Không gọi được Fidee AI',
+      decoded['error'] as String? ?? 'Không gọi được Fidey AI',
     );
   }
 

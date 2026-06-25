@@ -1,4 +1,4 @@
-# Fidee Mobile — Dart Analysis Options
+# Fidey Mobile — Dart Analysis Options
 # Enforces strict analysis rules for consistent, high-quality Dart code.
 
 include: package:flutter_lints/flutter.yaml

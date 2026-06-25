@@ -65,7 +65,7 @@ class ErrorDialogs {
           ),
         ),
         content: Text(
-          'FIDEE cần truy cập $permissionType để thực hiện chức năng này. Vui lòng cấp quyền trong Cài đặt hệ thống.',
+          'FIDEY cần truy cập $permissionType để thực hiện chức năng này. Vui lòng cấp quyền trong Cài đặt hệ thống.',
           style: const TextStyle(
             color: Colors.white,
             fontFamily: 'SF Pro',

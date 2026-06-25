@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/screens/pro_plan_picker_sheet.dart';
+import 'package:fidey_mobile/screens/pro_plan_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

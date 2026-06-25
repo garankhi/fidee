@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/features/auth/widgets/complete_profile_form.dart';
+import 'package:fidey_mobile/features/auth/widgets/complete_profile_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

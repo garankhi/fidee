@@ -216,7 +216,7 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
 
     final preferredUsername = authService.preferredUsername ?? 'user';
     final shareText =
-        'Xin chào! Kết bạn với mình trên FIDEE nha. https://fidee.site/$preferredUsername';
+        'Xin chào! Kết bạn với mình trên FIDEY nha. https://fidee.site/$preferredUsername';
 
     // Filter friends list dynamically based on search query
     final filteredFriends = friendsState.friends.where((friend) {
@@ -342,7 +342,7 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 2. Share FIDEE Card
+                    // 2. Share FIDEY Card
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -359,7 +359,7 @@ class _FriendsDetailScreenState extends ConsumerState<FriendsDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'Chia sẻ FIDEE của bạn?',
+                            'Chia sẻ FIDEY của bạn?',
                             style: TextStyle(
                               color: Color(0xFF151515),
                               fontSize: 16,

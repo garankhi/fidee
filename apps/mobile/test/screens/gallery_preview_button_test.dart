@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:fidee_mobile/screens/gallery_preview_button.dart';
+import 'package:fidey_mobile/screens/gallery_preview_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

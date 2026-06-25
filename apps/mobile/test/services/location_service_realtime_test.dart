@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:fidee_mobile/services/location_service.dart';
+import 'package:fidey_mobile/services/location_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';

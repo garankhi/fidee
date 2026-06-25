@@ -1,7 +1,7 @@
-import 'package:fidee_mobile/features/auth/auth_providers.dart';
-import 'package:fidee_mobile/features/auth/friends_provider.dart';
-import 'package:fidee_mobile/services/auth_service.dart';
-import 'package:fidee_mobile/services/friend_service.dart';
+import 'package:fidey_mobile/features/auth/auth_providers.dart';
+import 'package:fidey_mobile/features/auth/friends_provider.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
+import 'package:fidey_mobile/services/friend_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

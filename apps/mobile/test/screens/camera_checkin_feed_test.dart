@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:fidee_mobile/models/camera_checkin_feed_item.dart';
-import 'package:fidee_mobile/screens/camera_checkin_feed.dart';
-import 'package:fidee_mobile/services/camera_feed_image_cache.dart';
+import 'package:fidey_mobile/models/camera_checkin_feed_item.dart';
+import 'package:fidey_mobile/screens/camera_checkin_feed.dart';
+import 'package:fidey_mobile/services/camera_feed_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

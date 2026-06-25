@@ -88,7 +88,7 @@ class _CompleteProfileFormState extends State<CompleteProfileForm> {
           const SizedBox(height: 12),
         ],
         Text(
-          'Thêm thông tin còn thiếu để bắt đầu dùng Fidee.',
+          'Thêm thông tin còn thiếu để bắt đầu dùng Fidey.',
           textAlign: TextAlign.center,
           style: LoginTextStyles.fieldText(),
         ),

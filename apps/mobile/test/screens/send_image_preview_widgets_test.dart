@@ -1,4 +1,4 @@
-import 'package:fidee_mobile/screens/send_image_preview_widgets.dart';
+import 'package:fidey_mobile/screens/send_image_preview_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

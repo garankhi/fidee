@@ -105,7 +105,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           _ChatMessage(
             text: error is AiSearchException
                 ? error.message
-                : 'Fidee AI đang hơi bận. Bạn thử lại sau một chút nhé.',
+                : 'Fidey AI đang hơi bận. Bạn thử lại sau một chút nhé.',
             isUser: false,
           ),
         );
@@ -293,7 +293,7 @@ class _AiHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Fidee AI',
+              'Fidey AI',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -335,7 +335,7 @@ class _IntroBubble extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Text(
-        'Chào bạn, mình là Fidee. Cứ nói món bạn đang thèm, ngân sách, khu vực hoặc vibe hôm nay, mình sẽ gợi ý vài chỗ hợp gu ngay.',
+        'Chào bạn, mình là Fidey. Cứ nói món bạn đang thèm, ngân sách, khu vực hoặc vibe hôm nay, mình sẽ gợi ý vài chỗ hợp gu ngay.',
         style: TextStyle(fontSize: 14, color: Colors.black, height: 1.5),
       ),
     );
@@ -390,7 +390,7 @@ class _SampleRecommendationCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Fidee đang đọc vibe của bạn',
+            'Fidey đang đọc vibe của bạn',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -619,7 +619,7 @@ class _ThinkingBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Text(
-          'Fidee đang tìm gợi ý phù hợp...',
+          'Fidey đang tìm gợi ý phù hợp...',
           style: TextStyle(color: Colors.black54, fontSize: 14, height: 1.35),
         ),
       ),
