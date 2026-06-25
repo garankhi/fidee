@@ -40,50 +40,17 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
     const userRow = userResult.rows[0];
 
-    // 2. Fetch Gamification
-    const gamificationResult = await query(
-      'SELECT level, xp, coins, current_streak, title FROM user_gamification WHERE user_id = $1',
-      [userId],
-    );
-    const gRow = (gamificationResult.rows[0] as GamificationRow | undefined) || {
+    // Gamification, Badges, Challenges skipped (tables not available in prod).
+    // add when tables are migrated.
+    const gRow = {
       level: 1,
       xp: 0,
       coins: 0,
       current_streak: 0,
       title: null,
     };
-
-    // 3. Fetch Badges
-    const badgesResult = await query(
-      `SELECT b.id, b.name, b.icon_url, ub.earned_at
-       FROM user_badges ub
-       JOIN badges b ON ub.badge_id = b.id
-       WHERE ub.user_id = $1
-       ORDER BY ub.earned_at DESC`,
-      [userId],
-    );
-    const badges = badgesResult.rows.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      icon: r.icon_url,
-      earnedAt: r.earned_at,
-    }));
-
-    // 4. Fetch Challenges
-    const challengesResult = await query(
-      `SELECT c.id, c.title, c.target_value, uc.progress, uc.status
-       FROM user_challenges uc
-       JOIN challenges c ON uc.challenge_id = c.id
-       WHERE uc.user_id = $1`,
-      [userId],
-    );
-    const challenges = challengesResult.rows.map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      status: r.status,
-      progress: r.progress,
-      target: r.target_value,
-    }));
+    const badges: any[] = [];
+    const challenges: any[] = [];
 
     // 5. Fetch Top Friends (up to 5)
     const friendsResult = await query(

@@ -764,16 +764,22 @@ class AuthService {
     if (token == null) return;
 
     try {
+      final url = '${Config.apiBaseUrl}/profile';
+      debugPrint('DEBUG [AuthService] GET $url');
       final response = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/profile'),
+        Uri.parse(url),
         headers: {'Authorization': token},
       );
+      debugPrint('DEBUG [AuthService] GET /profile statusCode: ${response.statusCode}');
+      debugPrint('DEBUG [AuthService] GET /profile body: ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        _applyProfileDetails(ProfileDetails.fromJson(data));
+        final details = ProfileDetails.fromJson(data);
+        debugPrint('DEBUG [AuthService] Parsed Profile: firstName=${details.firstName}, lastName=${details.lastName}, username=${details.preferredUsername}');
+        _applyProfileDetails(details);
       }
-    } catch (_) {
-      // ignore
+    } catch (e) {
+      debugPrint('DEBUG [AuthService] GET /profile Error: $e');
     }
   }
 
