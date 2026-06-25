@@ -33,7 +33,7 @@ class ProfileDetails {
 
     return ProfileDetails(
       firstName: nameParts.isEmpty ? null : nameParts.first,
-      lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : null,
+      lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : '',
       preferredUsername: json['username'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
       bio: json['bio'] as String?,
