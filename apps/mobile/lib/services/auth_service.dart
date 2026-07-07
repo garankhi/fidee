@@ -270,9 +270,13 @@ class AuthService {
 
   bool _hasCompleteProfile() {
     final firstName = _firstName?.trim() ?? '';
+    final lastName = _lastName?.trim() ?? '';
     final username = _preferredUsername?.trim() ?? '';
 
-    return firstName.isNotEmpty && username.isNotEmpty && !firstName.contains('@');
+    return firstName.isNotEmpty &&
+        lastName.isNotEmpty &&
+        username.isNotEmpty &&
+        !firstName.contains('@');
   }
 
   Future<bool> _hydrateAuthenticatedProfile() async {
@@ -764,7 +768,7 @@ class AuthService {
     if (token == null) return;
 
     try {
-      final url = '${Config.apiBaseUrl}/profile';
+      const url = '${Config.apiBaseUrl}/profile';
       debugPrint('DEBUG [AuthService] GET $url');
       final response = await http.get(
         Uri.parse(url),

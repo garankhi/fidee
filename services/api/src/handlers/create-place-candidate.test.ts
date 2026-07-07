@@ -108,17 +108,19 @@ describe('createPlaceCandidateHandler', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('creates candidate without mediaId and skips media verification', async () => {
-    mockSuccessfulQueries();
+  it('returns 400 when mediaId is missing', async () => {
     const deps = mockDeps();
     const handler = createPlaceCandidateHandler(deps);
     const { mediaId: _mediaId, ...bodyWithoutMedia } = validBody;
 
     const result = await handler(mockEvent(bodyWithoutMedia));
 
-    expect(result.statusCode).toBe(201);
+    expect(result.statusCode).toBe(400);
+    const body = JSON.parse(result.body);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toContain('mediaId');
     expect(deps.verifyMedia).not.toHaveBeenCalled();
-    expect(mockQuery.mock.calls[2][1][6]).toBeNull();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('returns 400 for missing name', async () => {

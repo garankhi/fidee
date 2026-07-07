@@ -64,6 +64,13 @@ class _CompleteProfileFormState extends State<CompleteProfileForm> {
       return;
     }
 
+    if (firstName.contains('@')) {
+      setState(() {
+        _localError = 'Họ không được là email';
+      });
+      return;
+    }
+
     setState(() {
       _localError = null;
     });

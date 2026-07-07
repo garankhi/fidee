@@ -2,16 +2,15 @@ import { DefineAuthChallengeTriggerEvent } from 'aws-lambda';
 
 /**
  * Cognito Define Auth Challenge trigger.
- * Controls the custom auth flow:
+ * Controls the Google custom auth flow:
  *  - If no previous challenge → issue CUSTOM_CHALLENGE
  *  - If last challenge answered correctly → allow sign-in
- *  - If 5+ failed attempts → block (Cognito handles lockout)
+ *  - If the challenge failed → block without retrying as OTP
  */
 export const handler = async (
   event: DefineAuthChallengeTriggerEvent,
 ): Promise<DefineAuthChallengeTriggerEvent> => {
   const { session } = event.request;
-  const isGoogle = event.request.clientMetadata?.provider === 'google';
 
   if (session.length === 0) {
     // First call — issue a custom challenge (OTP or Google)
@@ -30,26 +29,8 @@ export const handler = async (
     return event;
   }
 
-  // If Google verification failed, fail authentication immediately (no retries)
-  if (isGoogle || lastChallenge.challengeMetadata?.includes('GOOGLE')) {
-    event.response.issueTokens = false;
-    event.response.failAuthentication = true;
-    return event;
-  }
-
-  // OTP verification failed
-  const failedAttempts = session.filter((s) => !s.challengeResult).length;
-
-  if (failedAttempts >= 5) {
-    // Too many failed attempts — block authentication
-    event.response.issueTokens = false;
-    event.response.failAuthentication = true;
-    return event;
-  }
-
-  // Allow retry (OTP only)
+  // CUSTOM_AUTH is Google-only, so a failed challenge should not retry as OTP.
   event.response.issueTokens = false;
-  event.response.failAuthentication = false;
-  event.response.challengeName = 'CUSTOM_CHALLENGE';
+  event.response.failAuthentication = true;
   return event;
 };

@@ -1,6 +1,7 @@
 import '../models/camera_share_audience.dart';
 import '../models/selected_place_tag.dart';
 import 'checkin_service.dart';
+import 'place_candidate_service.dart';
 import 'upload_service.dart';
 
 String checkinMediaTypeForSource(String source) {
@@ -10,10 +11,12 @@ String checkinMediaTypeForSource(String source) {
 class SendImagePublisher {
   final UploadService uploadService;
   final CheckinService checkinService;
+  final PlaceCandidateService? placeCandidateService;
 
   const SendImagePublisher({
     required this.uploadService,
     required this.checkinService,
+    this.placeCandidateService,
   });
 
   Future<CheckinResult> publish({
@@ -32,16 +35,60 @@ class SendImagePublisher {
       durationMs: durationMs,
     );
 
+    final checkinPlace = await _resolveCheckinPlace(selectedPlace, mediaId);
+
     return checkinService.createCheckin(
-      placeId: _placeIdForCheckin(selectedPlace),
-      candidateId: _candidateIdForCheckin(selectedPlace),
+      placeId: _placeIdForCheckin(checkinPlace),
+      candidateId: _candidateIdForCheckin(checkinPlace),
       mediaId: mediaId,
       mediaType: checkinMediaTypeForSource(source),
-      gpsLat: selectedPlace.lat,
-      gpsLng: selectedPlace.lng,
+      gpsLat: checkinPlace.lat,
+      gpsLng: checkinPlace.lng,
       caption: caption,
       audience: audience,
     );
+  }
+
+  Future<SelectedPlaceTag> _resolveCheckinPlace(
+    SelectedPlaceTag place,
+    String mediaId,
+  ) async {
+    if (place.source != 'custom_pending') return place;
+
+    final service = placeCandidateService;
+    if (service == null) {
+      throw const CheckinException('Không tạo được địa điểm mới, vui lòng thử lại');
+    }
+
+    final response = await service.createCandidate(
+      name: place.displayName,
+      category: 'restaurant',
+      mediaId: mediaId,
+      lat: place.lat,
+      lng: place.lng,
+      address: place.address.trim().isEmpty ? null : place.address.trim(),
+      visibility: place.customVisibility ?? 'FRIENDS',
+    );
+
+    final data = response.data;
+    if (!response.isCreated || data == null) {
+      throw CheckinException(_candidateErrorMessage(response));
+    }
+
+    return SelectedPlaceTag(
+      id: data.candidateId,
+      displayName: data.name,
+      address: place.address,
+      lat: place.lat,
+      lng: place.lng,
+      source: 'custom',
+    );
+  }
+
+  String _candidateErrorMessage(PlaceCandidateResponse response) {
+    if (response.isConflict) return 'Địa điểm này có vẻ đã tồn tại gần đây';
+    if (response.isQuotaExceeded) return 'Bạn đã đạt giới hạn tạo địa điểm hôm nay';
+    return response.error?.message ?? 'Không tạo được địa điểm mới, vui lòng thử lại';
   }
 
   String? _placeIdForCheckin(SelectedPlaceTag place) {

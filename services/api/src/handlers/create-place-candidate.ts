@@ -19,7 +19,7 @@ import { normalizeName } from '../utils/geo';
 interface CandidateRequest {
   name: string;
   category: PlaceCategory;
-  mediaId?: string;
+  mediaId: string;
   coordinates: { lat: number; lng: number };
   force?: boolean;
   address?: string;
@@ -84,8 +84,8 @@ function validateCandidateRequest(value: unknown): CandidateRequest {
   }
 
   const mediaId = body.mediaId;
-  if (mediaId !== undefined && (typeof mediaId !== 'string' || mediaId.trim().length === 0)) {
-    throw new ValidationError('mediaId must be a non-empty string when provided');
+  if (typeof mediaId !== 'string' || mediaId.trim().length === 0) {
+    throw new ValidationError('mediaId is required and must be a non-empty string');
   }
 
   const coords = body.coordinates;
@@ -103,7 +103,7 @@ function validateCandidateRequest(value: unknown): CandidateRequest {
   return {
     name: name.trim(),
     category,
-    mediaId: typeof mediaId === 'string' ? mediaId.trim() : undefined,
+    mediaId: mediaId.trim(),
     coordinates: { lat, lng },
     force: body.force === true,
     address: typeof body.address === 'string' ? body.address.trim() : undefined,
@@ -181,15 +181,13 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
       }
       const request = validateCandidateRequest(parsed);
 
-      // 3. Verify media exists in S3 with GPS proof when a mediaId is supplied.
-      if (request.mediaId) {
-        const mediaGps = await deps.verifyMedia(deps.env.mediaBucket, request.mediaId);
-        if (!mediaGps) {
-          return jsonResponse(400, {
-            status: 'error',
-            error: { code: 'INVALID_MEDIA', message: 'Media not found or missing GPS proof' },
-          });
-        }
+      // 3. Verify media exists in S3 with GPS proof.
+      const mediaGps = await deps.verifyMedia(deps.env.mediaBucket, request.mediaId);
+      if (!mediaGps) {
+        return jsonResponse(400, {
+          status: 'error',
+          error: { code: 'INVALID_MEDIA', message: 'Media not found or missing GPS proof' },
+        });
       }
 
       // 4. Check quota (PostgreSQL)
@@ -271,7 +269,7 @@ export function createPlaceCandidateHandler(deps: CreatePlaceCandidateDeps) {
         request.category,
         request.coordinates.lng,
         request.coordinates.lat,
-        request.mediaId ?? null,
+        request.mediaId,
         request.visibility,
         userId,
         request.address || null,

@@ -34,7 +34,7 @@ void main() {
       expect(updatedState.tier, UserTier.pro);
     });
 
-    test('single-part display name with username counts as complete profile', () async {
+    test('single-part display name with username stays incomplete', () async {
       final service = AuthService(isTestMode: true);
       await service.initialize();
 
@@ -44,11 +44,11 @@ void main() {
         'plan': 'FREE',
       });
 
-      expect(service.hasCompleteProfileForTesting, isTrue);
+      expect(service.hasCompleteProfileForTesting, isFalse);
 
       final state = AuthUiState.fromService(service);
       expect(state.firstName, 'Tydapchai');
-      expect(state.lastName, '');
+      expect(state.lastName, isNull);
       expect(state.preferredUsername, 'tydapchai');
     });
   });

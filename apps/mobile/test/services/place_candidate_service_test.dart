@@ -25,6 +25,7 @@ void main() {
         expect(request.url.toString(), '${Config.apiBaseUrl}/place-candidates');
         expect(request.headers['Authorization'], 'token-123');
         final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['mediaId'], 'media-1');
         expect(body['visibility'], 'PRIVATE');
         return http.Response.bytes(
           utf8.encode(
@@ -49,6 +50,7 @@ void main() {
     final result = await service.createCandidate(
       name: 'Cafe mới',
       category: 'cafe',
+      mediaId: 'media-1',
       lat: 10.7,
       lng: 106.6,
       visibility: 'PRIVATE',
@@ -56,6 +58,48 @@ void main() {
 
     expect(result.isCreated, isTrue);
     expect(result.data?.visibility, 'PRIVATE');
+  });
+
+  test('createCandidate parses near-duplicate conflict response', () async {
+    final service = PlaceCandidateService(
+      _TokenAuthService('token-123'),
+      client: MockClient((request) async {
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'status': 'conflict',
+              'error': {
+                'code': 'NEAR_DUPLICATE',
+                'message': 'Similar place candidates found nearby',
+              },
+              'candidates': [
+                {
+                  'candidateId': 'candidate-1',
+                  'name': 'Cafe cũ',
+                  'normalizedName': 'cafe cu',
+                  'distanceMeters': 42,
+                },
+              ],
+            }),
+          ),
+          409,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    final result = await service.createCandidate(
+      name: 'Cafe mới',
+      category: 'cafe',
+      mediaId: 'media-1',
+      lat: 10.7,
+      lng: 106.6,
+    );
+
+    expect(result.isConflict, isTrue);
+    expect(result.error?.code, 'NEAR_DUPLICATE');
+    expect(result.candidates?.single.candidateId, 'candidate-1');
+    expect(result.candidates?.single.distanceMeters, 42);
   });
 
   test('updateCandidate patches candidate details and visibility', () async {

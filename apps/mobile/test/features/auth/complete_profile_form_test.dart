@@ -39,8 +39,8 @@ void main() {
     ) async {
       await tester.pumpWidget(buildForm());
 
-      expect(find.text('Hoan tat ho so'), findsOneWidget);
-      expect(find.text('Ten cua ban'), findsNothing);
+      expect(find.text('Hoàn tất hồ sơ'), findsOneWidget);
+      expect(find.text('Tên của bạn'), findsNothing);
       expect(fieldWithValue('Minh'), findsOneWidget);
       expect(fieldWithValue('minh'), findsOneWidget);
     });
@@ -55,14 +55,35 @@ void main() {
         ),
       );
 
-      await tester.ensureVisible(find.text('Hoan tat'));
-      await tester.tap(find.text('Hoan tat'));
+      await tester.ensureVisible(find.byType(ElevatedButton));
+      await tester.tap(find.byType(ElevatedButton));
       await tester.pump();
 
       expect(
-        find.text('Vui long nhap day du ho, ten va username'),
+        find.text('Vui lòng nhập đầy đủ họ, tên và tên đăng nhập'),
         findsOneWidget,
       );
+      expect(submitted, isFalse);
+    });
+
+    testWidgets('rejects email as first name before submit', (tester) async {
+      var submitted = false;
+      await tester.pumpWidget(
+        buildForm(
+          firstName: 'nguyenminh110505@gmail.com',
+          lastName: 'Minh Nguyen',
+          username: 'ngxtm122',
+          onSubmit: (_, _, _) async {
+            submitted = true;
+          },
+        ),
+      );
+
+      await tester.ensureVisible(find.byType(ElevatedButton));
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pump();
+
+      expect(find.text('Họ không được là email'), findsOneWidget);
       expect(submitted, isFalse);
     });
 
@@ -79,8 +100,8 @@ void main() {
         ),
       );
 
-      await tester.ensureVisible(find.text('Hoan tat'));
-      await tester.tap(find.text('Hoan tat'));
+      await tester.ensureVisible(find.byType(ElevatedButton));
+      await tester.tap(find.byType(ElevatedButton));
       await tester.pump();
 
       expect(submitted, ['Minh', 'Nguyen', 'Minh.Nguyen']);

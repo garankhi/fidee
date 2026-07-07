@@ -34,5 +34,17 @@ void main() {
       expect(details.tier, UserTier.free);
       expect(details.since, isNull);
     });
+
+    test('ignores a leading email token in displayName', () {
+      final details = ProfileDetails.fromJson(<String, dynamic>{
+        'displayName': 'nguyenminh110505@gmail.com Minh Nguyen',
+        'username': 'ngxtm122',
+        'plan': 'FREE',
+      });
+
+      expect(details.firstName, 'Minh');
+      expect(details.lastName, 'Nguyen');
+      expect(details.preferredUsername, 'ngxtm122');
+    });
   });
 }

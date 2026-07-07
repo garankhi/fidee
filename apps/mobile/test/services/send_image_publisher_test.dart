@@ -2,6 +2,7 @@ import 'package:fidey_mobile/models/camera_share_audience.dart';
 import 'package:fidey_mobile/models/selected_place_tag.dart';
 import 'package:fidey_mobile/services/auth_service.dart';
 import 'package:fidey_mobile/services/checkin_service.dart';
+import 'package:fidey_mobile/services/place_candidate_service.dart';
 import 'package:fidey_mobile/services/send_image_publisher.dart';
 import 'package:fidey_mobile/services/upload_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,6 +77,56 @@ class _FakeCheckinService extends CheckinService {
     return const CheckinResult(
       checkinId: 'checkin-1',
       createdAt: '2026-06-12T01:00:00.000Z',
+    );
+  }
+}
+
+class _FakePlaceCandidateService extends PlaceCandidateService {
+  _FakePlaceCandidateService() : super(_FakeAuthService());
+
+  String? name;
+  String? category;
+  String? mediaId;
+  double? lat;
+  double? lng;
+  String? address;
+  String? visibility;
+
+  @override
+  Future<PlaceCandidateResponse> createCandidate({
+    required String name,
+    required String category,
+    required String mediaId,
+    required double lat,
+    required double lng,
+    bool force = false,
+    String? address,
+    String? openTime,
+    String? closeTime,
+    int? priceMin,
+    int? priceMax,
+    String? phoneNumber,
+    String? description,
+    String visibility = 'FRIENDS',
+  }) async {
+    this.name = name;
+    this.category = category;
+    this.mediaId = mediaId;
+    this.lat = lat;
+    this.lng = lng;
+    this.address = address;
+    this.visibility = visibility;
+
+    return const PlaceCandidateResponse(
+      status: 'created',
+      data: PlaceCandidateData(
+        candidateId: 'candidate-created',
+        name: 'New Cafe',
+        category: 'restaurant',
+        status: 'PENDING_REVIEW',
+        visibility: 'PRIVATE',
+        createdAt: '2026-07-07T01:00:00.000Z',
+      ),
     );
   }
 }
@@ -180,6 +231,43 @@ void main() {
 
       expect(checkinService.placeId, isNull);
       expect(checkinService.candidateId, 'candidate-1');
+    },
+  );
+
+  test(
+    'creates pending custom place after upload so candidate receives media id',
+    () async {
+      final checkinService = _FakeCheckinService();
+      final placeCandidateService = _FakePlaceCandidateService();
+      final publisher = SendImagePublisher(
+        uploadService: _FakeUploadService(),
+        checkinService: checkinService,
+        placeCandidateService: placeCandidateService,
+      );
+
+      await publisher.publish(
+        imagePath: 'image.jpg',
+        source: 'IN_APP_CAMERA',
+        selectedPlace: const SelectedPlaceTag(
+          id: 'custom-pending-1',
+          displayName: 'New Cafe',
+          address: '123 Street',
+          lat: 10.7738,
+          lng: 106.7035,
+          source: 'custom_pending',
+          customVisibility: 'PRIVATE',
+        ),
+        audience: CameraShareAudience.allFriends(),
+      );
+
+      expect(placeCandidateService.name, 'New Cafe');
+      expect(placeCandidateService.category, 'restaurant');
+      expect(placeCandidateService.mediaId, 'media-1');
+      expect(placeCandidateService.address, '123 Street');
+      expect(placeCandidateService.visibility, 'PRIVATE');
+      expect(checkinService.placeId, isNull);
+      expect(checkinService.candidateId, 'candidate-created');
+      expect(checkinService.mediaId, 'media-1');
     },
   );
 }

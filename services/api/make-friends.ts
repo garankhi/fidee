@@ -5,7 +5,7 @@ async function main() {
   const pool = await getPool();
   const client = await pool.connect();
   const cognito = new CognitoIdentityProviderClient({ region: 'ap-southeast-1' });
-  const userPoolId = 'ap-southeast-1_KSHDSpl6f';
+  const userPoolId = 'ap-southeast-1_INWgS1yPw';
   
   try {
     const emailA = 'chat.test.a@fidee.site';

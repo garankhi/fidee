@@ -7,10 +7,10 @@ Tài liệu này mô tả flow check-in theo thứ tự chạy thực tế: ch�
 Tất cả API protected cần header `Authorization` là Cognito `IdToken`.
 
 ```powershell
-$base = "https://92idnbsaoj.execute-api.ap-southeast-1.amazonaws.com/dev"
+$base = "https://api-dev.fidee.site"
 
 $authJson = aws cognito-idp initiate-auth `
-  --client-id 35jeemfqql648mt950s6bs3qli `
+  --client-id 27tej2ge7ofoorpvabv4mh0hhj `
   --auth-flow USER_PASSWORD_AUTH `
   --auth-parameters USERNAME=testapi@fidee.com,PASSWORD=TestApi@123
 

@@ -8,6 +8,7 @@ class SelectedPlaceTag {
   final double lng;
   final String source;
   final String? placeId;
+  final String? customVisibility;
 
   const SelectedPlaceTag({
     required this.id,
@@ -17,6 +18,7 @@ class SelectedPlaceTag {
     required this.lng,
     required this.source,
     this.placeId,
+    this.customVisibility,
   });
 
   factory SelectedPlaceTag.fromNearby(NearbyPlace place) {

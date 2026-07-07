@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
@@ -30,6 +31,27 @@ class PlaceCandidateServiceException implements Exception {
 
   @override
   String toString() => message;
+}
+
+void _debugPlaceCandidate(String message) {
+  if (kDebugMode) debugPrint('[PlaceCandidateService] $message');
+}
+
+String _truncateForDebug(String value, [int maxLength = 1200]) {
+  if (value.length <= maxLength) return value;
+  return '${value.substring(0, maxLength)}...';
+}
+
+String _requiredString(Map<String, dynamic> json, String snakeKey, String camelKey) {
+  final value = json[snakeKey] ?? json[camelKey];
+  if (value is String) return value;
+  throw FormatException('Missing string field $snakeKey/$camelKey');
+}
+
+int _requiredInt(Map<String, dynamic> json, String snakeKey, String camelKey) {
+  final value = json[snakeKey] ?? json[camelKey];
+  if (value is num) return value.toInt();
+  throw FormatException('Missing numeric field $snakeKey/$camelKey');
 }
 
 class PlaceCandidateData {
@@ -97,9 +119,9 @@ class ConflictCandidate {
 
   factory ConflictCandidate.fromJson(Map<String, dynamic> json) {
     return ConflictCandidate(
-      candidateId: json['candidate_id'] as String,
+      candidateId: _requiredString(json, 'candidate_id', 'candidateId'),
       name: json['name'] as String,
-      distanceMeters: (json['distance_meters'] as num).toInt(),
+      distanceMeters: _requiredInt(json, 'distance_meters', 'distanceMeters'),
     );
   }
 }
@@ -114,7 +136,7 @@ class PlaceCandidateService {
   Future<PlaceCandidateResponse> createCandidate({
     required String name,
     required String category,
-    String? mediaId,
+    required String mediaId,
     required double lat,
     required double lng,
     bool force = false,
@@ -152,14 +174,19 @@ class PlaceCandidateService {
       'description': ?description,
       'visibility': visibility,
     };
-    if (mediaId != null) {
-      payload['mediaId'] = mediaId;
-    }
+    payload['mediaId'] = mediaId;
+
+    _debugPlaceCandidate('createCandidate request ${jsonEncode(payload)}');
 
     final response = await _client.post(
       Uri.parse('${Config.apiBaseUrl}/place-candidates'),
       headers: {'Authorization': token, 'Content-Type': 'application/json'},
       body: jsonEncode(payload),
+    );
+
+    _debugPlaceCandidate(
+      'createCandidate response ${response.statusCode}: '
+      '${_truncateForDebug(response.body)}',
     );
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;

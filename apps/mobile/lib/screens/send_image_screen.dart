@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -203,44 +204,36 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
     );
   }
 
+  void _debugCustomPlace(String message) {
+    if (kDebugMode) debugPrint('[SendImageScreen] $message');
+  }
+
   Future<SelectedPlaceTag?> _createCustomPlaceTag(
     String name,
     String visibility,
     String? address,
   ) async {
     final coordinates = _placeLookupCoordinates();
-    try {
-      final response =
-          await PlaceCandidateService(
-            ref.read(authServiceProvider),
-          ).createCandidate(
-            name: name,
-            category: 'restaurant',
-            lat: coordinates[0],
-            lng: coordinates[1],
-            address: address,
-            visibility: visibility,
-          );
+    _debugCustomPlace(
+      'queue custom place name="$name" visibility=$visibility '
+      'address=${address?.trim().isNotEmpty == true ? 'set' : 'empty'} '
+      'coords=${coordinates[0]},${coordinates[1]}',
+    );
 
-      if (!response.isCreated || response.data == null) return null;
-
-      final data = response.data!;
-      return SelectedPlaceTag(
-        id: data.candidateId,
-        displayName: data.name,
-        address: address?.trim().isNotEmpty == true
-            ? address!.trim()
-            : data.visibility == 'PRIVATE'
-            ? 'Riêng tư'
-            : 'Chia sẻ với bạn bè',
-        lat: coordinates[0],
-        lng: coordinates[1],
-        source: 'custom',
-      );
-    } catch (e) {
-      debugPrint('Create custom place failed: $e');
-      return null;
-    }
+    final trimmedAddress = address?.trim();
+    return SelectedPlaceTag(
+      id: 'custom_pending_${DateTime.now().microsecondsSinceEpoch}',
+      displayName: name,
+      address: trimmedAddress?.isNotEmpty == true
+          ? trimmedAddress!
+          : visibility == 'PRIVATE'
+          ? 'Riêng tư'
+          : 'Chia sẻ với bạn bè',
+      lat: coordinates[0],
+      lng: coordinates[1],
+      source: 'custom_pending',
+      customVisibility: visibility,
+    );
   }
 
   NearbyPlace _nearbyPlaceFromTag(SelectedPlaceTag place) {
@@ -297,6 +290,7 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
       final publisher = SendImagePublisher(
         uploadService: UploadService(authService: authService),
         checkinService: CheckinService(authService),
+        placeCandidateService: PlaceCandidateService(authService),
       );
 
       await publisher.publish(

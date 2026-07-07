@@ -21,9 +21,14 @@ class ProfileDetails {
 
   factory ProfileDetails.fromJson(Map<String, dynamic> json) {
     final displayName = (json['displayName'] as String?)?.trim();
-    final nameParts = displayName == null || displayName.isEmpty
+    final rawNameParts = displayName == null || displayName.isEmpty
         ? const <String>[]
         : displayName.split(RegExp(r'\s+'));
+    final startsWithEmail =
+        rawNameParts.isNotEmpty && rawNameParts.first.contains('@');
+    final nameParts = startsWithEmail
+        ? rawNameParts.skip(1).toList()
+        : rawNameParts;
 
     final createdAt = json['createdAt'] as String?;
     String? since;
@@ -33,7 +38,7 @@ class ProfileDetails {
 
     return ProfileDetails(
       firstName: nameParts.isEmpty ? null : nameParts.first,
-      lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : '',
+      lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : null,
       preferredUsername: json['username'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
       bio: json['bio'] as String?,

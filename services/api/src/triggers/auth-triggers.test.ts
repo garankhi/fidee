@@ -55,54 +55,15 @@ describe('define-auth-challenge', () => {
     expect(result.response.failAuthentication).toBe(false);
   });
 
-  it('fails authentication immediately if Google flow fails', async () => {
-    const event = {
-      request: {
-        clientMetadata: { provider: 'google' },
-        session: [
-          {
-            challengeName: 'CUSTOM_CHALLENGE',
-            challengeResult: false,
-            challengeMetadata: 'GOOGLE_TOKEN',
-          },
-        ],
-      },
-      response: {},
-    } as unknown as DefineAuthChallengeTriggerEvent;
-
-    const result = await defineAuth.handler(event);
-    expect(result.response.issueTokens).toBe(false);
-    expect(result.response.failAuthentication).toBe(true);
-  });
-
-  it('allows retry on OTP failure if failed attempts < 5', async () => {
+  it('fails custom authentication immediately without provider metadata', async () => {
     const event = {
       request: {
         session: [
           {
             challengeName: 'CUSTOM_CHALLENGE',
             challengeResult: false,
-            challengeMetadata: 'OTP-123456789',
           },
         ],
-      },
-      response: {},
-    } as unknown as DefineAuthChallengeTriggerEvent;
-
-    const result = await defineAuth.handler(event);
-    expect(result.response.challengeName).toBe('CUSTOM_CHALLENGE');
-    expect(result.response.issueTokens).toBe(false);
-    expect(result.response.failAuthentication).toBe(false);
-  });
-
-  it('fails authentication if OTP failed attempts >= 5', async () => {
-    const event = {
-      request: {
-        session: Array(5).fill({
-          challengeName: 'CUSTOM_CHALLENGE',
-          challengeResult: false,
-          challengeMetadata: 'OTP-123',
-        }),
       },
       response: {},
     } as unknown as DefineAuthChallengeTriggerEvent;
@@ -119,10 +80,9 @@ describe('create-auth-challenge', () => {
     process.env.RESEND_SENDER_EMAIL = 'test@fidee.site';
   });
 
-  it('bypasses email send for Google login and sets GOOGLE_TOKEN metadata', async () => {
+  it('creates Google challenge even when Cognito omits provider metadata', async () => {
     const event = {
       request: {
-        clientMetadata: { provider: 'google' },
         userAttributes: { email: 'user@example.com' },
       },
       response: {},
@@ -133,23 +93,6 @@ describe('create-auth-challenge', () => {
     expect(result.response.challengeMetadata).toBe('GOOGLE_TOKEN');
     expect(result.response.publicChallengeParameters?.provider).toBe('google');
     expect(result.response.privateChallengeParameters?.provider).toBe('google');
-  });
-
-  it('generates OTP and sends email for normal flow', async () => {
-    const event = {
-      request: {
-        userAttributes: { email: 'user@example.com' },
-      },
-      response: {},
-    } as unknown as CreateAuthChallengeTriggerEvent;
-
-    const result = await createAuth.handler(event);
-    expect(mockSend).toHaveBeenCalled();
-    expect(result.response.challengeMetadata).toContain('OTP-');
-    expect(result.response.privateChallengeParameters?.answer).toBeDefined();
-    expect(result.response.publicChallengeParameters?.destination).toBe(
-      'us***@example.com',
-    );
   });
 });
 
