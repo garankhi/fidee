@@ -881,5 +881,11 @@ CREATE TRIGGER trg_comments_updated
   '019_add_checkin_count_to_places': `
 ALTER TABLE places
   ADD COLUMN IF NOT EXISTS checkin_count INTEGER NOT NULL DEFAULT 0;
+`,
+
+  '020_add_candidate_checkin_counters': `
+ALTER TABLE place_candidates
+  ADD COLUMN IF NOT EXISTS checkin_count INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cover_media_id TEXT;
 `
 };
