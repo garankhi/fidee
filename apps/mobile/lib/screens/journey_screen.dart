@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../features/auth/auth_providers.dart';
+import '../features/auth/journey_provider.dart';
 import '../models/journey_entry.dart';
-import '../services/journey_service.dart';
 import 'place_details_friends.dart';
-
-enum _JourneyPeriod { all, week, month }
 
 class JourneyScreen extends ConsumerStatefulWidget {
   const JourneyScreen({super.key});
@@ -18,34 +16,11 @@ class JourneyScreen extends ConsumerStatefulWidget {
 
 class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   final ScrollController _scrollController = ScrollController();
-  final Map<JourneyEntryType, List<JourneyEntry>> _entries = {
-    JourneyEntryType.checkin: <JourneyEntry>[],
-    JourneyEntryType.review: <JourneyEntry>[],
-  };
-  final Map<JourneyEntryType, String?> _nextCursors = {
-    JourneyEntryType.checkin: null,
-    JourneyEntryType.review: null,
-  };
-  final Map<JourneyEntryType, bool> _hasMore = {
-    JourneyEntryType.checkin: true,
-    JourneyEntryType.review: true,
-  };
-  final Set<JourneyEntryType> _loaded = <JourneyEntryType>{};
-
-  JourneyEntryType _selectedType = JourneyEntryType.checkin;
-  _JourneyPeriod _period = _JourneyPeriod.all;
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
-  String? _errorMessage;
-
-  late final JourneyService _service;
 
   @override
   void initState() {
     super.initState();
-    _service = JourneyService(ref.read(authServiceProvider));
     _scrollController.addListener(_onScroll);
-    Future.microtask(() => _load(reset: true));
   }
 
   @override
@@ -58,97 +33,8 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
 
   void _onScroll() {
     if (_scrollController.position.extentAfter < 300) {
-      _loadMore();
+      ref.read(journeyControllerProvider.notifier).loadMore();
     }
-  }
-
-  Future<void> _load({required bool reset}) async {
-    final requestedType = _selectedType;
-    if (reset) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-    }
-
-    try {
-      final page = await _fetchPage(
-        requestedType,
-        cursor: reset ? null : _nextCursors[requestedType],
-      );
-      if (!mounted) return;
-      setState(() {
-        _entries[requestedType] = reset
-            ? page.entries
-            : <JourneyEntry>[..._entries[requestedType]!, ...page.entries];
-        _nextCursors[requestedType] = page.nextCursor;
-        _hasMore[requestedType] = page.hasMore;
-        _loaded.add(requestedType);
-        if (_selectedType == requestedType) {
-          _errorMessage = null;
-        }
-      });
-    } on JourneyException catch (error) {
-      if (!mounted) return;
-      if (_selectedType == requestedType) {
-        setState(() => _errorMessage = error.message);
-      }
-    } finally {
-      if (mounted && _selectedType == requestedType) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-      }
-    }
-  }
-
-  Future<JourneyPage> _fetchPage(
-    JourneyEntryType type, {
-    String? cursor,
-  }) {
-    return switch (type) {
-      JourneyEntryType.checkin => _service.fetchCheckins(cursor: cursor),
-      JourneyEntryType.review => _service.fetchReviews(cursor: cursor),
-    };
-  }
-
-  Future<void> _loadMore() async {
-    if (_isLoading ||
-        _isLoadingMore ||
-        !(_hasMore[_selectedType] ?? false)) {
-      return;
-    }
-    setState(() => _isLoadingMore = true);
-    await _load(reset: false);
-  }
-
-  void _selectType(JourneyEntryType type) {
-    if (_selectedType == type) return;
-    setState(() {
-      _selectedType = type;
-      _errorMessage = null;
-      _isLoading = !_loaded.contains(type);
-      _isLoadingMore = false;
-    });
-    if (!_loaded.contains(type)) {
-      _load(reset: true);
-    }
-  }
-
-  List<JourneyEntry> get _visibleEntries {
-    final entries = _entries[_selectedType] ?? const <JourneyEntry>[];
-    final now = DateTime.now();
-    return entries.where((entry) {
-      final created = entry.createdDate;
-      if (created == null || _period == _JourneyPeriod.all) return true;
-      final cutoff = switch (_period) {
-        _JourneyPeriod.week => now.subtract(const Duration(days: 7)),
-        _JourneyPeriod.month => now.subtract(const Duration(days: 30)),
-        _JourneyPeriod.all => now,
-      };
-      return created.isAfter(cutoff);
-    }).toList(growable: false);
   }
 
   void _openSpot(JourneyEntry entry) {
@@ -164,6 +50,8 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider).valueOrNull;
+    final journeyState = ref.watch(journeyControllerProvider);
+    final journeyController = ref.read(journeyControllerProvider.notifier);
     final displayName = <String?>[authState?.firstName, authState?.lastName]
         .whereType<String>()
         .where((value) => value.trim().isNotEmpty)
@@ -197,18 +85,22 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
         top: false,
         child: Column(
           children: [
-            _JourneyTabs(selected: _selectedType, onSelected: _selectType),
+            _JourneyTabs(
+              selected: journeyState.selectedType,
+              onSelected: journeyController.selectType,
+            ),
             const SizedBox(height: 12),
             _PeriodFilter(
-              period: _period,
-              onChanged: (value) => setState(() => _period = value),
+              period: journeyState.period,
+              onChanged: journeyController.selectPeriod,
             ),
             const SizedBox(height: 12),
             Expanded(
               child: RefreshIndicator(
                 color: const Color(0xFFEF4050),
-                onRefresh: () => _load(reset: true),
+                onRefresh: journeyController.refresh,
                 child: _buildContent(
+                  state: journeyState,
                   userName: userName,
                   avatarUrl: authState?.avatarUrl,
                 ),
@@ -220,26 +112,30 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
     );
   }
 
-  Widget _buildContent({required String userName, String? avatarUrl}) {
-    if (_isLoading) {
+  Widget _buildContent({
+    required JourneyState state,
+    required String userName,
+    String? avatarUrl,
+  }) {
+    if (state.isLoading) {
       return const _JourneySkeletonList();
     }
-    if (_errorMessage != null && _entries[_selectedType]!.isEmpty) {
+    if (state.errorMessage != null && state.selectedEntries.isEmpty) {
       return _JourneyMessage(
         icon: Icons.cloud_off_rounded,
-        message: _errorMessage!,
+        message: state.errorMessage!,
         actionLabel: 'THỬ LẠI',
-        onAction: () => _load(reset: true),
+        onAction: () => ref.read(journeyControllerProvider.notifier).refresh(),
       );
     }
 
-    final visibleEntries = _visibleEntries;
+    final visibleEntries = state.visibleEntries;
     if (visibleEntries.isEmpty) {
       return _JourneyMessage(
-        icon: _selectedType == JourneyEntryType.checkin
+        icon: state.selectedType == JourneyEntryType.checkin
             ? Icons.location_on_outlined
             : Icons.rate_review_outlined,
-        message: _period == _JourneyPeriod.all
+        message: state.period == JourneyPeriod.all
             ? 'Các lần check-in của bạn sẽ hiện ở đây.'
             : 'Các bài đánh giá của bạn sẽ hiện ở đây.',
       );
@@ -249,7 +145,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-      itemCount: visibleEntries.length + (_isLoadingMore ? 1 : 0),
+      itemCount: visibleEntries.length + (state.isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == visibleEntries.length) {
           return const Padding(
@@ -329,25 +225,25 @@ class _JourneyTabs extends StatelessWidget {
 }
 
 class _PeriodFilter extends StatelessWidget {
-  final _JourneyPeriod period;
-  final ValueChanged<_JourneyPeriod> onChanged;
+  final JourneyPeriod period;
+  final ValueChanged<JourneyPeriod> onChanged;
 
   const _PeriodFilter({required this.period, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    final labels = <_JourneyPeriod, String>{
-      _JourneyPeriod.all: 'Mọi lúc',
-      _JourneyPeriod.week: 'Tuần này',
-      _JourneyPeriod.month: 'Tháng này',
+    final labels = <JourneyPeriod, String>{
+      JourneyPeriod.all: 'Mọi lúc',
+      JourneyPeriod.week: 'Tuần này',
+      JourneyPeriod.month: 'Tháng này',
     };
-    return PopupMenuButton<_JourneyPeriod>(
+    return PopupMenuButton<JourneyPeriod>(
       initialValue: period,
       onSelected: onChanged,
       color: const Color.fromARGB(255, 255, 0, 0),
-      itemBuilder: (context) => _JourneyPeriod.values
+      itemBuilder: (context) => JourneyPeriod.values
           .map(
-            (value) => PopupMenuItem<_JourneyPeriod>(
+            (value) => PopupMenuItem<JourneyPeriod>(
               value: value,
               child: Text(labels[value]!),
             ),

@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
-import '../config.dart';
 import '../models/journey_entry.dart';
+import 'api_client.dart';
 import 'auth_service.dart';
 
 class JourneyException implements Exception {
@@ -16,11 +14,10 @@ class JourneyException implements Exception {
 }
 
 class JourneyService {
-  final AuthService _authService;
-  final http.Client _client;
+  final ApiClient _apiClient;
 
-  JourneyService(this._authService, {http.Client? client})
-    : _client = client ?? http.Client();
+  JourneyService(AuthService authService, {http.Client? client})
+    : _apiClient = ApiClient(authService, client: client);
 
   Future<JourneyPage> fetchCheckins({int limit = 20, String? cursor}) {
     return _fetch(
@@ -46,28 +43,14 @@ class JourneyService {
     required int limit,
     String? cursor,
   }) async {
-    final token = await _authService.getToken();
-    if (token == null || token.isEmpty) {
-      throw const JourneyException('Your session has expired.');
-    }
-
-    final uri = Uri.parse('${Config.apiBaseUrl}$path').replace(
-      queryParameters: <String, String>{
-        'limit': limit.toString(),
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-      },
-    );
-
     try {
-      final response = await _client.get(
-        uri,
-        headers: <String, String>{'Authorization': token},
+      final decoded = await _apiClient.getJson(
+        path,
+        queryParameters: <String, String>{
+          'limit': limit.toString(),
+          if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        },
       );
-      if (response.statusCode != 200) {
-        throw const JourneyException('Could not load your journey.');
-      }
-
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final pagination =
           decoded['pagination'] as Map<String, dynamic>? ??
           const <String, dynamic>{};
@@ -81,6 +64,10 @@ class JourneyService {
         nextCursor: pagination['nextCursor'] as String?,
         hasMore: pagination['hasMore'] as bool? ?? false,
       );
+    } on ApiUnauthorizedException {
+      throw const JourneyException('Your session has expired.');
+    } on ApiException {
+      throw const JourneyException('Could not load your journey.');
     } on JourneyException {
       rethrow;
     } catch (_) {

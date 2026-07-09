@@ -65,4 +65,19 @@ void main() {
       throwsA(isA<JourneyException>()),
     );
   });
+
+  test('maps non-success API responses to journey exception', () async {
+    final client = MockClient(
+      (_) async => http.Response(jsonEncode({'error': 'Nope'}), 500),
+    );
+    final service = JourneyService(
+      _FakeAuthService('token-123'),
+      client: client,
+    );
+
+    await expectLater(
+      service.fetchCheckins(),
+      throwsA(isA<JourneyException>()),
+    );
+  });
 }
