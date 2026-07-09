@@ -63,8 +63,8 @@ class GalleryPermissionSheet extends StatelessWidget {
                   const SizedBox(height: 20),
                   Text(
                     _isLimited
-                        ? 'Bạn đang chỉ chia sẻ một số ảnh với Fidey'
-                        : 'Chia sẻ ảnh từ thư viện',
+                        ? 'Bạn đang chỉ chia sẻ một số ảnh/video với Fidey'
+                        : 'Chia sẻ ảnh/video từ thư viện',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -76,8 +76,8 @@ class GalleryPermissionSheet extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     _isLimited
-                        ? 'Bạn có thể chọn thêm ảnh hoặc mở cài đặt để cho Fidey truy cập toàn bộ thư viện.'
-                        : 'Fidey cần quyền thư viện để hiển thị ảnh preview và chọn ảnh upload.',
+                        ? 'Bạn có thể chọn thêm ảnh/video hoặc mở cài đặt để cho Fidey truy cập toàn bộ thư viện.'
+                        : 'Fidey cần quyền thư viện để hiển thị preview và chọn ảnh/video upload.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
@@ -90,7 +90,7 @@ class GalleryPermissionSheet extends StatelessWidget {
                   _PermissionActionButton(
                     key: const ValueKey('gallery-permission-share-all'),
                     icon: LucideIcons.image,
-                    label: 'Chia sẻ tất cả ảnh',
+                    label: 'Chia sẻ tất cả',
                     color: const Color(0xFFFFC400),
                     foregroundColor: Colors.black,
                     onPressed: () => Navigator.pop(
@@ -104,7 +104,7 @@ class GalleryPermissionSheet extends StatelessWidget {
                   _PermissionActionButton(
                     key: const ValueKey('gallery-permission-select'),
                     icon: LucideIcons.listPlus,
-                    label: _isLimited ? 'Chọn thêm ảnh' : 'Chọn ảnh',
+                    label: _isLimited ? 'Chọn thêm' : 'Chọn ảnh/video',
                     color: const Color(0xFF353535),
                     foregroundColor: Colors.white,
                     onPressed: () => Navigator.pop(

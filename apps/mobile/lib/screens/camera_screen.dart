@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../features/auth/auth_providers.dart';
 import '../features/auth/camera_checkin_feed_provider.dart';
@@ -13,7 +13,9 @@ import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
+import '../services/camera_startup_permission_flow.dart';
 import '../services/friend_service.dart';
+import '../services/gallery_permission_service.dart';
 import '../utils/error.dart';
 import 'camera_audience_selector.dart';
 import 'camera_bottom_section.dart';
@@ -22,6 +24,9 @@ import 'camera_checkin_feed.dart';
 import 'camera_feed_message_composer.dart';
 import 'camera_friends_sheet.dart';
 import 'camera_viewfinder_pager.dart';
+import 'gallery_asset_picker_sheet.dart';
+import 'gallery_permission_sheet.dart';
+import 'gallery_preview_button.dart';
 import 'profile_screen.dart';
 import 'send_image_screen.dart';
 
@@ -31,8 +36,8 @@ const int cameraVideoMaxDurationMs = 3000;
 const double _cameraBaseZoomLevel = 1.0;
 const double _cameraZoomedLevel = 1.5;
 
-bool canRecordVideo({required bool isPro, required bool cameraReady}) {
-  return isPro && cameraReady;
+bool canRecordVideo({required bool cameraReady}) {
+  return cameraReady;
 }
 
 class CameraScreen extends ConsumerStatefulWidget {
@@ -54,9 +59,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   CameraCheckinFeedItem? _activeFeedItem;
   bool _showFeedAudienceSelector = false;
   CameraBottomTab _activeBottomTab = CameraBottomTab.home;
-  final bool _isRecordingVideo = false;
-  // Timer? _recordingTimer;
-  // DateTime? _recordingStartedAt;
+  bool _isRecordingVideo = false;
+  List<Uint8List> _galleryThumbnails = const <Uint8List>[];
+  Timer? _recordingTimer;
+  DateTime? _recordingStartedAt;
 
   late AnimationController _animationController;
   late Animation<double> _shrinkAnimation;
@@ -211,14 +217,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _initCamera() async {
-    var cameraStatus = await Permission.camera.status;
-    if (cameraStatus.isDenied) {
-      cameraStatus = await Permission.camera.request();
-    }
+    final permissionResult =
+        await CameraStartupPermissionFlow.live().resolve();
 
     if (!mounted) return;
 
-    if (!cameraStatus.isGranted && !cameraStatus.isLimited) {
+    setState(() {
+      _galleryThumbnails = permissionResult.galleryThumbnails;
+    });
+
+    if (!permissionResult.cameraGranted) {
       ErrorDialogs.showPermissionDeniedError(context, 'Camera');
       return;
     }
@@ -255,7 +263,56 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  // Upload ảnh từ thư viện đang được tắt ở camera screen.
+  Future<void> _openGalleryPicker() async {
+    final permissionService = const GalleryPermissionService();
+    var status = await permissionService.currentStatus();
+
+    if (!status.hasAccess) {
+      final action = await showModalBottomSheet<GalleryPermissionAction>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) => GalleryPermissionSheet(status: status),
+      );
+      if (!mounted || action == null || action == GalleryPermissionAction.deny) {
+        return;
+      }
+
+      if (action == GalleryPermissionAction.requestAccess) {
+        status = await permissionService.requestAccess();
+      } else if (action == GalleryPermissionAction.selectMore) {
+        status = await permissionService.presentLimitedPicker();
+      } else if (action == GalleryPermissionAction.openSettings) {
+        await permissionService.openPhotoSettings();
+        status = await permissionService.currentStatus();
+      }
+    }
+
+    if (!mounted || !status.hasAccess) return;
+
+    final selection = await showModalBottomSheet<GalleryAssetPickerSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GalleryAssetPickerSheet(),
+    );
+    if (!mounted || selection == null) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            SendImageScreen(
+              imagePath: selection.path,
+              source: selection.source,
+              durationMs: selection.durationMs,
+              gpsCoordinates: selection.gpsCoordinates?.toList(),
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
 
   // MVP publish: Pro/payment upgrade UI is hidden until subscriptions return.
   // Future<bool> _showProFeatureDialog() async {
@@ -340,14 +397,93 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
-  // MVP publish: long-press video recording is disabled.
-  // Future<void> _startVideoRecording() { ... }
-  // Future<void> _stopVideoRecording() async { ... }
+  Future<void> _startVideoRecording() async {
+    final controller = _controller;
+    if (!canRecordVideo(
+          cameraReady: controller != null && controller.value.isInitialized,
+        ) ||
+        _isRecordingVideo ||
+        _isLoading) {
+      return;
+    }
+
+    try {
+      await controller!.startVideoRecording();
+      if (!mounted) return;
+
+      setState(() {
+        _isRecordingVideo = true;
+        _recordingStartedAt = DateTime.now();
+      });
+
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer(
+        const Duration(milliseconds: cameraVideoMaxDurationMs),
+        () => unawaited(_stopVideoRecording()),
+      );
+    } catch (error) {
+      debugPrint('Camera video recording start failed: $error');
+    }
+  }
+
+  Future<void> _stopVideoRecording() async {
+    final controller = _controller;
+    if (controller == null ||
+        !controller.value.isInitialized ||
+        !_isRecordingVideo) {
+      return;
+    }
+
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+    _setLoading(true);
+
+    try {
+      final startedAt = _recordingStartedAt;
+      final video = await controller.stopVideoRecording();
+      final durationMs = startedAt == null
+          ? cameraVideoMaxDurationMs
+          : DateTime.now().difference(startedAt).inMilliseconds.clamp(
+              0,
+              cameraVideoMaxDurationMs,
+            );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isRecordingVideo = false;
+        _recordingStartedAt = null;
+      });
+      _setLoading(false);
+
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder<void>(
+          transitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              SendImageScreen(
+                imagePath: video.path,
+                source: 'IN_APP_CAMERA_VIDEO',
+                durationMs: durationMs,
+              ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    } catch (error) {
+      debugPrint('Camera video recording stop failed: $error');
+      if (!mounted) return;
+      setState(() {
+        _isRecordingVideo = false;
+        _recordingStartedAt = null;
+      });
+      _setLoading(false);
+    }
+  }
 
   @override
   void dispose() {
-    // MVP publish: video recording timer is dormant with video disabled.
-    // _recordingTimer?.cancel();
+    _recordingTimer?.cancel();
     _animationController.dispose();
     _controller?.dispose();
     _pageController.dispose();
@@ -467,7 +603,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                                     animationController: _animationController,
                                     shrinkAnimation: _shrinkAnimation,
                                     onCapture: _handleCapture,
+                                    onStartVideoRecording: _startVideoRecording,
+                                    onStopVideoRecording: _stopVideoRecording,
                                     isRecordingVideo: _isRecordingVideo,
+                                    galleryThumbnails: _galleryThumbnails,
+                                    onOpenGallery: _openGalleryPicker,
                                     onSwitchCamera: _switchCamera,
                                   ),
                                   feedItems: feedState.items,
@@ -773,14 +913,22 @@ class _CameraCaptureControls extends StatelessWidget {
   final AnimationController animationController;
   final Animation<double> shrinkAnimation;
   final Future<void> Function() onCapture;
+  final Future<void> Function() onStartVideoRecording;
+  final Future<void> Function() onStopVideoRecording;
   final bool isRecordingVideo;
+  final List<Uint8List> galleryThumbnails;
+  final VoidCallback onOpenGallery;
   final VoidCallback onSwitchCamera;
 
   const _CameraCaptureControls({
     required this.animationController,
     required this.shrinkAnimation,
     required this.onCapture,
+    required this.onStartVideoRecording,
+    required this.onStopVideoRecording,
     required this.isRecordingVideo,
+    required this.galleryThumbnails,
+    required this.onOpenGallery,
     required this.onSwitchCamera,
   });
 
@@ -807,7 +955,10 @@ class _CameraCaptureControls extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(width: 55),
+                    GalleryPreviewButton(
+                      thumbnails: galleryThumbnails,
+                      onTap: onOpenGallery,
+                    ),
                     AnimatedBuilder(
                       animation: animationController,
                       builder: (context, child) {
@@ -818,11 +969,10 @@ class _CameraCaptureControls extends StatelessWidget {
 
                         return GestureDetector(
                           onTap: () => unawaited(onCapture()),
-                          // MVP publish: video recording is hidden/disabled.
-                          // onLongPressStart: (_) =>
-                          //     unawaited(onStartVideoRecording()),
-                          // onLongPressEnd: (_) =>
-                          //     unawaited(onStopVideoRecording()),
+                          onLongPressStart: (_) =>
+                              unawaited(onStartVideoRecording()),
+                          onLongPressEnd: (_) =>
+                              unawaited(onStopVideoRecording()),
                           child: Container(
                             width: captureOuterSize,
                             height: captureOuterSize,

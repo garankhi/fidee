@@ -59,14 +59,14 @@ class GalleryPreviewService {
   }
 
   static Future<List<Uint8List>> _loadRecentThumbnailBytes(int limit) async {
-    final recentImagesFilter = FilterOptionGroup(
+    final recentMediaFilter = FilterOptionGroup(
       orders: const [OrderOption(type: OrderOptionType.createDate, asc: false)],
     );
 
     final paths = await PhotoManager.getAssetPathList(
       onlyAll: true,
-      type: RequestType.image,
-      filterOption: recentImagesFilter,
+      type: RequestType.common,
+      filterOption: recentMediaFilter,
     );
     if (paths.isEmpty) return const <Uint8List>[];
 
