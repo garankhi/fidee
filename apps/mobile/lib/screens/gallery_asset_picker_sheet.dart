@@ -8,7 +8,7 @@ typedef GalleryAssetSheetLoader =
 class GalleryAssetPickerSheet extends StatefulWidget {
   GalleryAssetPickerSheet({super.key, GalleryAssetSheetLoader? loadAssets})
     : loadAssets =
-          loadAssets ?? const GalleryAssetPickerService().loadRecentImages;
+          loadAssets ?? const GalleryAssetPickerService().loadRecentMedia;
 
   final GalleryAssetSheetLoader loadAssets;
 
@@ -97,7 +97,7 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
                 ),
                 const SizedBox(height: 18),
                 const Text(
-                  'Chọn ảnh',
+                  'Chọn ảnh/video',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -120,7 +120,7 @@ class _GalleryAssetPickerSheetState extends State<GalleryAssetPickerSheet> {
                       if (assets.isEmpty) {
                         return Center(
                           child: Text(
-                            'Không có ảnh nào để chọn',
+                            'Không có ảnh hoặc video nào để chọn',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.72),
                               fontSize: 17,

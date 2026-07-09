@@ -27,7 +27,7 @@ class GalleryPermissionService {
 
   static const permissionOption = PermissionRequestOption(
     androidPermission: AndroidPermission(
-      type: RequestType.image,
+      type: RequestType.common,
       mediaLocation: false,
     ),
   );
@@ -65,7 +65,7 @@ class GalleryPermissionService {
   }
 
   static Future<void> _livePresentLimited() {
-    return PhotoManager.presentLimited(type: RequestType.image);
+    return PhotoManager.presentLimited(type: RequestType.common);
   }
 }
 

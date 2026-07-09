@@ -45,9 +45,9 @@ void main() {
   testWidgets('shows first-time access choices', (tester) async {
     await showPermissionSheet(tester, GalleryPermissionStatus.notDetermined);
 
-    expect(find.text('Chia sẻ ảnh từ thư viện'), findsOneWidget);
-    expect(find.text('Chia sẻ tất cả ảnh'), findsOneWidget);
-    expect(find.text('Chọn ảnh'), findsOneWidget);
+    expect(find.text('Chia sẻ ảnh/video từ thư viện'), findsOneWidget);
+    expect(find.text('Chia sẻ tất cả'), findsOneWidget);
+    expect(find.text('Chọn ảnh/video'), findsOneWidget);
     expect(find.text('Không chia sẻ'), findsOneWidget);
   });
 
@@ -55,11 +55,11 @@ void main() {
     await showPermissionSheet(tester, GalleryPermissionStatus.limited);
 
     expect(
-      find.text('Bạn đang chỉ chia sẻ một số ảnh với Fidey'),
+      find.text('Bạn đang chỉ chia sẻ một số ảnh/video với Fidey'),
       findsOneWidget,
     );
-    expect(find.text('Chọn thêm ảnh'), findsOneWidget);
-    expect(find.text('Chia sẻ tất cả ảnh'), findsOneWidget);
+    expect(find.text('Chọn thêm'), findsOneWidget);
+    expect(find.text('Chia sẻ tất cả'), findsOneWidget);
     expect(find.text('Không chia sẻ'), findsOneWidget);
   });
 
@@ -95,7 +95,7 @@ void main() {
 
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Chia sẻ tất cả ảnh'));
+    await tester.tap(find.text('Chia sẻ tất cả'));
     await tester.pumpAndSettle();
 
     expect(selectedAction, GalleryPermissionAction.requestAccess);
@@ -131,7 +131,7 @@ void main() {
 
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Chọn thêm ảnh'));
+    await tester.tap(find.text('Chọn thêm'));
     await tester.pumpAndSettle();
 
     expect(selectedAction, GalleryPermissionAction.selectMore);
