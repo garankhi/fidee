@@ -1,0 +1,5 @@
+{
+  "Fidee-dev-MediaWaf": {
+    "MediaWebAclArn": "arn:aws:wafv2:us-east-1:926883321458:global/webacl/fidee-dev-media-waf/8c8102f7-536e-47bd-b96b-d9e789581791"
+  }
+}
