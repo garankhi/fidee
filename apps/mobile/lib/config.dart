@@ -4,26 +4,26 @@ class Config {
   // Client-safe AWS values are injected from CDK outputs via --dart-define.
   static const String cognitoUserPoolId = String.fromEnvironment(
     'COGNITO_USER_POOL_ID',
-    defaultValue: 'ap-southeast-1_GP2dlOObW',
+    defaultValue: 'ap-southeast-1_QHHhzywZp',
   );
   static const String cognitoClientId = String.fromEnvironment(
     'COGNITO_CLIENT_ID',
-    defaultValue: '2uj3lu6n8j2o7oruj92s9hd9g3',
+    defaultValue: '1ov1hvbs3qqj0vle6bvit415jg',
   );
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.fidee.site',
+    defaultValue: 'https://api-dev.fidee.site',
   );
   static const String awsRegion = 'ap-southeast-1';
   static const String appSyncGraphqlUrl = String.fromEnvironment(
     'APPSYNC_GRAPHQL_URL',
     defaultValue:
-        'https://mzz4bt67njgbbgvqiz6frk22qi.appsync-api.ap-southeast-1.amazonaws.com/graphql',
+        'https://armlodc2qzhbjgnmrc3ech5rlq.appsync-api.ap-southeast-1.amazonaws.com/graphql',
   );
   static const String appSyncRealtimeUrl = String.fromEnvironment(
     'APPSYNC_REALTIME_URL',
     defaultValue:
-        'wss://mzz4bt67njgbbgvqiz6frk22qi.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
+        'wss://armlodc2qzhbjgnmrc3ech5rlq.appsync-realtime-api.ap-southeast-1.amazonaws.com/graphql',
   );
 
   static const String revenueCatEntitlementPro = 'pro';

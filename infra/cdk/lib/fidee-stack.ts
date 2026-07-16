@@ -548,14 +548,28 @@ export class FideeStack extends cdk.Stack {
 
     const mediaBucket = new s3.Bucket(this, 'MediaBucket', {
       bucketName: `${resourceName(stage, 'media')}-${cdk.Aws.ACCOUNT_ID}-${MAIN_REGION}`,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      publicReadAccess: true,
+      blockPublicAccess: {
+        blockPublicAcls: false,
+        blockPublicPolicy: false,
+        ignorePublicAcls: false,
+        restrictPublicBuckets: false,
+      },
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       removalPolicy,
       autoDeleteObjects: !isProd(stage),
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.HEAD],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+        },
+      ],
     });
     mediaBucket.enableEventBridgeNotification();
 
+    /*
     const mediaDistribution = new cloudfront.Distribution(this, 'MediaDistribution', {
       comment: resourceName(stage, 'media'),
       defaultBehavior: {
@@ -567,6 +581,7 @@ export class FideeStack extends cdk.Stack {
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       webAclId: props.mediaWebAclArn,
     });
+    */
 
     const friendsApiLambdaRole = createSharedLambdaRole('FriendsApiLambdaRole', 'friends-api-role');
     dbCluster.secret!.grantRead(friendsApiLambdaRole);
@@ -668,7 +683,7 @@ export class FideeStack extends cdk.Stack {
         STAGE: stage,
         MEDIA_BUCKET: mediaBucket.bucketName,
         UPLOAD_EXPIRY_SECONDS: '300',
-        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
+        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaBucket.bucketRegionalDomainName,
       },
     });
 
@@ -682,7 +697,7 @@ export class FideeStack extends cdk.Stack {
       environment: {
         STAGE: stage,
         PLACES_TABLE: placesTable.tableName,
-        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaDistribution.distributionDomainName,
+        MEDIA_DISTRIBUTION_DOMAIN_NAME: mediaBucket.bucketRegionalDomainName,
       },
     });
     placesTable.grantReadData(getMediaFn);
@@ -2019,7 +2034,7 @@ export class FideeStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'MediaBucketName', { value: mediaBucket.bucketName });
     new cdk.CfnOutput(this, 'MediaDistributionDomainName', {
-      value: mediaDistribution.distributionDomainName,
+      value: mediaBucket.bucketRegionalDomainName,
     });
     new cdk.CfnOutput(this, 'ApiWebAclArn', { value: apiWebAcl.attrArn });
     new cdk.CfnOutput(this, 'MediaWebAclArn', { value: props.mediaWebAclArn });

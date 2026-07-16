@@ -16,5 +16,14 @@
   "hosted-zone:account=047612973715:domainName=fidee.site:region=ap-southeast-1": {
     "Id": "/hostedzone/Z02440662W2VBALE04JMB",
     "Name": "fidee.site."
+  },
+  "availability-zones:account=926883321458:region=ap-southeast-1": [
+    "ap-southeast-1a",
+    "ap-southeast-1b",
+    "ap-southeast-1c"
+  ],
+  "hosted-zone:account=926883321458:domainName=fidee.site:region=ap-southeast-1": {
+    "Id": "/hostedzone/Z0231910L2ZO01P9X0V5",
+    "Name": "fidee.site."
   }
 }

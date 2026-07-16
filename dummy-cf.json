@@ -1,0 +1,39 @@
+{
+  "CallerReference": "test-123456",
+  "Aliases": {
+    "Quantity": 0
+  },
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "dummy-origin",
+        "DomainName": "dummy-origin.s3.amazonaws.com",
+        "S3OriginConfig": {
+          "OriginAccessIdentity": ""
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "dummy-origin",
+    "ForwardedValues": {
+      "QueryString": false,
+      "Cookies": {
+        "Forward": "none"
+      }
+    },
+    "TrustedSigners": {
+      "Enabled": false,
+      "Quantity": 0
+    },
+    "ViewerProtocolPolicy": "allow-all",
+    "MinTTL": 0
+  },
+  "CacheBehaviors": {
+    "Quantity": 0
+  },
+  "Comment": "dummy",
+  "Enabled": false
+}

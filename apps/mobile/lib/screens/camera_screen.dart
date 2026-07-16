@@ -16,6 +16,7 @@ import '../models/camera_checkin_feed_item.dart';
 import '../services/camera_startup_permission_flow.dart';
 import '../services/friend_service.dart';
 import '../services/gallery_permission_service.dart';
+import '../services/gallery_asset_picker_service.dart';
 import '../utils/error.dart';
 import 'camera_audience_selector.dart';
 import 'camera_bottom_section.dart';
