@@ -81,13 +81,13 @@ void main() {
       expect(service.tier, UserTier.free);
     });
 
-    test('applying a new profile clears omitted optional fields', () async {
+    test('a null refreshed avatar does not erase a known avatar', () async {
       final service = AuthService(isTestMode: true);
 
       await service.applyProfileDetailsForTesting(<String, dynamic>{
         'displayName': 'Alice Nguyen',
         'username': 'alice',
-        'avatarUrl': 'https://cdn.example.com/alice.jpg',
+        'avatarUrl': 'https://cdn.example.com/avatars/alice.jpg',
         'plan': 'PRO',
         'createdAt': '2025-05-01T00:00:00.000Z',
       });
@@ -100,9 +100,26 @@ void main() {
       expect(service.firstName, 'Bob');
       expect(service.lastName, isNull);
       expect(service.preferredUsername, isNull);
-      expect(service.avatarUrl, isNull);
+      expect(service.avatarUrl, 'https://cdn.example.com/avatars/alice.jpg');
       expect(service.since, isNull);
       expect(service.tier, UserTier.free);
+    });
+
+    test('a newer non-null avatar replaces the known avatar', () async {
+      final service = AuthService(isTestMode: true);
+
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Alice Nguyen',
+        'avatarUrl': 'https://cdn.example.com/avatars/old.jpg',
+        'plan': 'FREE',
+      });
+      await service.applyProfileDetailsForTesting(<String, dynamic>{
+        'displayName': 'Alice Nguyen',
+        'avatarUrl': 'https://cdn.example.com/avatars/new.jpg',
+        'plan': 'FREE',
+      });
+
+      expect(service.avatarUrl, 'https://cdn.example.com/avatars/new.jpg');
     });
 
     test(

@@ -29,6 +29,12 @@ class ProfileDetails {
     final nameParts = startsWithEmail
         ? rawNameParts.skip(1).toList()
         : rawNameParts;
+    final exactFirstName = (json['firstName'] as String?)?.trim();
+    final exactLastName = (json['lastName'] as String?)?.trim();
+    final legacyFirstName = nameParts.isEmpty ? null : nameParts.first;
+    final legacyLastName = nameParts.length > 1
+        ? nameParts.skip(1).join(' ')
+        : null;
 
     final createdAt = json['createdAt'] as String?;
     String? since;
@@ -37,8 +43,12 @@ class ProfileDetails {
     }
 
     return ProfileDetails(
-      firstName: nameParts.isEmpty ? null : nameParts.first,
-      lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : null,
+      firstName: exactFirstName == null || exactFirstName.isEmpty
+          ? legacyFirstName
+          : exactFirstName,
+      lastName: exactLastName == null || exactLastName.isEmpty
+          ? legacyLastName
+          : exactLastName,
       preferredUsername: json['username'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
       bio: json['bio'] as String?,

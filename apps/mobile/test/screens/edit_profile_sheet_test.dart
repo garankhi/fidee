@@ -123,6 +123,38 @@ void main() {
     );
     expect(saveButton.onPressed, isNotNull);
   });
+  testWidgets('submits Họ as firstName and Tên as lastName', (
+    tester,
+  ) async {
+    String? savedFirstName;
+    String? savedLastName;
+
+    await tester.pumpWidget(
+      buildSheet(
+        onSave:
+            ({
+              required firstName,
+              required lastName,
+              required preferredUsername,
+              required bio,
+            }) async {
+              savedFirstName = firstName;
+              savedLastName = lastName;
+              return const AuthResult(success: true);
+            },
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Minh 2');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Nguyen');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Lưu'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(savedFirstName, 'Minh 2');
+    expect(savedLastName, 'Nguyen');
+  });
+
   testWidgets('saves a changed available username', (tester) async {
     String? savedUsername;
 

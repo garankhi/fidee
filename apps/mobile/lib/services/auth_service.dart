@@ -161,6 +161,7 @@ String profileUpdateErrorMessage(int statusCode, String responseBody) {
 // Auth service.
 class AuthService {
   final bool isTestMode;
+  final http.Client _profileHttpClient;
 
   AuthState _state = AuthState.loading;
   String? _username;
@@ -190,7 +191,8 @@ class AuthService {
   static const otpCooldownSeconds = 60;
   static const maxAttempts = 5;
 
-  AuthService({this.isTestMode = false});
+  AuthService({this.isTestMode = false, http.Client? profileHttpClient})
+    : _profileHttpClient = profileHttpClient ?? http.Client();
 
   AuthState get state => _state;
   UserTier get tier => _tier;
@@ -254,7 +256,7 @@ class AuthService {
     _firstName = details.firstName;
     _lastName = details.lastName;
     _preferredUsername = details.preferredUsername;
-    _avatarUrl = details.avatarUrl;
+    _avatarUrl = details.avatarUrl ?? _avatarUrl;
     _bio = details.bio;
     _tier = details.tier;
     _since = details.since;
@@ -774,12 +776,16 @@ class AuthService {
         Uri.parse(url),
         headers: {'Authorization': token},
       );
-      debugPrint('DEBUG [AuthService] GET /profile statusCode: ${response.statusCode}');
+      debugPrint(
+        'DEBUG [AuthService] GET /profile statusCode: ${response.statusCode}',
+      );
       debugPrint('DEBUG [AuthService] GET /profile body: ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final details = ProfileDetails.fromJson(data);
-        debugPrint('DEBUG [AuthService] Parsed Profile: firstName=${details.firstName}, lastName=${details.lastName}, username=${details.preferredUsername}');
+        debugPrint(
+          'DEBUG [AuthService] Parsed Profile: firstName=${details.firstName}, lastName=${details.lastName}, username=${details.preferredUsername}',
+        );
         _applyProfileDetails(details);
       }
     } catch (e) {
@@ -867,70 +873,31 @@ class AuthService {
       return const AuthResult(success: true);
     }
 
-    if (firstName != null ||
+    final hasProfileChanges =
+        firstName != null ||
         lastName != null ||
         preferredUsername != null ||
-        bio != null) {
-      final currentFirstName = firstName ?? _firstName ?? '';
-      final currentLastName = lastName ?? _lastName ?? '';
-      final currentUsername = preferredUsername ?? _preferredUsername ?? '';
+        avatarUrl != null ||
+        bio != null;
 
-      return _patchProfileDetails(
-        firstName: currentFirstName,
-        lastName: currentLastName,
-        username: currentUsername,
-        bio: bio ?? _bio ?? '',
-      );
-    }
-
-    try {
-      if (_cognitoUser != null) {
-        final attributes = <CognitoUserAttribute>[];
-        if (firstName != null) {
-          attributes.add(
-            CognitoUserAttribute(name: 'given_name', value: firstName),
-          );
-        }
-        if (lastName != null) {
-          attributes.add(
-            CognitoUserAttribute(name: 'family_name', value: lastName),
-          );
-        }
-        if (preferredUsername != null) {
-          attributes.add(
-            CognitoUserAttribute(
-              name: 'preferred_username',
-              value: preferredUsername,
-            ),
-          );
-        }
-        if (avatarUrl != null) {
-          attributes.add(
-            CognitoUserAttribute(name: 'picture', value: avatarUrl),
-          );
-        }
-
-        if (attributes.isNotEmpty) {
-          await _cognitoUser!.updateAttributes(attributes);
-        }
-
-        await fetchProfileDetails();
-
-        if (firstName != null) _firstName = firstName;
-        if (lastName != null) _lastName = lastName;
-        if (preferredUsername != null) _preferredUsername = preferredUsername;
-        if (avatarUrl != null) _avatarUrl = avatarUrl;
-      }
+    if (!hasProfileChanges) {
       return const AuthResult(success: true);
-    } catch (e) {
-      return AuthResult(success: false, errorMessage: e.toString());
     }
+
+    return _patchProfileDetails(
+      firstName: firstName ?? _firstName ?? '',
+      lastName: lastName ?? _lastName ?? '',
+      username: preferredUsername ?? _preferredUsername ?? '',
+      avatarUrl: avatarUrl ?? _avatarUrl,
+      bio: bio ?? _bio ?? '',
+    );
   }
 
   Future<AuthResult> _patchProfileDetails({
     required String firstName,
     required String lastName,
     required String username,
+    String? avatarUrl,
     String bio = '',
   }) async {
     final token = await getToken();
@@ -942,7 +909,8 @@ class AuthService {
     }
 
     try {
-      final response = await http.patch(
+      final normalizedAvatarUrl = avatarUrl?.trim();
+      final response = await _profileHttpClient.patch(
         Uri.parse('${Config.apiBaseUrl}/profile'),
         headers: {'Authorization': token, 'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -950,6 +918,8 @@ class AuthService {
           'lastName': lastName.trim(),
           'username': username.trim(),
           'bio': bio.trim(),
+          if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty)
+            'avatarUrl': normalizedAvatarUrl,
         }),
       );
 

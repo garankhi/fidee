@@ -13,6 +13,8 @@ const DEFAULT_COGNITO_MIRROR_TIMEOUT_MS = 1_500;
 type ProfileRow = {
   id: string;
   display_name: string;
+  family_name: string | null;
+  given_name: string | null;
   username: string | null;
   avatar_url: string | null;
   bio: string | null;
@@ -24,6 +26,7 @@ type UpdateProfileBody = {
   firstName?: unknown;
   lastName?: unknown;
   username?: unknown;
+  avatarUrl?: unknown;
   bio?: unknown;
 };
 
@@ -95,6 +98,31 @@ function readOptionalBio(body: UpdateProfileBody): string | null {
   return bio.length === 0 ? null : bio;
 }
 
+function readOptionalAvatarUrl(body: UpdateProfileBody): string | null {
+  if (body.avatarUrl == null) return null;
+  if (typeof body.avatarUrl !== 'string') {
+    throw new ValidationError('avatarUrl must be a string');
+  }
+
+  const avatarUrl = body.avatarUrl.trim();
+  if (avatarUrl.length === 0 || avatarUrl.length > 2048) {
+    throw new ValidationError('avatarUrl must be between 1 and 2048 characters');
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(avatarUrl);
+  } catch {
+    throw new ValidationError('avatarUrl must be a valid URL');
+  }
+
+  if (parsed.protocol !== 'https:' || !parsed.pathname.startsWith('/avatars/')) {
+    throw new ValidationError('avatarUrl must be an HTTPS URL under /avatars/');
+  }
+
+  return avatarUrl;
+}
+
 function toProfileResponse(row: ProfileRow): Record<string, unknown> {
   const createdAt =
     row.created_at instanceof Date
@@ -103,6 +131,8 @@ function toProfileResponse(row: ProfileRow): Record<string, unknown> {
 
   return {
     id: row.id,
+    firstName: row.family_name,
+    lastName: row.given_name,
     displayName: row.display_name,
     username: row.username,
     avatarUrl: row.avatar_url,
@@ -117,6 +147,7 @@ async function mirrorCognitoProfile(
   firstName: string,
   lastName: string,
   username: string,
+  avatarUrl: string | null,
 ): Promise<void> {
   const userPoolId = process.env.COGNITO_USER_POOL_ID;
   if (!userPoolId) return;
@@ -132,16 +163,19 @@ async function mirrorCognitoProfile(
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), timeoutMs);
 
+  const userAttributes = [
+    { Name: 'family_name', Value: firstName },
+    { Name: 'given_name', Value: lastName },
+    { Name: 'preferred_username', Value: username },
+    ...(avatarUrl ? [{ Name: 'picture', Value: avatarUrl }] : []),
+  ];
+
   try {
     await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
         UserPoolId: userPoolId,
         Username: cognitoUsername,
-        UserAttributes: [
-          { Name: 'given_name', Value: firstName },
-          { Name: 'family_name', Value: lastName },
-          { Name: 'preferred_username', Value: username },
-        ],
+        UserAttributes: userAttributes,
       }),
       { abortSignal: abortController.signal },
     );
@@ -163,36 +197,70 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const lastName = readRequiredString(body, 'lastName');
     const username = normalizeUsername(readRequiredString(body, 'username'));
     const bio = readOptionalBio(body);
+    const avatarUrl = readOptionalAvatarUrl(body);
     const displayName = [firstName, lastName].join(' ');
 
     const updateResult = await query<ProfileRow>(
       `
-        INSERT INTO users (id, display_name, username, email, phone, bio, plan)
-        SELECT $1, $2, $3, $4, $5, $6, 'FREE'
+        INSERT INTO users (
+          id,
+          display_name,
+          family_name,
+          given_name,
+          username,
+          email,
+          phone,
+          avatar_url,
+          bio,
+          plan
+        )
+        SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, 'FREE'
         WHERE NOT EXISTS (
           SELECT 1 FROM users
-          WHERE username = $3 AND id <> $1
+          WHERE username = $5 AND id <> $1
         )
         ON CONFLICT (id) DO UPDATE
         SET display_name = EXCLUDED.display_name,
+            family_name = EXCLUDED.family_name,
+            given_name = EXCLUDED.given_name,
             username = EXCLUDED.username,
             email = COALESCE(EXCLUDED.email, users.email),
             phone = COALESCE(EXCLUDED.phone, users.phone),
+            avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
             bio = EXCLUDED.bio
         WHERE NOT EXISTS (
           SELECT 1 FROM users
           WHERE username = EXCLUDED.username AND id <> users.id
         )
-        RETURNING id, display_name, username, avatar_url, bio, plan, created_at;
+        RETURNING
+          id,
+          display_name,
+          family_name,
+          given_name,
+          username,
+          avatar_url,
+          bio,
+          plan,
+          created_at;
       `,
-      [auth.sub, displayName, username, auth.email ?? null, auth.phone ?? null, bio],
+      [
+        auth.sub,
+        displayName,
+        firstName,
+        lastName,
+        username,
+        auth.email ?? null,
+        auth.phone ?? null,
+        avatarUrl,
+        bio,
+      ],
     );
 
     if (updateResult.rowCount === 0) {
       return jsonResponse(409, { error: 'Username already taken', code: 'USERNAME_TAKEN' });
     }
 
-    await mirrorCognitoProfile(auth.username ?? auth.sub, firstName, lastName, username);
+    await mirrorCognitoProfile(auth.username ?? auth.sub, firstName, lastName, username, avatarUrl);
 
     return jsonResponse(200, {
       profile: toProfileResponse(updateResult.rows[0]),

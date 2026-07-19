@@ -2,12 +2,9 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { extractAuth, maskPhone, maskEmail } from '../middleware/auth';
 import { query } from '../db/client';
 
-type GamificationRow = {
-  level: unknown;
-  xp: unknown;
-  coins: unknown;
-  current_streak: unknown;
-  title: unknown;
+type TopFriendRow = {
+  display_name: string;
+  avatar_url: string | null;
 };
 
 function numberValue(value: unknown, fallback = 0): number {
@@ -26,8 +23,21 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     // 1. Fetch user core info & stats
     const userResult = await query(
-      `SELECT id, display_name, username, avatar_url, bio, plan, created_at, friend_count, place_count, checkin_count 
-       FROM users WHERE id = $1`,
+      `SELECT
+         id,
+         display_name,
+         family_name,
+         given_name,
+         username,
+         avatar_url,
+         bio,
+         plan,
+         created_at,
+         friend_count,
+         place_count,
+         checkin_count
+       FROM users
+       WHERE id = $1`,
       [userId],
     );
 
@@ -49,11 +59,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       current_streak: 0,
       title: null,
     };
-    const badges: any[] = [];
-    const challenges: any[] = [];
+    const badges: unknown[] = [];
+    const challenges: unknown[] = [];
 
     // 5. Fetch Top Friends (up to 5)
-    const friendsResult = await query(
+    const friendsResult = await query<TopFriendRow>(
       `SELECT u.display_name, u.avatar_url 
        FROM friendships f
        JOIN users u ON f.friend_id = u.id
@@ -61,9 +71,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
        LIMIT 5`,
       [userId],
     );
-    const topFriends = friendsResult.rows.map((r: any) => ({
-      displayName: r.display_name,
-      avatarUrl: r.avatar_url,
+    const topFriends = friendsResult.rows.map((row) => ({
+      displayName: row.display_name,
+      avatarUrl: row.avatar_url,
     }));
 
     const level = numberValue(gRow.level, 1);
@@ -81,6 +91,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       email: auth.email ? maskEmail(auth.email) : null,
       groups: auth.groups,
 
+      firstName: userRow.family_name || null,
+      lastName: userRow.given_name || null,
       displayName: userRow.display_name || 'User',
       username: userRow.username || null,
       avatarUrl: userRow.avatar_url || null,

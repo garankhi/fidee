@@ -46,5 +46,27 @@ void main() {
       expect(details.lastName, 'Nguyen');
       expect(details.preferredUsername, 'ngxtm122');
     });
+
+    test('prefers exact API name fields over displayName parsing', () {
+      final details = ProfileDetails.fromJson(<String, dynamic>{
+        'firstName': 'Minh 2',
+        'lastName': 'Nguyen',
+        'displayName': 'Minh 2 Nguyen',
+        'plan': 'FREE',
+      });
+
+      expect(details.firstName, 'Minh 2');
+      expect(details.lastName, 'Nguyen');
+    });
+
+    test('keeps legacy displayName fallback for older API responses', () {
+      final details = ProfileDetails.fromJson(<String, dynamic>{
+        'displayName': 'Minh 2 Nguyen',
+        'plan': 'FREE',
+      });
+
+      expect(details.firstName, 'Minh');
+      expect(details.lastName, '2 Nguyen');
+    });
   });
 }

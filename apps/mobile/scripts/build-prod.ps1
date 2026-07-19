@@ -89,7 +89,7 @@ try {
   Add-DartDefine 'GOONG_MAPTILES_KEY' $GoongMaptilesKey
   Add-DartDefine 'GOONG_API_KEY' $GoongApiKey
   Add-DartDefine 'GOONG_STYLE_URL' $GoongStyleUrl
-  Add-DartDefine 'REVENUECAT_ANDROID_API_KEY' $RevenueCatAndroidApiKey
+  Add-DartDefine 'REVENUECAT_ANDROID_API_KEY' $RevenueCatAndroidApiKey $false
   Add-DartDefine 'REVENUECAT_IOS_API_KEY' $RevenueCatIosApiKey $false
 
   $flutterArgs = @(

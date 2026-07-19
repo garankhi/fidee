@@ -32,30 +32,54 @@ export async function syncUserToDatabases({
     return;
   }
 
-  const displayNameFromClaims = [givenName, familyName].filter(Boolean).join(' ');
+  const normalizedFamilyName = familyName?.trim() || null;
+  const normalizedGivenName = givenName?.trim() || null;
+  const displayNameFromClaims = [normalizedFamilyName, normalizedGivenName]
+    .filter(Boolean)
+    .join(' ');
   const displayNameForInsert = displayNameFromClaims || email || 'User';
   const displayNameForUpdate = displayNameFromClaims || null;
   const username = preferredUsername?.trim().toLowerCase() || null;
 
   // 1. Sync to PostgreSQL
   const sql = `
-    INSERT INTO users (id, display_name, username, email, phone, avatar_url, plan)
+    INSERT INTO users (
+      id,
+      display_name,
+      family_name,
+      given_name,
+      username,
+      email,
+      phone,
+      avatar_url,
+      plan
+    )
     SELECT
       $1,
       $2,
+      $3,
+      $4,
       CASE
-        WHEN $3::text IS NOT NULL
-          AND NOT EXISTS (SELECT 1 FROM users WHERE username = $3)
-        THEN $3
+        WHEN $5::text IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM users WHERE username = $5)
+        THEN $5
         ELSE NULL
       END,
-      $4,
-      $5,
       $6,
+      $7,
+      $8,
       'FREE'
     ON CONFLICT (id) DO UPDATE
-    SET 
-      display_name = COALESCE($7::text, users.display_name),
+    SET
+      family_name = COALESCE(users.family_name, EXCLUDED.family_name),
+      given_name = COALESCE(users.given_name, EXCLUDED.given_name),
+      display_name = CASE
+        WHEN users.family_name IS NULL
+          AND users.given_name IS NULL
+          AND (EXCLUDED.family_name IS NOT NULL OR EXCLUDED.given_name IS NOT NULL)
+        THEN EXCLUDED.display_name
+        ELSE users.display_name
+      END,
       username = CASE
         WHEN users.username IS NULL AND EXCLUDED.username IS NOT NULL
         THEN EXCLUDED.username
@@ -64,36 +88,34 @@ export async function syncUserToDatabases({
       email = EXCLUDED.email,
       phone = COALESCE(EXCLUDED.phone, users.phone),
       avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
-    WHERE ($7::text IS NOT NULL AND users.display_name != $7::text)
+    WHERE (users.family_name IS NULL AND EXCLUDED.family_name IS NOT NULL)
+       OR (users.given_name IS NULL AND EXCLUDED.given_name IS NOT NULL)
        OR (users.username IS NULL AND EXCLUDED.username IS NOT NULL)
-       OR users.email != EXCLUDED.email
+       OR users.email IS DISTINCT FROM EXCLUDED.email
        OR (users.phone IS NULL AND EXCLUDED.phone IS NOT NULL)
        OR (users.avatar_url IS NULL AND EXCLUDED.avatar_url IS NOT NULL)
-       OR users.avatar_url != EXCLUDED.avatar_url;
+       OR users.avatar_url IS DISTINCT FROM EXCLUDED.avatar_url;
   `;
 
+  const params = [
+    sub,
+    displayNameForInsert,
+    normalizedFamilyName,
+    normalizedGivenName,
+    username,
+    email || null,
+    phone || null,
+    picture || null,
+  ];
+
   try {
-    await query(sql, [
-      sub,
-      displayNameForInsert,
-      username,
-      email || null,
-      phone || null,
-      picture || null,
-      displayNameForUpdate,
-    ]);
+    await query(sql, params);
   } catch (err) {
     if (isUniqueViolation(err)) {
       console.warn(`[Sync User] Skipped duplicate username sync for sub ${sub}`);
-      await query(sql, [
-        sub,
-        displayNameForInsert,
-        null,
-        email || null,
-        phone || null,
-        picture || null,
-        displayNameForUpdate,
-      ]);
+      const retryParams = [...params];
+      retryParams[4] = null;
+      await query(sql, retryParams);
       return;
     }
     console.error(`[Sync User] PostgreSQL upsert failed for sub ${sub}:`, err);
