@@ -796,64 +796,93 @@ class _PlacePickerSheetContentState extends State<PlacePickerSheetContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.78,
-      ),
-      decoration: const BoxDecoration(
-        color: _sheet,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 48,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(99),
-            ),
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardBottom = mediaQuery.viewInsets.bottom;
+    final availableHeight =
+        mediaQuery.size.height - keyboardBottom - mediaQuery.padding.top - 12;
+    final maxSheetHeight = min(
+      mediaQuery.size.height * 0.78,
+      max(280.0, availableHeight),
+    );
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: keyboardBottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(maxHeight: maxSheetHeight),
+          decoration: const BoxDecoration(
+            color: _sheet,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          if (!_isCreatingCustom) ...[
-            const SizedBox(height: 20),
-            _buildSearchField(),
-          ],
-          if (widget.errorMessage != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              widget.errorMessage!,
-              style: const TextStyle(color: _accent, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ],
-          if (_placeSearchError != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _placeSearchError!,
-              style: const TextStyle(color: _accent, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ],
-          const SizedBox(height: 18),
-          if (_isCreatingCustom)
-            _buildCustomPlaceForm()
-          else if (widget.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: CircularProgressIndicator(color: _accent),
-            )
-          else if (_filteredPlaces.isEmpty && _isSearchingPlaces)
-            _buildSearchLoadingState()
-          else if (_filteredPlaces.isEmpty)
-            _buildEmptyState()
-          else
-            Expanded(child: _buildPlaceList()),
-        ],
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              if (!_isCreatingCustom) ...[
+                const SizedBox(height: 20),
+                _buildSearchField(),
+              ],
+              if (widget.errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  widget.errorMessage!,
+                  style: const TextStyle(color: _accent, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (_placeSearchError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _placeSearchError!,
+                  style: const TextStyle(color: _accent, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 18),
+              Flexible(child: _buildSheetBody()),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Widget _buildSheetBody() {
+    if (_isCreatingCustom) {
+      return SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: _buildCustomPlaceForm(),
+      );
+    }
+
+    if (widget.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: CircularProgressIndicator(color: _accent),
+      );
+    }
+
+    if (_filteredPlaces.isEmpty && _isSearchingPlaces) {
+      return _buildSearchLoadingState();
+    }
+
+    if (_filteredPlaces.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return _buildPlaceList();
   }
 
   Widget _buildSearchField() {

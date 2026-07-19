@@ -1,1 +1,1 @@
-{"statusCode":500,"body":"{\"status\":\"error\",\"error\":\"new row for relation \\\"check_ins\\\" violates check constraint \\\"check_ins_visibility_check\\\"\"}"}
+{"statusCode":200,"body":"{\"status\":\"ok\",\"total\":59,\"processed\":59,\"failed\":0}"}
