@@ -4,11 +4,11 @@ class Config {
   // Client-safe AWS values are injected from CDK outputs via --dart-define.
   static const String cognitoUserPoolId = String.fromEnvironment(
     'COGNITO_USER_POOL_ID',
-    defaultValue: 'ap-southeast-1_INWgS1yPw',
+    defaultValue: 'ap-southeast-1_QHHhzywZp',
   );
   static const String cognitoClientId = String.fromEnvironment(
     'COGNITO_CLIENT_ID',
-    defaultValue: '27tej2ge7ofoorpvabv4mh0hhj',
+    defaultValue: '1ov1hvbs3qqj0vle6bvit415jg',
   );
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
