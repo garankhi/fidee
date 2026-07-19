@@ -842,14 +842,14 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
                         onTap: () => _openDirections(place),
                       ),
                       const SizedBox(height: 25),
-                      _buildFriendCheckins(place),
-                      const SizedBox(height: 25),
                       KeyedSubtree(
                         key: _reviewsKey,
                         child: _buildFriendReviews(place),
                       ),
                       const SizedBox(height: 25),
                       _buildPhotoGallery(place),
+                      const SizedBox(height: 25),
+                      _buildFriendCheckins(place),
                     ]),
                   ),
                 ),
@@ -1376,17 +1376,15 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
   }
 
   Widget _buildFriendReviews(Place place) {
-    final reviews = place.friendReviews;
     final allReviews = <dynamic>[...place.friendReviews, ...place.otherReviews];
+    final displayReviews = allReviews.take(3).toList();
 
-    if (reviews.isEmpty) {
+    if (allReviews.isEmpty) {
       return Column(
         children: [
           _buildSectionHeader(
-            'Bạn bè nói gì về quán này?',
-            onViewAll: allReviews.isEmpty
-                ? null
-                : () => _showAllReviewsSheet(allReviews),
+            'Mọi người nói gì về quán này?',
+            onViewAll: null,
           ),
           const SizedBox(height: 12),
           Container(
@@ -1394,7 +1392,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
             padding: const EdgeInsets.all(16),
             alignment: Alignment.centerLeft,
             child: const Text(
-              'Chưa có đánh giá từ bạn bè',
+              'Chưa có đánh giá nào',
               style: TextStyle(
                 color: Colors.black54,
                 fontSize: 13,
@@ -1409,13 +1407,11 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     return Column(
       children: [
         _buildSectionHeader(
-          'Bạn bè nói gì về quán này? (${reviews.length})',
-          onViewAll: allReviews.isEmpty
-              ? null
-              : () => _showAllReviewsSheet(allReviews),
+          'Mọi người nói gì về quán này? (${allReviews.length})',
+          onViewAll: () => _showAllReviewsSheet(allReviews),
         ),
         const SizedBox(height: 12),
-        ...reviews.map((review) {
+        ...displayReviews.map((review) {
           final item = review as Map<String, dynamic>;
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
