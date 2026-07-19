@@ -10,6 +10,8 @@ const CORS_HEADERS = {
 type PlaceMetadata = {
   vibes?: unknown;
   services?: unknown;
+  media_ids?: string[];
+  menu_ids?: string[];
 };
 
 function placeMetadata(value: unknown): PlaceMetadata {
@@ -120,6 +122,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         checkinCount: p.checkin_count,
         vibes: metadataList(metadata.vibes),
         services: metadataList(metadata.services),
+        metadata: metadata,
       };
     } else {
       // ── 2. Fallback to candidate ──────────────────────────────
@@ -183,9 +186,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         status: c.status,
         isFeatured: false,
         isVerified: false,
-        checkinCount: c.checkin_count,
+        checkinCount: parseInt(String(c.checkin_count || 0), 10),
         vibes: metadataList(metadata.vibes),
         services: metadataList(metadata.services),
+        metadata: metadata,
       };
     }
 
@@ -298,6 +302,33 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const myReviewResult = await query(myReviewSql, [placeId, userId]);
 
     // ── 8. Build response ───────────────────────────────────────
+    const allPhotos = [...photosResult.rows];
+    const placeMeta = placeData.metadata as PlaceMetadata;
+    if (placeMeta?.media_ids && Array.isArray(placeMeta.media_ids)) {
+      for (const mId of placeMeta.media_ids) {
+        allPhotos.push({
+          mediaId: mId,
+          mediaType: 'IMAGE',
+          userId: 'system-seeder',
+          userName: 'MapVibe Team',
+          caption: 'Ảnh tổng quan từ hệ thống',
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+    if (placeMeta?.menu_ids && Array.isArray(placeMeta.menu_ids)) {
+      for (const mId of placeMeta.menu_ids) {
+        allPhotos.push({
+          mediaId: mId,
+          mediaType: 'IMAGE',
+          userId: 'system-seeder',
+          userName: 'MapVibe Team',
+          caption: 'Menu của quán',
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
@@ -308,7 +339,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           friendCheckins: friendCheckinsResult.rows,
           friendReviews: friendReviewsResult.rows,
           otherReviews: otherReviewsResult.rows,
-          photos: photosResult.rows,
+          photos: allPhotos,
           myReview: myReviewResult.rows[0] || null,
         },
       }),
