@@ -1,10 +1,26 @@
-import { beforeEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
 
+vi.mock('./features/admin/adminApi', () => ({
+  approveCandidate: vi.fn(),
+  deletePlace: vi.fn(),
+  fetchCandidateDetail: vi.fn().mockRejectedValue(new Error('Not found')),
+  fetchModerationRequests: vi.fn().mockResolvedValue([]),
+  fetchPlaces: vi.fn().mockResolvedValue([]),
+  fetchUsers: vi.fn().mockResolvedValue([]),
+  rejectCandidate: vi.fn(),
+  savePlace: vi.fn(),
+  updateUserData: vi.fn(),
+}));
+
 beforeEach(() => {
   window.history.pushState({}, '', '/');
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
 });
 
 describe('App', () => {
@@ -30,16 +46,15 @@ describe('App', () => {
     expect(await screen.findByText('Pending Candidates')).toBeInTheDocument();
   });
 
-  it('opens the moderation detail page by id', async () => {
+  it('opens the moderation detail page by id without local fallback data', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.history.pushState({}, '', '/admin/moderation/cand-unknown');
+
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /moderation/i }));
-    expect(await screen.findByText('Pending Candidates')).toBeInTheDocument();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'View' })[0]);
-
-    expect(await screen.findByRole('heading', { name: 'Rooftop Bar Saigon', level: 1 })).toBeInTheDocument();
-    expect(window.location.pathname).toBe('/admin/moderation/cand-1001');
+    expect(await screen.findByText('Request not found')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/admin/moderation/cand-unknown');
+    consoleError.mockRestore();
   });
 
   it('opens the users page from the sidebar', async () => {

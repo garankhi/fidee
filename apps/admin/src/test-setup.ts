@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 
-// Mock window.matchMedia for JSDOM / Vitest environments
+const adminTestToken = 'e30.eyJjb2duaXRvOmdyb3VwcyI6WyJBZG1pbnMiXX0.sig';
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query: string) => ({
@@ -15,7 +16,6 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
-// Mock window.ResizeObserver for JSDOM / Vitest environments
 class ResizeObserverMock {
   observe() {}
   unobserve() {}
@@ -28,10 +28,9 @@ Object.defineProperty(window, 'ResizeObserver', {
   value: ResizeObserverMock,
 });
 
-// Mock localStorage for Vitest/JSDOM environment
 const localStorageMock = (() => {
   let store: Record<string, string> = {
-    admin_token: 'mock-admin-token-for-tests',
+    admin_token: adminTestToken,
   };
   return {
     getItem: (key: string) => store[key] || null,
@@ -43,6 +42,10 @@ const localStorageMock = (() => {
     },
     clear: () => {
       store = {};
+    },
+    key: (index: number) => Object.keys(store)[index] || null,
+    get length() {
+      return Object.keys(store).length;
     },
   };
 })();

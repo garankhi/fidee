@@ -65,6 +65,38 @@ export class AdminApiStack extends cdk.NestedStack {
     dbSecret.grantRead(updateUserFn);
     userProfilesTable.grantReadWriteData(updateUserFn);
 
+    // GET /admin/places
+    const listPlacesFn = new nodejs.NodejsFunction(this, 'ListAdminPlacesFunction', {
+      ...adminLambdaProps,
+      entry: '../../services/api/src/handlers/admin/list-places.ts',
+      handler: 'handler',
+    });
+    dbSecret.grantRead(listPlacesFn);
+
+    // POST /admin/places
+    const createPlaceFn = new nodejs.NodejsFunction(this, 'CreateAdminPlaceFunction', {
+      ...adminLambdaProps,
+      entry: '../../services/api/src/handlers/admin/create-place.ts',
+      handler: 'handler',
+    });
+    dbSecret.grantRead(createPlaceFn);
+
+    // PUT /admin/places/{id}
+    const updatePlaceFn = new nodejs.NodejsFunction(this, 'UpdateAdminPlaceFunction', {
+      ...adminLambdaProps,
+      entry: '../../services/api/src/handlers/admin/update-place.ts',
+      handler: 'handler',
+    });
+    dbSecret.grantRead(updatePlaceFn);
+
+    // DELETE /admin/places/{id}
+    const deletePlaceFn = new nodejs.NodejsFunction(this, 'DeleteAdminPlaceFunction', {
+      ...adminLambdaProps,
+      entry: '../../services/api/src/handlers/admin/delete-place.ts',
+      handler: 'handler',
+    });
+    dbSecret.grantRead(deletePlaceFn);
+
     // GET /admin/places/pending
     const getPendingPlacesFn = new nodejs.NodejsFunction(this, 'GetPendingPlacesFunction', {
       ...adminLambdaProps,
@@ -168,6 +200,34 @@ export class AdminApiStack extends cdk.NestedStack {
     });
 
     const adminPlacesResource = adminResource.addResource('places');
+    adminPlacesResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminPlacesResource.addMethod('GET', new apigateway.LambdaIntegration(listPlacesFn), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+    adminPlacesResource.addMethod('POST', new apigateway.LambdaIntegration(createPlaceFn), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const adminPlaceDetailResource = adminPlacesResource.addResource('{id}');
+    adminPlaceDetailResource.addCorsPreflight({
+      allowOrigins: apigateway.Cors.ALL_ORIGINS,
+      allowMethods: ['PUT', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    });
+    adminPlaceDetailResource.addMethod('PUT', new apigateway.LambdaIntegration(updatePlaceFn), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+    adminPlaceDetailResource.addMethod('DELETE', new apigateway.LambdaIntegration(deletePlaceFn), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     // /admin/places/pending
     const adminPendingResource = adminPlacesResource.addResource('pending');

@@ -15,7 +15,7 @@ import {
   UsersPage,
 } from './features/admin/AdminPages';
 import LoginPage from './features/auth/LoginPage';
-import { logoutAdmin } from './features/auth/cognitoService';
+import { isAuthenticated, logoutAdmin } from './features/auth/cognitoService';
 
 const NAV_ITEMS = [
   { icon: '📊', label: 'Dashboard', href: '/admin' },
@@ -68,14 +68,14 @@ export default function App() {
   useEffect(() => {
     const syncRoute = () => {
       const currentPath = window.location.pathname;
-      const token = localStorage.getItem('admin_token');
+      const hasAdminSession = isAuthenticated();
       
       // Route Guard
-      if (!token && currentPath !== '/login') {
+      if (!hasAdminSession && currentPath !== '/login') {
         navigateToPath('/login');
         return;
       }
-      if (token && currentPath === '/login') {
+      if (hasAdminSession && currentPath === '/login') {
         navigateToPath('/admin');
         return;
       }
@@ -140,9 +140,9 @@ export default function App() {
 
         <div className="sidebar-footer">
           <div className="user-info">
-            <div className="user-avatar">M</div>
+            <div className="user-avatar">T</div>
             <div>
-              <strong className="user-name" style={{ display: 'block' }}>Minh Nguyen</strong>
+              <strong className="user-name" style={{ display: 'block' }}>Tydapchai</strong>
               <button type="button" className="logout-btn" onClick={handleLogout}>
                 🚪 Đăng xuất
               </button>

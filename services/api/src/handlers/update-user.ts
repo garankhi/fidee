@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../db/client';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { isAuthResponse, requireAdminFromEvent } from './admin/auth';
 
 const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -12,6 +13,9 @@ const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
+    const adminId = await requireAdminFromEvent(event);
+    if (isAuthResponse(adminId)) return adminId;
+
     // 1. Get userId from path parameters
     const userId = event.pathParameters?.userId;
     if (!userId) {

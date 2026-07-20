@@ -40,7 +40,9 @@ export function maskEmail(email: string): string {
  *  - Use maskPhone() / maskEmail() for logging
  */
 export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthContext> {
-  const claims = event.requestContext.authorizer?.claims;
+  const claims =
+    event.requestContext.authorizer?.claims ||
+    event.requestContext.authorizer?.jwt?.claims;
 
   if (!claims?.sub) {
     throw new Error('Missing auth context: no sub claim found');
@@ -53,9 +55,11 @@ export async function extractAuth(event: APIGatewayProxyEvent): Promise<AuthCont
 
   const groupsClaim = claims['cognito:groups'];
   const groups: string[] = groupsClaim
-    ? typeof groupsClaim === 'string'
-      ? groupsClaim.split(',')
-      : []
+    ? Array.isArray(groupsClaim)
+      ? groupsClaim
+      : typeof groupsClaim === 'string'
+        ? groupsClaim.split(',')
+        : []
     : ['Users'];
 
   const givenName = claims.given_name as string | undefined;

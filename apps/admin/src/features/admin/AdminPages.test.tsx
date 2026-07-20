@@ -10,11 +10,12 @@ vi.mock('./adminApi', () => ({
 }));
 
 const mockedFetchUsers = vi.mocked(fetchUsers);
+const adminTestToken = 'e30.eyJjb2duaXRvOmdyb3VwcyI6WyJBZG1pbnMiXX0.sig';
 
 describe('UsersPage', () => {
   afterEach(() => {
     vi.clearAllMocks();
-    window.localStorage.setItem('admin_token', 'mock-admin-token-for-tests');
+    window.localStorage.setItem('admin_token', adminTestToken);
     window.history.pushState({}, '', '/admin/users');
   });
 

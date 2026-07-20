@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../../db/client';
+import { isAuthResponse, requireAdminFromEvent } from './auth';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -14,18 +15,10 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const userId =
-      event.requestContext.authorizer?.jwt?.claims?.sub ||
-      event.requestContext.authorizer?.claims?.sub;
-    if (!userId) {
-      return {
-        statusCode: 401,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Unauthorized' }),
-      };
-    }
+    const adminId = await requireAdminFromEvent(event);
+    if (isAuthResponse(adminId)) return adminId;
 
-    const statusFilter = event.queryStringParameters?.status || 'PENDING_REVIEW';
+    const statusFilter = event.queryStringParameters?.status || null;
 
     const sql = `
       SELECT
@@ -55,7 +48,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         u.avatar_url AS created_by_avatar
       FROM place_candidates pc
       JOIN users u ON pc.created_by = u.id
-      WHERE pc.status = $1
+      WHERE ($1::text IS NULL OR pc.status = $1)
       ORDER BY pc.created_at DESC
       LIMIT 50;
     `;

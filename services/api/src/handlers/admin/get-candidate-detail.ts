@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../../db/client';
+import { isAuthResponse, requireAdminFromEvent } from './auth';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -17,16 +18,8 @@ const CORS_HEADERS = {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const userId =
-      event.requestContext.authorizer?.jwt?.claims?.sub ||
-      event.requestContext.authorizer?.claims?.sub;
-    if (!userId) {
-      return {
-        statusCode: 401,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Unauthorized' }),
-      };
-    }
+    const adminId = await requireAdminFromEvent(event);
+    if (isAuthResponse(adminId)) return adminId;
 
     const candidateId = event.pathParameters?.id;
     if (!candidateId) {
@@ -44,6 +37,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         pc.name,
         pc.normalized_name,
         pc.category,
+        pc.address,
         pc.media_id,
         pc.created_by,
         pc.created_at,
@@ -53,6 +47,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         pc.price_max,
         pc.phone_number,
         pc.description,
+        pc.metadata,
         ST_Y(pc.location::geometry) AS lat,
         ST_X(pc.location::geometry) AS lng,
         u.display_name AS created_by_name,

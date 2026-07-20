@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../db/client';
+import { isAuthResponse, requireAdminFromEvent } from './admin/auth';
 
 /**
  * GET /admin/users
@@ -8,13 +9,10 @@ import { query } from '../db/client';
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    // 1. Verify user is in Admins group (Optional validation, API Gateway Cognito Authorizer should handle this)
-    const groups = event.requestContext.authorizer?.jwt?.claims?.['cognito:groups'] || [];
-    const isAdmin = Array.isArray(groups) ? groups.includes('Admins') : groups === 'Admins';
+    const adminId = await requireAdminFromEvent(event);
+    if (isAuthResponse(adminId)) return adminId;
 
-    // In local development or if authorizer is mocked, we can proceed
-
-    // 2. Query all users from PostgreSQL
+    // Query all users from PostgreSQL
     const sql = `
       SELECT 
         id, 

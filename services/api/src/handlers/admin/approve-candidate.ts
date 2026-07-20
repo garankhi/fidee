@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../../db/client';
 import { EmbeddingService } from '../../services/embedding-service';
+import { isAuthResponse, requireAdminFromEvent } from './auth';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -36,16 +37,8 @@ interface PlaceCandidateRow {
  */
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const adminId =
-      event.requestContext.authorizer?.jwt?.claims?.sub ||
-      event.requestContext.authorizer?.claims?.sub;
-    if (!adminId) {
-      return {
-        statusCode: 401,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Unauthorized' }),
-      };
-    }
+    const adminId = await requireAdminFromEvent(event);
+    if (isAuthResponse(adminId)) return adminId;
 
     const candidateId = event.pathParameters?.id;
     if (!candidateId) {

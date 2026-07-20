@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { navigateToPath } from '../../navigation';
 import { Skeleton } from 'boneyard-js/react';
-import { fetchUsers, updateUserData } from './adminApi';
 import {
-  activityLogs,
-  categoryPerformance,
-  contentItems,
-  getDashboardStats,
-  getModerationStats,
-  mockModerationRequests,
-  mockPlaces,
-  mockUsers,
-  paymentRows,
-  reportMetrics,
-  settingsSections,
-  userEngagementData,
+  approveCandidate,
+  createPlace,
+  deletePlace,
+  fetchCandidateDetail,
+  fetchModerationRequests,
+  fetchPlaces,
+  fetchUsers,
+  rejectCandidate,
+  updatePlace,
+  updateUserData,
+  type AdminPlacePayload,
+} from './adminApi';
+import {
   type ModerationRequest,
   type ModerationStatus,
+  type Place,
   type User,
 } from './adminData';
 
@@ -76,7 +77,7 @@ function normalizeUser(user: User): User {
 }
 
 function formatStatus(status: ModerationStatus) {
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function renderStars(rating: number) {
@@ -156,25 +157,22 @@ function SearchField({ value, onChange, placeholder }: { value: string; onChange
 }
 
 export function DashboardPage() {
-  const stats = getDashboardStats();
-  const moderationStats = getModerationStats();
-
   return (
     <div className="page-stack">
-      <PageHeader title="Dashboard" subtitle="Welcome back, here's what's happening today." />
+      <PageHeader title="Dashboard" subtitle="Operational overview from live admin APIs." />
 
       <section className="stats-grid stats-grid-4">
-        <StatCard label="Total Places" value={stats.places} delta="12%" tone="success" />
-        <StatCard label="Active Users" value={stats.activeUsers} delta="8%" tone="success" />
-        <StatCard label="Reviews Today" value={stats.reviews} delta="23%" tone="warning" />
-        <StatCard label="Pending Moderation" value={stats.pending} delta="15%" tone="danger" />
+        <StatCard label="Total Places" value="-" />
+        <StatCard label="Active Users" value="-" />
+        <StatCard label="Reviews Today" value="-" />
+        <StatCard label="Pending Moderation" value="-" />
       </section>
 
       <section className="status-grid">
         <article className="card status-card status-card-warning">
           <div className="status-card-top">
             <span className="status-kicker">Pending</span>
-            <strong>{moderationStats.pending}</strong>
+            <strong>-</strong>
           </div>
           <p>Awaiting moderation</p>
           <button type="button" className="text-link" onClick={() => navigateToPath('/admin/moderation')}>
@@ -184,7 +182,7 @@ export function DashboardPage() {
         <article className="card status-card status-card-success">
           <div className="status-card-top">
             <span className="status-kicker">Approved</span>
-            <strong>{moderationStats.approved}</strong>
+            <strong>-</strong>
           </div>
           <p>Successfully published</p>
           <span className="status-footnote">Last 7 days</span>
@@ -192,7 +190,7 @@ export function DashboardPage() {
         <article className="card status-card status-card-danger">
           <div className="status-card-top">
             <span className="status-kicker">Rejected</span>
-            <strong>{moderationStats.rejected}</strong>
+            <strong>-</strong>
           </div>
           <p>Declined submissions</p>
           <span className="status-footnote">Last 7 days</span>
@@ -200,42 +198,18 @@ export function DashboardPage() {
       </section>
 
       <section className="dashboard-grid">
-        <ListPanel title="Activity Trend" subtitle="Last 7 days of submissions and reviews">
-          <ChartBars data={userEngagementData} valueKey="visits" max={400} />
+        <ListPanel title="Activity Trend" subtitle="No analytics endpoint connected yet">
+          <EmptyState />
         </ListPanel>
 
         <ListPanel title="Quick Stats" subtitle="System overview">
-          <div className="quick-stats">
-            <div className="quick-stat-row">
-              <span>Places this month</span>
-              <strong>+42</strong>
-            </div>
-            <div className="quick-stat-row">
-              <span>Reviews this month</span>
-              <strong>+128</strong>
-            </div>
-            <div className="quick-stat-row">
-              <span>Pending actions</span>
-              <strong>{moderationStats.pending}</strong>
-            </div>
-          </div>
+          <EmptyState />
         </ListPanel>
       </section>
 
       <section className="dashboard-grid dashboard-grid-secondary">
         <ListPanel title="Recent Activity" subtitle="Latest platform events">
-          <div className="activity-feed">
-            {activityLogs.slice(0, 5).map((item) => (
-              <article key={item.id} className="activity-item">
-                <span className="activity-icon">{item.icon}</span>
-                <div className="activity-copy">
-                  <strong>{item.action}</strong>
-                  <span>{item.target}</span>
-                </div>
-                <time>{item.timestamp}</time>
-              </article>
-            ))}
-          </div>
+          <EmptyState />
         </ListPanel>
 
         <ListPanel title="Quick Actions" subtitle="Common tasks">
@@ -257,7 +231,57 @@ export function ModerationPage() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all-pending' | 'all'>('all-pending');
   const [filterStatus, setFilterStatus] = useState<ModerationStatus | 'All'>('All');
-  const [requests, setRequests] = useState<ModerationRequest[]>(mockModerationRequests);
+  const [requests, setRequests] = useState<ModerationRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadModerationRequests() {
+      setIsLoading(true);
+      try {
+        const realRequests = await fetchModerationRequests(
+          filterStatus === 'All'
+            ? filterType === 'all-pending'
+              ? 'PENDING_REVIEW'
+              : undefined
+            : filterStatus === 'approved'
+              ? 'APPROVED'
+              : filterStatus === 'rejected'
+                ? 'REJECTED'
+                : filterStatus === 'needs_more_info'
+                  ? 'NEEDS_MORE_INFO'
+                  : 'PENDING_REVIEW',
+        );
+        if (active) {
+          setRequests(realRequests);
+          setApiError(null);
+        }
+      } catch (error) {
+        if (isAuthRejected(error)) {
+          redirectToLogin();
+          return;
+        }
+
+        console.error('Failed to load moderation requests:', error);
+        if (active) {
+          setRequests([]);
+          setApiError('Không thể tải moderation từ API. Kiểm tra VITE_API_URL, deploy backend, hoặc quyền Admins.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadModerationRequests();
+    return () => {
+      active = false;
+    };
+  }, [filterStatus, filterType]);
 
   const stats = useMemo(() => {
     return {
@@ -281,15 +305,37 @@ export function ModerationPage() {
     });
   }, [filterStatus, filterType, requests, search]);
 
-  const handleDecision = (requestId: string, status: ModerationStatus) => {
-    setRequests((current) => current.map((request) => (request.id === requestId ? { ...request, status } : request)));
+  const handleDecision = async (requestId: string, status: ModerationStatus) => {
+    setPendingActionId(requestId);
+    try {
+      if (status === 'approved') {
+        await approveCandidate(requestId);
+      } else if (status === 'rejected') {
+        await rejectCandidate(requestId, 'Rejected from admin moderation list.');
+      }
+
+      setRequests((current) =>
+        status === 'approved'
+          ? current.filter((request) => request.id !== requestId)
+          : current.map((request) => (request.id === requestId ? { ...request, status } : request)),
+      );
+    } catch (error) {
+      if (isAuthRejected(error)) {
+        redirectToLogin();
+        return;
+      }
+      console.error('Failed to update moderation request:', error);
+      setApiError('Không thể cập nhật moderation request qua API.');
+    } finally {
+      setPendingActionId(null);
+    }
   };
 
   return (
     <div className="page-stack">
       <PageHeader
         title="Moderation"
-        subtitle="Review pending candidates without waiting for backend data."
+        subtitle="Review user-submitted places before they go live."
         action={<span className="queue-pill">{filteredRequests.length} items</span>}
       />
 
@@ -298,6 +344,13 @@ export function ModerationPage() {
         <StatCard label="Pending" value={stats.pending} tone="warning" />
         <StatCard label="Approved" value={stats.approved} tone="success" />
       </section>
+
+      {apiError && (
+        <div className="offline-banner">
+          <span>⚠️</span>
+          <span>{apiError}</span>
+        </div>
+      )}
 
       <section className="card toolbar-card">
         <SearchField value={search} onChange={setSearch} placeholder="Search by title, source, or reason" />
@@ -315,67 +368,135 @@ export function ModerationPage() {
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
+            <option value="needs_more_info">Needs Info</option>
           </select>
         </label>
       </section>
 
       <ListPanel title="Pending Candidates" subtitle={`${filteredRequests.length} items`}>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Submitted</th>
-                <th>Submitted By</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRequests.map((request) => (
-                <tr key={request.id}>
-                  <td>
-                    <div className="candidate-cell">
-                      <strong>{request.name}</strong>
-                      <span>{request.source}</span>
-                    </div>
-                  </td>
-                  <td>{request.submittedAt}</td>
-                  <td>{request.submittedBy}</td>
-                  <td>
-                    <Badge tone={pageTone(request.status)}>{formatStatus(request.status)}</Badge>
-                  </td>
-                  <td>
-                    <div className="table-actions">
-                      <button type="button" className="approve-btn" onClick={() => handleDecision(request.id, 'approved')}>
-                        Approve
-                      </button>
-                      <button type="button" className="reject-btn" onClick={() => handleDecision(request.id, 'rejected')}>
-                        Reject
-                      </button>
-                      <button type="button" className="secondary-btn" onClick={() => navigateToPath(`/admin/moderation/${request.id}`)}>
-                        View
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Skeleton name="moderation-list" loading={isLoading} fallback={<UserSkeletonList />}>
+          {filteredRequests.length === 0 ? (
+            <EmptyState message="Không có quán user đề xuất từ API." />
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Submitted</th>
+                    <th>Submitted By</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests.map((request) => (
+                    <tr key={request.id}>
+                      <td>
+                        <div className="candidate-cell">
+                          <strong>{request.name}</strong>
+                          <span>{request.source}</span>
+                        </div>
+                      </td>
+                      <td>{request.submittedAt}</td>
+                      <td>{request.submittedBy}</td>
+                      <td>
+                        <Badge tone={pageTone(request.status)}>{formatStatus(request.status)}</Badge>
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          <button type="button" className="approve-btn" onClick={() => handleDecision(request.id, 'approved')}>
+                            {pendingActionId === request.id ? 'Saving...' : 'Approve'}
+                          </button>
+                          <button type="button" className="reject-btn" onClick={() => handleDecision(request.id, 'rejected')} disabled={pendingActionId === request.id}>
+                            Reject
+                          </button>
+                          <button type="button" className="secondary-btn" onClick={() => navigateToPath(`/admin/moderation/${request.id}`)}>
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Skeleton>
       </ListPanel>
     </div>
   );
 }
 
+function EmptyState({ title = 'Không có dữ liệu', message = 'Chưa có dữ liệu thật từ API cho mục này.' }: { title?: string; message?: string }) {
+  return (
+    <div className="state-card">
+      <strong>{title}</strong>
+      <p>{message}</p>
+    </div>
+  );
+}
+
 export function ModerationDetailsPage({ requestId }: { requestId: string }) {
+  const [request, setRequest] = useState<ModerationRequest | null>(null);
   const [actionTaken, setActionTaken] = useState<ModerationStatus | null>(null);
-  const request = mockModerationRequests.find((item) => item.id === requestId);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [detailMeta, setDetailMeta] = useState<{
+    gpsProof: Array<Record<string, unknown> & { mediaUrl?: string | null }>;
+    duplicateHints: Array<Record<string, unknown>>;
+  }>({ gpsProof: [], duplicateHints: [] });
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCandidateDetail() {
+      setIsLoading(true);
+      try {
+        const detail = await fetchCandidateDetail(requestId);
+        if (active) {
+          setRequest(detail.request);
+          setDetailMeta({ gpsProof: detail.gpsProof, duplicateHints: detail.duplicateHints });
+          setApiError(null);
+        }
+      } catch (error) {
+        if (isAuthRejected(error)) {
+          redirectToLogin();
+          return;
+        }
+
+        console.error('Failed to load candidate detail:', error);
+        if (active) {
+          setRequest(null);
+          setApiError('Không thể tải chi tiết candidate từ API.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadCandidateDetail();
+    return () => {
+      active = false;
+    };
+  }, [requestId]);
+
+  if (isLoading && !request) {
+    return (
+      <div className="page-stack">
+        <ListPanel title="Loading request">
+          <UserSkeletonList />
+        </ListPanel>
+      </div>
+    );
+  }
 
   if (!request) {
     return (
       <div className="page-stack">
-        <ListPanel title="Request not found" subtitle="The moderation request you opened no longer exists.">
+        <ListPanel title="Request not found" subtitle={apiError || 'The moderation request you opened no longer exists.'}>
           <button type="button" className="primary-btn" onClick={() => navigateToPath('/admin/moderation')}>
             Back to Moderation
           </button>
@@ -384,15 +505,43 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
     );
   }
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     setActionTaken('approved');
-    window.setTimeout(() => navigateToPath('/admin/moderation'), 1200);
+    try {
+      await approveCandidate(request.id);
+      window.setTimeout(() => navigateToPath('/admin/moderation'), 800);
+    } catch (error) {
+      setActionTaken(null);
+      if (isAuthRejected(error)) {
+        redirectToLogin();
+        return;
+      }
+      console.error('Failed to approve candidate:', error);
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     setActionTaken('rejected');
-    window.setTimeout(() => navigateToPath('/admin/moderation'), 1200);
+    try {
+      await rejectCandidate(request.id, 'Rejected from admin detail page.');
+      window.setTimeout(() => navigateToPath('/admin/moderation'), 800);
+    } catch (error) {
+      setActionTaken(null);
+      if (isAuthRejected(error)) {
+        redirectToLogin();
+        return;
+      }
+      console.error('Failed to reject candidate:', error);
+    }
   };
+
+  const hasMedia =
+    Boolean(request.images?.menu?.length) ||
+    Boolean(request.images?.space?.length) ||
+    Boolean(request.images?.dishes?.length);
+  const gpsProofImages = detailMeta.gpsProof
+    .map((proof) => proof.mediaUrl)
+    .filter((url): url is string => typeof url === 'string' && url.length > 0);
 
   return (
     <div className="page-stack moderation-details-page">
@@ -404,11 +553,19 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
 
       {actionTaken ? (
         <div className={cx('card', 'state-card', actionTaken === 'approved' ? 'state-card-success' : 'state-card-danger')}>
-          {actionTaken === 'approved' ? 'Request approved successfully' : 'Request rejected successfully'}
+          {actionTaken === 'approved' ? 'Approving request...' : 'Rejecting request...'}
         </div>
       ) : null}
 
-      <div className="details-layout">
+      {apiError && (
+        <div className="offline-banner">
+          <span>⚠️</span>
+          <span>{apiError}</span>
+        </div>
+      )}
+
+      <Skeleton name="moderation-detail" loading={isLoading} fallback={<UserSkeletonList />}>
+        <div className="details-layout">
         <div className="details-main">
           <section className="card details-card">
             <h2 className="panel-title">Submission Information</h2>
@@ -478,8 +635,9 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
 
           <section className="card details-card">
             <h2 className="panel-title">Media</h2>
-            <div className="media-groups">
-              {request.images?.menu ? (
+            {hasMedia ? (
+              <div className="media-groups">
+              {request.images?.menu?.length ? (
                 <div className="gallery">
                   <div className="gallery-title">Menu</div>
                   <div className="images-row">
@@ -489,7 +647,7 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
                   </div>
                 </div>
               ) : null}
-              {request.images?.space ? (
+              {request.images?.space?.length ? (
                 <div className="gallery">
                   <div className="gallery-title">Space</div>
                   <div className="images-row">
@@ -499,7 +657,7 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
                   </div>
                 </div>
               ) : null}
-              {request.images?.dishes ? (
+              {request.images?.dishes?.length ? (
                 <div className="gallery">
                   <div className="gallery-title">Dishes</div>
                   <div className="images-row">
@@ -509,7 +667,34 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
                   </div>
                 </div>
               ) : null}
+              </div>
+            ) : (
+              <EmptyState message="Bài đề xuất này chưa có ảnh từ API." />
+            )}
+          </section>
+
+          <section className="card details-card">
+            <h2 className="panel-title">Verification</h2>
+            <div className="details-grid details-grid-2">
+              <div>
+                <span className="detail-label">GPS proof</span>
+                <strong>{detailMeta.gpsProof.length} check-ins nearby</strong>
+              </div>
+              <div>
+                <span className="detail-label">Duplicate hints</span>
+                <strong>{detailMeta.duplicateHints.length} nearby places</strong>
+              </div>
             </div>
+            {gpsProofImages.length ? (
+              <div className="gallery detail-block">
+                <div className="gallery-title">Check-in Proof</div>
+                <div className="images-row">
+                  {gpsProofImages.map((src) => (
+                    <img key={src} src={src} alt="check-in proof" />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
         </div>
 
@@ -546,6 +731,7 @@ export function ModerationDetailsPage({ requestId }: { requestId: string }) {
           </section>
         </aside>
       </div>
+      </Skeleton>
     </div>
   );
 }
@@ -595,9 +781,9 @@ function UserSkeletonList() {
 }
 
 export function UsersPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
   const [search, setSearch] = useState('');
@@ -613,7 +799,7 @@ export function UsersPage() {
         const realUsers = await fetchUsers();
         if (active) {
           setUsers(realUsers.map(normalizeUser));
-          setIsOfflineMode(false);
+          setApiError(null);
         }
       } catch (error) {
         if (isAuthRejected(error)) {
@@ -621,10 +807,10 @@ export function UsersPage() {
           return;
         }
 
-        console.warn('API error, falling back to mock users:', error);
+        console.error('Failed to load users:', error);
         if (active) {
-          setUsers(mockUsers);
-          setIsOfflineMode(true);
+          setUsers([]);
+          setApiError('Không thể tải users từ API. Kiểm tra VITE_API_URL, deploy backend, hoặc quyền Admins.');
         }
       } finally {
         if (active) {
@@ -664,10 +850,10 @@ export function UsersPage() {
         <StatCard label="Total Contributions" value={totalContributions} />
       </section>
 
-      {isOfflineMode && (
+      {apiError && (
         <div className="offline-banner">
           <span>⚠️</span>
-          <span>Không thể kết nối tới API Backend. Hệ thống đang chạy ở chế độ ngoại tuyến (Offline Mock Data).</span>
+          <span>{apiError}</span>
         </div>
       )}
 
@@ -751,20 +937,12 @@ export function UsersPage() {
               e.preventDefault();
               setIsSaving(true);
               try {
-                if (isOfflineMode) {
-                  setUsers((prev) => prev.map((u) => u.id === editingUser.id ? editingUser : u));
-                  setToast({
-                    title: 'Cập nhật thành công (Ngoại tuyến)',
-                    message: `Đã cập nhật giả lập cho tài khoản ${editingUser.username}.`
-                    });
-                  } else {
-                    const updated = normalizeUser(await updateUserData(editingUser.id, editingUser));
-                    setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
-                    setToast({
+                const updated = normalizeUser(await updateUserData(editingUser.id, editingUser));
+                setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
+                setToast({
                     title: 'Cập nhật thành công (API thực)',
                     message: `Đã lưu thông tin người dùng ${editingUser.username} lên hệ thống thực.`
                   });
-                }
                 } catch (error) {
                   if (isAuthRejected(error)) {
                     redirectToLogin();
@@ -912,57 +1090,276 @@ export function UsersPage() {
 }
 
 export function PlacesPage() {
+  const emptyPlaceForm: AdminPlacePayload = {
+    name: '',
+    category: 'other',
+    address: '',
+    coordinates: { lat: 10.7769, lng: 106.7009 },
+    visibility: 'PUBLIC',
+    status: 'APPROVED',
+    openTime: '',
+    closeTime: '',
+    priceMin: null,
+    priceMax: null,
+    phoneNumber: '',
+    description: '',
+  };
+
   const [search, setSearch] = useState('');
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
+  const [editingPlace, setEditingPlace] = useState<Place | null>(null);
+  const [placeForm, setPlaceForm] = useState<AdminPlacePayload>(emptyPlaceForm);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadPlaces() {
+      setIsLoading(true);
+      try {
+        const realPlaces = await fetchPlaces();
+        if (active) {
+          setPlaces(realPlaces);
+          setApiError(null);
+        }
+      } catch (error) {
+        if (isAuthRejected(error)) {
+          redirectToLogin();
+          return;
+        }
+
+        console.error('Failed to load places:', error);
+        if (active) {
+          setPlaces([]);
+          setApiError('Không thể tải places từ API. Kiểm tra VITE_API_URL, deploy backend, hoặc quyền Admins.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadPlaces();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredPlaces = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return mockPlaces.filter((place) => query === '' || [place.name, place.address, place.description].join(' ').toLowerCase().includes(query));
-  }, [search]);
+    return places.filter((place) => query === '' || [place.name, place.address, place.description, place.category || ''].join(' ').toLowerCase().includes(query));
+  }, [places, search]);
 
-  const totalReviews = mockPlaces.reduce((sum, place) => sum + place.reviews, 0);
-  const avgRating = (mockPlaces.reduce((sum, place) => sum + place.rating, 0) / mockPlaces.length).toFixed(1);
+  const totalReviews = places.reduce((sum, place) => sum + place.reviews, 0);
+  const avgRating = places.length === 0 ? '0.0' : (places.reduce((sum, place) => sum + place.rating, 0) / places.length).toFixed(1);
+
+  const openPlaceForm = (place?: Place) => {
+    if (place) {
+      setIsPlaceModalOpen(true);
+      setEditingPlace(place);
+      setPlaceForm({
+        name: place.name,
+        category: place.category || 'other',
+        address: place.address,
+        coordinates: place.coordinates || emptyPlaceForm.coordinates,
+        visibility: place.visibility || 'PUBLIC',
+        status: place.status || 'APPROVED',
+        openTime: place.openTime || '',
+        closeTime: place.closeTime || '',
+        priceMin: place.priceMin ?? null,
+        priceMax: place.priceMax ?? null,
+        phoneNumber: place.phone,
+        description: place.description,
+      });
+      return;
+    }
+
+    setEditingPlace(null);
+    setPlaceForm(emptyPlaceForm);
+    setIsPlaceModalOpen(true);
+  };
+
+  const closePlaceForm = () => {
+    setIsPlaceModalOpen(false);
+    setEditingPlace(null);
+    setPlaceForm(emptyPlaceForm);
+  };
+
+  const handleSavePlace = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSaving(true);
+    try {
+      if (editingPlace) {
+        const updated = await updatePlace(editingPlace.id, placeForm);
+        setPlaces((current) => current.map((place) => place.id === updated.id ? updated : place));
+      } else {
+        const created = await createPlace(placeForm);
+        setPlaces((current) => [created, ...current]);
+      }
+      closePlaceForm();
+    } catch (error) {
+      if (isAuthRejected(error)) {
+        redirectToLogin();
+        return;
+      }
+      console.error('Failed to save place:', error);
+      setApiError('Không thể lưu place qua API.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePlace = async (placeId: string) => {
+    setIsSaving(true);
+    try {
+      await deletePlace(placeId);
+      setPlaces((current) => current.filter((place) => place.id !== placeId));
+    } catch (error) {
+      if (isAuthRejected(error)) {
+        redirectToLogin();
+        return;
+      }
+      console.error('Failed to delete place:', error);
+      setApiError('Không thể xóa place qua API.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="page-stack">
-      <PageHeader title="Places" subtitle="Manage all restaurant and venue listings" action={<button className="primary-btn" type="button">Add Place</button>} />
+      <PageHeader title="Places" subtitle="Manage approved restaurant and venue listings" action={<button className="primary-btn" type="button" onClick={() => openPlaceForm()}>Add Place</button>} />
       <section className="stats-grid stats-grid-3">
-        <StatCard label="Total Places" value={mockPlaces.length} />
+        <StatCard label="Total Places" value={places.length} />
         <StatCard label="Total Reviews" value={totalReviews} />
         <StatCard label="Avg Rating" value={`${avgRating}/5`} tone="success" />
       </section>
+
+      {apiError && (
+        <div className="offline-banner">
+          <span>⚠️</span>
+          <span>{apiError}</span>
+        </div>
+      )}
 
       <section className="card toolbar-card">
         <SearchField value={search} onChange={setSearch} placeholder="Search places by name, address, or description..." />
       </section>
 
-      <section className="cards-grid">
-        {filteredPlaces.map((place) => (
-          <article key={place.id} className="card place-card">
-            <div className="place-card-head">
-              <div>
-                <h2>{place.name}</h2>
-                <div className="rating-row">{renderStars(place.rating)} <span>{place.rating.toFixed(1)}/5</span></div>
+      <Skeleton name="places-grid" loading={isLoading} fallback={<UserSkeletonList />}>
+        <section className="cards-grid">
+          {filteredPlaces.map((place) => (
+            <article key={place.id} className="card place-card">
+              <div className="place-card-head">
+                <div>
+                  <h2>{place.name}</h2>
+                  <div className="rating-row">{renderStars(place.rating)} <span>{place.rating.toFixed(1)}/5</span></div>
+                </div>
+                <div className="card-actions-inline">
+                  <button type="button" className="icon-btn" onClick={() => openPlaceForm(place)}>✏️</button>
+                  <button type="button" className="icon-btn" onClick={() => handleDeletePlace(place.id)} disabled={isSaving}>🗑️</button>
+                </div>
               </div>
-              <div className="card-actions-inline">
-                <button type="button" className="icon-btn">✏️</button>
-                <button type="button" className="icon-btn">🗑️</button>
+              <div className="place-info-row">📍 {place.address || 'No address'}</div>
+              <p>{place.description || 'No description yet.'}</p>
+              <div className="place-footer">
+                <div className="mini-meta">💬 {place.reviews} reviews</div>
+                <div className="pill-list">
+                  <span className="amenity-pill">{place.category || 'other'}</span>
+                  {place.status ? <span className="amenity-pill">{place.status.toLowerCase()}</span> : null}
+                </div>
               </div>
+            </article>
+          ))}
+        </section>
+      </Skeleton>
+
+      {isPlaceModalOpen && (
+        <div className="modal-overlay" onClick={() => (isSaving ? null : closePlaceForm())}>
+          <div className="modal-container" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{editingPlace ? 'Edit Place' : 'Add Place'}</h2>
+              <button type="button" className="modal-close-btn" onClick={closePlaceForm} disabled={isSaving}>
+                ✕
+              </button>
             </div>
-            <div className="place-info-row">📍 {place.address}</div>
-            <p>{place.description}</p>
-            <div className="place-footer">
-              <div className="mini-meta">💬 {place.reviews} reviews</div>
-              <div className="pill-list">
-                {place.amenities.slice(0, 3).map((amenity) => (
-                  <span key={amenity} className="amenity-pill">
-                    {amenity}
-                  </span>
-                ))}
+            <form onSubmit={handleSavePlace}>
+              <div className="form-stack">
+                <label className="field">
+                  <span className="field-label">Name</span>
+                  <input className="control-input" required value={placeForm.name} onChange={(event) => setPlaceForm({ ...placeForm, name: event.target.value })} />
+                </label>
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Category</span>
+                    <select className="control-input" value={placeForm.category} onChange={(event) => setPlaceForm({ ...placeForm, category: event.target.value })}>
+                      <option value="cafe">Cafe</option>
+                      <option value="restaurant">Restaurant</option>
+                      <option value="hotel">Hotel</option>
+                      <option value="tourist_attraction">Tourist attraction</option>
+                      <option value="office">Office</option>
+                      <option value="shopping">Shopping</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Visibility</span>
+                    <select className="control-input" value={placeForm.visibility} onChange={(event) => setPlaceForm({ ...placeForm, visibility: event.target.value as AdminPlacePayload['visibility'] })}>
+                      <option value="PUBLIC">Public</option>
+                      <option value="FRIENDS">Friends</option>
+                      <option value="PRIVATE">Private</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="field">
+                  <span className="field-label">Address</span>
+                  <input className="control-input" value={placeForm.address} onChange={(event) => setPlaceForm({ ...placeForm, address: event.target.value })} />
+                </label>
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Latitude</span>
+                    <input className="control-input" type="number" step="any" required value={placeForm.coordinates.lat} onChange={(event) => setPlaceForm({ ...placeForm, coordinates: { ...placeForm.coordinates, lat: Number(event.target.value) } })} />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Longitude</span>
+                    <input className="control-input" type="number" step="any" required value={placeForm.coordinates.lng} onChange={(event) => setPlaceForm({ ...placeForm, coordinates: { ...placeForm.coordinates, lng: Number(event.target.value) } })} />
+                  </label>
+                </div>
+                <div className="form-row">
+                  <label className="field">
+                    <span className="field-label">Open</span>
+                    <input className="control-input" type="time" value={placeForm.openTime} onChange={(event) => setPlaceForm({ ...placeForm, openTime: event.target.value })} />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Close</span>
+                    <input className="control-input" type="time" value={placeForm.closeTime} onChange={(event) => setPlaceForm({ ...placeForm, closeTime: event.target.value })} />
+                  </label>
+                </div>
+                <label className="field">
+                  <span className="field-label">Phone</span>
+                  <input className="control-input" value={placeForm.phoneNumber} onChange={(event) => setPlaceForm({ ...placeForm, phoneNumber: event.target.value })} />
+                </label>
+                <label className="field">
+                  <span className="field-label">Description</span>
+                  <textarea className="control-input" rows={4} value={placeForm.description} onChange={(event) => setPlaceForm({ ...placeForm, description: event.target.value })} />
+                </label>
               </div>
-            </div>
-          </article>
-        ))}
-      </section>
+              <div className="form-actions">
+                <button type="button" className="secondary-btn" onClick={closePlaceForm} disabled={isSaving}>
+                  Cancel
+                </button>
+                <button type="submit" className="primary-btn" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save Place'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -972,23 +1369,9 @@ export function ReviewsPage() {
   const [filterRating, setFilterRating] = useState<'all' | '5' | '4' | '3' | '2' | '1'>('all');
 
   const reviews = useMemo(() => {
-    return mockModerationRequests
-      .filter((request) => request.posterReview && request.type === 'review')
-      .map((request) => ({
-        id: request.id,
-        placeName: request.placeDetails.name,
-        author: request.submittedBy,
-        rating: request.posterReview?.rating ?? 0,
-        content: request.posterReview?.text ?? '',
-        date: request.submittedAt,
-      }))
-      .filter((review) => {
-        const query = search.trim().toLowerCase();
-        const matchesSearch =
-          query === '' || [review.placeName, review.author, review.content].join(' ').toLowerCase().includes(query);
-        const matchesRating = filterRating === 'all' || review.rating === Number(filterRating);
-        return matchesSearch && matchesRating;
-      });
+    void search;
+    void filterRating;
+    return [] as Array<{ id: string; placeName: string; author: string; rating: number; content: string; date: string }>;
   }, [filterRating, search]);
 
   const avgRating = reviews.length === 0 ? 0 : reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
@@ -1018,7 +1401,7 @@ export function ReviewsPage() {
       </section>
 
       <ListPanel title="Reviews" subtitle={`${reviews.length} reviews`}>
-        <div className="list-stack">
+        {reviews.length === 0 ? <EmptyState message="Chưa có API reviews cho admin." /> : <div className="list-stack">
           {reviews.map((review) => (
             <article key={review.id} className="review-card">
               <div className="review-head">
@@ -1036,7 +1419,7 @@ export function ReviewsPage() {
               <p>{review.content}</p>
             </article>
           ))}
-        </div>
+        </div>}
       </ListPanel>
     </div>
   );
@@ -1048,46 +1431,24 @@ export function AnalyticsPage() {
       <PageHeader title="Analytics" subtitle="Performance charts and operational trends" action={<button className="secondary-btn" type="button">Export</button>} />
 
       <section className="stats-grid stats-grid-4">
-        {reportMetrics.map((metric) => (
-          <StatCard key={metric.label} label={metric.label} value={metric.value} delta={metric.trend} tone={metric.tone === 'danger' ? 'danger' : metric.tone === 'warning' ? 'warning' : 'success'} />
-        ))}
+        <StatCard label="Total Reported Content" value="-" />
+        <StatCard label="Spam Reports" value="-" />
+        <StatCard label="Inappropriate Content" value="-" />
+        <StatCard label="Resolved" value="-" />
       </section>
 
       <section className="dashboard-grid">
         <ListPanel title="User Engagement" subtitle="Weekly activity overview">
-          <ChartBars data={userEngagementData} valueKey="visits" max={400} />
+          <EmptyState message="Chưa có API analytics cho admin." />
         </ListPanel>
 
         <ListPanel title="New Signups" subtitle="Weekly registration trend">
-          <ChartBars data={userEngagementData} valueKey="signups" max={60} />
+          <EmptyState message="Chưa có API signup analytics cho admin." />
         </ListPanel>
       </section>
 
       <ListPanel title="Category Performance" subtitle="Restaurant category breakdown">
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Places</th>
-                <th>Views</th>
-                <th>Avg Rating</th>
-                <th>Growth</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categoryPerformance.map((category) => (
-                <tr key={category.category}>
-                  <td>{category.category}</td>
-                  <td>{category.places}</td>
-                  <td>{category.views.toLocaleString()}</td>
-                  <td>{category.avgRating.toFixed(1)} ⭐</td>
-                  <td className="text-positive">+12%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EmptyState message="Chưa có API category performance cho admin." />
       </ListPanel>
     </div>
   );
@@ -1098,21 +1459,18 @@ export function ActivityPage() {
   const [filterType, setFilterType] = useState<'all' | string>('all');
 
   const logs = useMemo(() => {
-    return activityLogs.filter((log) => {
-      const query = search.trim().toLowerCase();
-      const matchesSearch = query === '' || [log.user, log.action, log.target].join(' ').toLowerCase().includes(query);
-      const matchesType = filterType === 'all' || log.type === filterType;
-      return matchesSearch && matchesType;
-    });
+    void search;
+    void filterType;
+    return [] as Array<{ id: number; user: string; action: string; target: string; timestamp: string; icon: string }>;
   }, [filterType, search]);
 
   return (
     <div className="page-stack">
       <PageHeader title="Activity Logs" subtitle="Track all user and system activities on the platform." />
       <section className="stats-grid stats-grid-3">
-        <StatCard label="Total Activities" value="2,847" />
-        <StatCard label="Today" value="284" tone="success" />
-        <StatCard label="This Week" value="1,842" tone="success" />
+        <StatCard label="Total Activities" value="-" />
+        <StatCard label="Today" value="-" />
+        <StatCard label="This Week" value="-" />
       </section>
 
       <section className="card toolbar-card">
@@ -1133,7 +1491,7 @@ export function ActivityPage() {
       </section>
 
       <ListPanel title="Recent Activities" subtitle={`${logs.length} activities`}>
-        <div className="list-stack">
+        {logs.length === 0 ? <EmptyState message="Chưa có API activity logs cho admin." /> : <div className="list-stack">
           {logs.map((log) => (
             <article key={log.id} className="activity-log">
               <span className="activity-icon activity-icon-square">{log.icon}</span>
@@ -1144,7 +1502,7 @@ export function ActivityPage() {
               <time>{log.timestamp}</time>
             </article>
           ))}
-        </div>
+        </div>}
       </ListPanel>
     </div>
   );
@@ -1169,35 +1527,23 @@ export function ReportsPage() {
       </section>
 
       <section className="stats-grid stats-grid-4">
-        {reportMetrics.map((metric) => (
-          <StatCard key={metric.label} label={metric.label} value={metric.value} delta={metric.trend} tone={metric.tone === 'danger' ? 'danger' : metric.tone === 'warning' ? 'warning' : 'success'} />
-        ))}
+        <StatCard label="Total Reported Content" value="-" />
+        <StatCard label="Spam Reports" value="-" />
+        <StatCard label="Inappropriate Content" value="-" />
+        <StatCard label="Resolved" value="-" />
       </section>
 
       <section className="dashboard-grid">
         <ListPanel title="User Engagement" subtitle="Weekly activity overview">
-          <ChartBars data={userEngagementData} valueKey="visits" max={400} />
+          <EmptyState message="Chưa có API reports cho admin." />
         </ListPanel>
         <ListPanel title="Signups Trend" subtitle="Weekly registration trend">
-          <ChartBars data={userEngagementData} valueKey="signups" max={60} />
+          <EmptyState message="Chưa có API signup reports cho admin." />
         </ListPanel>
       </section>
 
       <ListPanel title="Key Insights" subtitle="What the team should focus on next">
-        <div className="insights-grid">
-          <div>
-            <strong>Highest Engagement</strong>
-            <p>Vietnamese restaurants have the highest user engagement with 12.4K views.</p>
-          </div>
-          <div>
-            <strong>User Growth</strong>
-            <p>Weekly signups increased by 8%, with peak on Saturday.</p>
-          </div>
-          <div>
-            <strong>Moderation Priority</strong>
-            <p>75% report resolution rate is good, but aim for 90% within 24 hours.</p>
-          </div>
-        </div>
+        <EmptyState message="Chưa có API insights cho admin." />
       </ListPanel>
     </div>
   );
@@ -1207,17 +1553,17 @@ export function ContentPage() {
   const [search, setSearch] = useState('');
 
   const items = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return contentItems.filter((item) => query === '' || [item.title, item.type, item.category, item.status, String(item.views), item.createdAt].join(' ').toLowerCase().includes(query));
+    void search;
+    return [] as Array<{ id: string; title: string; type: string; category: string; status: 'draft' | 'published' | 'needs review'; views: number; createdAt: string }>;
   }, [search]);
 
   return (
     <div className="page-stack">
       <PageHeader title="Content" subtitle="Manage featured pages, copy, and content blocks" />
       <section className="stats-grid stats-grid-3">
-        <StatCard label="Total Content" value={contentItems.length} />
-        <StatCard label="Published" value={contentItems.filter((item) => item.status === 'published').length} tone="success" />
-        <StatCard label="Needs Review" value={contentItems.filter((item) => item.status === 'needs review').length} tone="warning" />
+        <StatCard label="Total Content" value="-" />
+        <StatCard label="Published" value="-" />
+        <StatCard label="Needs Review" value="-" />
       </section>
 
       <section className="card toolbar-card">
@@ -1225,6 +1571,7 @@ export function ContentPage() {
       </section>
 
       <ListPanel title="Content Items" subtitle={`${items.length} entries`}>
+        {items.length === 0 ? <EmptyState message="Chưa có API content cho admin." /> : (
         <div className="table-scroll content-table-shell">
           <div className="content-table">
             <div className="content-table-head">
@@ -1258,30 +1605,15 @@ export function ContentPage() {
           ))}
           </div>
         </div>
+        )}
       </ListPanel>
     </div>
   );
 }
 
 export function PaymentsPage() {
-  const totals = paymentRows.reduce(
-    (accumulator, row) => {
-      if (row.status === 'paid') {
-        accumulator.paid += 1;
-      }
-
-      if (row.status === 'pending') {
-        accumulator.pending += 1;
-      }
-
-      if (row.status === 'failed') {
-        accumulator.failed += 1;
-      }
-
-      return accumulator;
-    },
-    { paid: 0, pending: 0, failed: 0 },
-  );
+  const paymentRows: Array<{ id: string; customer: string; plan: string; amount: string; status: 'paid' | 'pending' | 'failed'; date: string }> = [];
+  const totals = { paid: 0, pending: 0, failed: 0 };
 
   return (
     <div className="page-stack">
@@ -1293,6 +1625,7 @@ export function PaymentsPage() {
       </section>
 
       <ListPanel title="Transactions" subtitle="Latest billing activity">
+        {paymentRows.length === 0 ? <EmptyState message="Chưa có API payments cho admin." /> : (
         <div className="table-scroll">
           <table className="data-table">
             <thead>
@@ -1317,18 +1650,21 @@ export function PaymentsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </ListPanel>
     </div>
   );
 }
 
 export function SettingsPage() {
+  const settingsSections: Array<{ title: string; items: string[] }> = [];
+
   return (
     <div className="page-stack">
       <PageHeader title="Settings" subtitle="Configure the admin dashboard and moderation workflow" />
 
       <div className="settings-grid">
-        {settingsSections.map((section) => (
+        {settingsSections.length === 0 ? <EmptyState message="Chưa có API settings cho admin." /> : settingsSections.map((section) => (
           <section key={section.title} className="card settings-card">
             <h2 className="panel-title">{section.title}</h2>
             <div className="settings-list">
