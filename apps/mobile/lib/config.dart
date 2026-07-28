@@ -41,6 +41,9 @@ class Config {
   static const String _goongApiKeyDefine = String.fromEnvironment(
     'GOONG_API_KEY',
   );
+  static const String _googleWebClientIdDefine = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+  );
   static const String _revenueCatIosApiKeyDefine = String.fromEnvironment(
     'REVENUECAT_IOS_API_KEY',
   );
@@ -62,6 +65,10 @@ class Config {
       _goongStyleUrlDefine,
       defaultValue: _defaultGoongStyleUrl,
     );
+  }
+
+  static String get googleWebClientId {
+    return _envOrDefine('GOOGLE_WEB_CLIENT_ID', _googleWebClientIdDefine);
   }
 
   static String get revenueCatIosApiKey {

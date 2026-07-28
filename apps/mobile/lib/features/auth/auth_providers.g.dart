@@ -24,11 +24,11 @@ final authServiceProvider = Provider<AuthService>.internal(
 // ignore: unused_element
 typedef AuthServiceRef = ProviderRef<AuthService>;
 String _$locationControllerHash() =>
-    r'dac7b58e7cf75655a05ae3ed41b46c0c7f124022';
+    r'ce8d81643511b30466d981a19dbd315d17cf38c8';
 
 /// Khởi động LocationService song song với AuthController ngay từ lúc app start.
 /// keepAlive = true → không bị dispose, HomeScreen nhận instance đã sẵn sàng,
-/// không cần chạy _initLocation() lại → loại bỏ hoàn toàn spinner trắng.
+/// nhưng chỉ kiểm tra trạng thái quyền; prompt chỉ hiện sau khi user bấm Cho phép.
 ///
 /// Copied from [locationController].
 @ProviderFor(locationController)
@@ -45,7 +45,7 @@ final locationControllerProvider = FutureProvider<LocationService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LocationControllerRef = FutureProviderRef<LocationService>;
-String _$authControllerHash() => r'1d0c20e521f4b4385f0eb80689abab307cfe0e04';
+String _$authControllerHash() => r'111b896c8be5cae0646e61a5824b5ba7ee25dae9';
 
 /// See also [AuthController].
 @ProviderFor(AuthController)

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 import '../config.dart';
 import '../features/auth/auth_providers.dart';
@@ -16,9 +17,16 @@ import '../services/auth_service.dart';
 import 'edit_profile_sheet.dart';
 import 'friends_detail_screen.dart';
 import 'journey_screen.dart';
+import 'premium_upgrade_sheet.dart';
+
+Future<void> presentRevenueCatCustomerCenter() {
+  return RevenueCatUI.presentCustomerCenter();
+}
 
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({super.key});
+  final Future<void> Function()? presentCustomerCenter;
+
+  const ProfileScreen({super.key, this.presentCustomerCenter});
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
@@ -130,6 +138,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) {
         setState(() => _isUploading = false);
       }
+    }
+  }
+
+  Future<void> _handlePlanAction(bool isPro) async {
+    if (!isPro) {
+      await showPremiumUpgradeSheet(context);
+      return;
+    }
+
+    try {
+      await (widget.presentCustomerCenter ?? presentRevenueCatCustomerCenter)();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không mở được trang quản lý gói. Vui lòng thử lại.'),
+        ),
+      );
     }
   }
 
@@ -262,7 +288,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         : fullNameList.join(' ');
     final preferredUsername = authState?.preferredUsername ?? 'user';
     final bio = authState?.bio?.trim() ?? '';
-    final tier = authState?.tier == UserTier.pro ? 'Cao cấp' : 'Miễn phí';
+    final isPro = authState?.tier == UserTier.pro;
+    final tier = isPro ? 'FIDEY Pro' : 'Miễn phí';
     final since = authState?.since ?? '2026';
     final avatarUrl = authState?.avatarUrl;
     final initials = _getInitials(firstName, lastName);
@@ -455,7 +482,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 6),
+                          TextButton(
+                            onPressed: () => _handlePlanAction(isPro),
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFFEF4050),
+                              minimumSize: const Size(0, 30),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              textStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                            ),
+                            child: Text(isPro ? 'Quản lý gói' : 'Nâng cấp Pro'),
+                          ),
+                          const SizedBox(height: 6),
                           Text(
                             '@$preferredUsername · TỪ $since',
                             style: const TextStyle(

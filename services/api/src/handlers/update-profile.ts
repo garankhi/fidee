@@ -5,6 +5,7 @@ import {
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { query } from '../db/client';
 import { extractAuth } from '../middleware/auth';
+import { getUserPlan, type UserPlan } from '../repositories/user-profiles';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 const USERNAME_PATTERN = /^[a-z0-9._]{3,30}$/;
@@ -123,7 +124,7 @@ function readOptionalAvatarUrl(body: UpdateProfileBody): string | null {
   return avatarUrl;
 }
 
-function toProfileResponse(row: ProfileRow): Record<string, unknown> {
+function toProfileResponse(row: ProfileRow, plan: UserPlan): Record<string, unknown> {
   const createdAt =
     row.created_at instanceof Date
       ? row.created_at.toISOString()
@@ -137,7 +138,7 @@ function toProfileResponse(row: ProfileRow): Record<string, unknown> {
     username: row.username,
     avatarUrl: row.avatar_url,
     bio: row.bio,
-    plan: row.plan,
+    plan,
     createdAt,
   };
 }
@@ -260,10 +261,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return jsonResponse(409, { error: 'Username already taken', code: 'USERNAME_TAKEN' });
     }
 
+    const userProfilesTable = process.env.USER_PROFILES_TABLE;
+    if (!userProfilesTable) {
+      throw new Error('USER_PROFILES_TABLE is required');
+    }
+    const plan = await getUserPlan(auth.sub, userProfilesTable);
+
     await mirrorCognitoProfile(auth.username ?? auth.sub, firstName, lastName, username, avatarUrl);
 
     return jsonResponse(200, {
-      profile: toProfileResponse(updateResult.rows[0]),
+      profile: toProfileResponse(updateResult.rows[0], plan),
     });
   } catch (error) {
     if (error instanceof ValidationError) {

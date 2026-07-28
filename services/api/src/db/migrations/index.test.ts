@@ -22,4 +22,32 @@ describe('database migrations', () => {
     expect(migration).toContain('display_name');
     expect(migration).not.toContain('SET display_name =');
   });
+
+  it('hardens RevenueCat reconciliation and webhook idempotency', () => {
+    const migration = migrations['022_harden_revenuecat_reconciliation'];
+
+    expect(migration).toBeDefined();
+    expect(migration).toContain(
+      "ADD COLUMN IF NOT EXISTS revenuecat_aliases TEXT[] NOT NULL DEFAULT '{}'",
+    );
+    expect(migration).toContain(
+      "ADD COLUMN IF NOT EXISTS candidate_app_user_ids TEXT[] NOT NULL DEFAULT '{}'",
+    );
+    expect(migration).toContain(
+      "ADD COLUMN IF NOT EXISTS resolved_user_ids TEXT[] NOT NULL DEFAULT '{}'",
+    );
+    expect(migration).not.toContain('resolved_user_id TEXT REFERENCES');
+    expect(migration).toContain(
+      "ADD COLUMN IF NOT EXISTS processing_state TEXT NOT NULL DEFAULT 'pending'",
+    );
+    expect(migration).toContain(
+      'ADD COLUMN IF NOT EXISTS retention_expires_at TIMESTAMPTZ',
+    );
+    expect(migration).toContain(
+      "CHECK (processing_state IN ('pending_identity', 'pending', 'processed'))",
+    );
+    expect(migration).toContain(
+      'ON revenuecat_webhook_events USING GIN (candidate_app_user_ids)',
+    );
+  });
 });

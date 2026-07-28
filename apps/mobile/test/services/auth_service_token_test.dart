@@ -81,6 +81,24 @@ void main() {
       expect(service.tier, UserTier.free);
     });
 
+    test(
+      'failed profile fetch preserves the last confirmed Pro tier',
+      () async {
+        final service = AuthService(isTestMode: true);
+        await service.applyProfileDetailsForTesting(<String, dynamic>{
+          'displayName': 'Alice Nguyen',
+          'username': 'alice',
+          'plan': 'PRO',
+        });
+
+        final dynamic dynamicService = service;
+        final fetchSucceeded = await dynamicService.fetchProfileDetails();
+
+        expect(fetchSucceeded, isFalse);
+        expect(service.tier, UserTier.pro);
+      },
+    );
+
     test('a null refreshed avatar does not erase a known avatar', () async {
       final service = AuthService(isTestMode: true);
 

@@ -1,5 +1,5 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
-import { Pool, QueryResult } from 'pg';
+import { Pool, QueryResult, type PoolClient } from 'pg';
 
 /**
  * PostgreSQL connection utility for Lambda functions.
@@ -65,6 +65,66 @@ export async function query<T extends Record<string, unknown> = Record<string, u
 ): Promise<QueryResult<T>> {
   const p = await getPool();
   return p.query<T>(sql, params);
+}
+
+/** Run multiple queries atomically on one checked-out connection. */
+export async function withTransaction<T>(
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const currentPool = await getPool();
+  const client = await currentPool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function withUserReconciliationLock<T>(
+  userId: string,
+  work: (client: PoolClient) => Promise<T>,
+  connect: () => Promise<PoolClient> = async () => {
+    const currentPool = await getPool();
+    return currentPool.connect();
+  },
+): Promise<T> {
+  const client = await connect();
+  let lockAcquired = false;
+
+  try {
+    await client.query(
+      'SELECT pg_advisory_lock(hashtextextended($1, 0))',
+      [userId],
+    );
+    lockAcquired = true;
+    return await work(client);
+  } finally {
+    let unlockFailed = false;
+    try {
+      if (lockAcquired) {
+        await client.query(
+          'SELECT pg_advisory_unlock(hashtextextended($1, 0))',
+          [userId],
+        );
+      }
+    } catch (error) {
+      unlockFailed = true;
+      throw error;
+    } finally {
+      if (unlockFailed) {
+        client.release(true);
+      } else {
+        client.release();
+      }
+    }
+  }
 }
 
 /** Close the pool (call at end of Lambda handler if needed). */

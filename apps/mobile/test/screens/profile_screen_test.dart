@@ -22,6 +22,20 @@ class _HydratedAuthController extends AuthController {
   }
 }
 
+class _FreeAuthController extends AuthController {
+  @override
+  Future<AuthUiState> build() async {
+    return const AuthUiState(
+      authState: AuthState.authenticated,
+      tier: UserTier.free,
+      firstName: 'Nguyen',
+      lastName: 'Minh',
+      preferredUsername: 'minh.nguyen',
+      since: '2026',
+    );
+  }
+}
+
 class _EmptyFriendsController extends FriendsController {
   @override
   FriendsState build() => const FriendsState();
@@ -64,10 +78,50 @@ void main() {
     await tester.pump();
 
     expect(find.text('Nguyen Minh'), findsOneWidget);
-    expect(find.text('Premium'), findsOneWidget);
-    expect(find.text('@minh.nguyen · SINCE 2026'), findsOneWidget);
+    expect(find.text('FIDEY Pro'), findsOneWidget);
+    expect(find.text('Quản lý gói'), findsOneWidget);
+    expect(find.text('@minh.nguyen · TỪ 2026'), findsOneWidget);
     expect(find.text('Fidey User'), findsNothing);
     expect(find.text('@user · SINCE 2026'), findsNothing);
+  });
+
+  testWidgets('free profile shows the shared upgrade action', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_FreeAuthController.new),
+          friendsControllerProvider.overrideWith(_EmptyFriendsController.new),
+        ],
+        child: const MaterialApp(home: ProfileScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Miễn phí'), findsOneWidget);
+    expect(find.text('Nâng cấp Pro'), findsOneWidget);
+    expect(find.byIcon(Icons.edit), findsOneWidget);
+  });
+
+  testWidgets('pro profile opens Customer Center from plan action', (
+    tester,
+  ) async {
+    var opened = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_HydratedAuthController.new),
+          friendsControllerProvider.overrideWith(_EmptyFriendsController.new),
+        ],
+        child: MaterialApp(
+          home: ProfileScreen(presentCustomerCenter: () async => opened = true),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Quản lý gói'));
+    await tester.pump();
+    expect(opened, isTrue);
   });
 
   testWidgets('shows pending friend request banner on profile', (tester) async {
@@ -105,13 +159,13 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('Friends (1)'), findsOneWidget);
+    expect(find.text('Bạn bè (1)'), findsOneWidget);
     expect(find.text('Tran An'), findsOneWidget);
 
     friendsController.setStateForTesting(const FriendsState(friends: []));
     await tester.pump();
 
-    expect(find.text('Friends (0)'), findsOneWidget);
+    expect(find.text('Bạn bè (0)'), findsOneWidget);
     expect(find.text('Tran An'), findsNothing);
     expect(find.text('Chưa có bạn bè. Hãy kết nối thêm!'), findsOneWidget);
   });

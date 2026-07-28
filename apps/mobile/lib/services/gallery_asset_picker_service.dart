@@ -44,7 +44,7 @@ class GalleryAssetPickerItem {
 
 String galleryAssetSourceForMediaType(GalleryAssetMediaType mediaType) {
   return switch (mediaType) {
-    GalleryAssetMediaType.image => 'IN_APP_CAMERA',
+    GalleryAssetMediaType.image => 'EXIF_GALLERY',
     GalleryAssetMediaType.video => 'EXIF_GALLERY_VIDEO',
   };
 }
@@ -100,7 +100,10 @@ class GalleryAssetPickerService {
       final status = await permissionService.currentStatus();
       if (!status.hasAccess) return const <GalleryAssetPickerItem>[];
 
-      return _loadRecentImageItems(limit);
+      final assets = await _loadAssets(limit);
+      return assets
+          .where((asset) => asset.mediaType == GalleryAssetMediaType.image)
+          .toList(growable: false);
     } catch (error, stackTrace) {
       debugPrint('Gallery image picker load failed: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -108,9 +111,7 @@ class GalleryAssetPickerService {
     }
   }
 
-  Future<List<GalleryAssetPickerItem>> loadRecentMedia({
-    int limit = 60,
-  }) async {
+  Future<List<GalleryAssetPickerItem>> loadRecentMedia({int limit = 60}) async {
     if (limit <= 0) return const <GalleryAssetPickerItem>[];
 
     try {
@@ -169,48 +170,6 @@ class GalleryAssetPickerService {
               ? asset.duration * 1000
               : null,
           gpsCoordinates: gpsCoordinates,
-          loadPath: () async => (await asset.originFile)?.path,
-        ),
-      );
-    }
-
-    return items;
-  }
-
-  static Future<List<GalleryAssetPickerItem>> _loadRecentImageItems(
-    int limit,
-  ) async {
-    final recentImageFilter = FilterOptionGroup(
-      orders: const [OrderOption(type: OrderOptionType.createDate, asc: false)],
-    );
-
-    final paths = await PhotoManager.getAssetPathList(
-      onlyAll: true,
-      type: RequestType.image,
-      filterOption: recentImageFilter,
-    );
-    if (paths.isEmpty) return const <GalleryAssetPickerItem>[];
-
-    final assets = await paths.first.getAssetListRange(start: 0, end: limit);
-    if (assets.isEmpty) return const <GalleryAssetPickerItem>[];
-
-    final items = <GalleryAssetPickerItem>[];
-    for (final asset in assets) {
-      if (asset.type != AssetType.image) continue;
-
-      final thumbnail = await asset.thumbnailDataWithSize(
-        const ThumbnailSize.square(220),
-        quality: 85,
-      );
-      if (thumbnail == null) continue;
-
-      items.add(
-        GalleryAssetPickerItem(
-          id: asset.id,
-          title: asset.title,
-          thumbnail: thumbnail,
-          mediaType: GalleryAssetMediaType.image,
-          gpsCoordinates: await _gpsForAsset(asset),
           loadPath: () async => (await asset.originFile)?.path,
         ),
       );

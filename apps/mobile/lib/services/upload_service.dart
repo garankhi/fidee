@@ -9,6 +9,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const int maxVideoUploadBytes = 20 * 1024 * 1024;
 
+enum UploadExceptionCode { planRequired, unauthorized, invalid, network, other }
+
+UploadException uploadExceptionForHttpResponse(int? status, Object? data) {
+  final response = data is Map ? data : const <String, dynamic>{};
+  if (status == 403 && response['code'] == 'PRO_PLAN_REQUIRED') {
+    return const UploadException(
+      'Không đồng bộ được gói Pro. Vui lòng thử lại.',
+      code: UploadExceptionCode.planRequired,
+    );
+  }
+  if (status == 401) {
+    return const UploadException(
+      'Phiên đăng nhập đã hết hạn',
+      code: UploadExceptionCode.unauthorized,
+    );
+  }
+  if (status == 400) {
+    return const UploadException(
+      'Dữ liệu không hợp lệ',
+      code: UploadExceptionCode.invalid,
+    );
+  }
+  if (status == 403) {
+    return const UploadException('Tài khoản không có quyền upload');
+  }
+  return UploadException('Lỗi server: HTTP $status');
+}
+
 String detectUploadContentType(String path) {
   final ext = path.split('.').last.toLowerCase();
   return switch (ext) {
@@ -117,9 +145,13 @@ class UploadService {
     }
 
     final stat = await file.stat();
-    final contentType = contentTypeOverride ?? detectUploadContentType(imagePath);
-    if (isVideoUploadTooLarge(contentType: contentType, byteLength: stat.size)) {
-      throw UploadException('Video phải nhỏ hơn 20MB');
+    final contentType =
+        contentTypeOverride ?? detectUploadContentType(imagePath);
+    if (isVideoUploadTooLarge(
+      contentType: contentType,
+      byteLength: stat.size,
+    )) {
+      throw const UploadException('Video phải nhỏ hơn 20MB');
     }
 
     final presigned = await _getPresignedUrl(
@@ -148,7 +180,7 @@ class UploadService {
 
     if (token == null) {
       debugPrint('DEBUG [UploadService]: auth token is null');
-      throw UploadException('Phiên đăng nhập đã hết hạn');
+      throw const UploadException('Phiên đăng nhập đã hết hạn');
     }
 
     try {
@@ -230,27 +262,25 @@ class UploadService {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        throw UploadException('Kết nối quá chậm, vui lòng thử lại');
+        throw const UploadException(
+          'Kết nối quá chậm, vui lòng thử lại',
+          code: UploadExceptionCode.network,
+        );
 
       case DioExceptionType.connectionError:
-        throw UploadException('Không có kết nối mạng');
+        throw const UploadException(
+          'Không có kết nối mạng',
+          code: UploadExceptionCode.network,
+        );
 
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
         final responseData = e.response?.data;
-        debugPrint(
-          'DEBUG [UploadService]: HTTP Bad Response Status: $status, Data: $responseData',
-        );
-        if (status == 401) throw UploadException('Phiên đăng nhập đã hết hạn');
-        if (status == 403) {
-          final errorData = e.response?.data?.toString() ?? 'Lỗi 403 ẩn';
-          throw UploadException('Tài khoản không có quyền upload: $errorData');
-        }
-        if (status == 400) throw UploadException('Dữ liệu không hợp lệ');
-        throw UploadException('Lỗi server: HTTP $status');
+        debugPrint('DEBUG [UploadService]: HTTP Bad Response Status: $status');
+        throw uploadExceptionForHttpResponse(status, responseData);
 
       default:
-        throw UploadException('Upload thất bại, vui lòng thử lại');
+        throw const UploadException('Upload thất bại, vui lòng thử lại');
     }
   }
 
@@ -301,8 +331,9 @@ class UploadService {
 
 class UploadException implements Exception {
   final String message;
+  final UploadExceptionCode code;
 
-  UploadException(this.message);
+  const UploadException(this.message, {this.code = UploadExceptionCode.other});
 
   @override
   String toString() => message;

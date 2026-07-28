@@ -8,6 +8,20 @@ void main() {
     expect(detectUploadContentType('photo.jpg'), 'image/jpeg');
   });
 
+  test('maps only machine-readable Pro denial to planRequired', () {
+    final planRequired = uploadExceptionForHttpResponse(403, <String, dynamic>{
+      'code': 'PRO_PLAN_REQUIRED',
+      'error': 'This upload requires Pro plan',
+    });
+    final genericForbidden = uploadExceptionForHttpResponse(
+      403,
+      <String, dynamic>{'error': 'Forbidden'},
+    );
+
+    expect(planRequired.code, UploadExceptionCode.planRequired);
+    expect(genericForbidden.code, UploadExceptionCode.other);
+  });
+
   test('isVideoUploadTooLarge enforces 20MB video limit only for videos', () {
     expect(
       isVideoUploadTooLarge(

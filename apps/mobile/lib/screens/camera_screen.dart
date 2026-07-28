@@ -13,10 +13,11 @@ import '../features/auth/chat_provider.dart';
 import '../features/auth/friends_provider.dart';
 import '../features/friends/widgets/friend_request_widgets.dart';
 import '../models/camera_checkin_feed_item.dart';
+import '../services/auth_service.dart';
 import '../services/camera_startup_permission_flow.dart';
 import '../services/friend_service.dart';
-import '../services/gallery_permission_service.dart';
 import '../services/gallery_asset_picker_service.dart';
+import '../services/gallery_permission_service.dart';
 import '../utils/error.dart';
 import 'camera_audience_selector.dart';
 import 'camera_bottom_section.dart';
@@ -28,6 +29,7 @@ import 'camera_viewfinder_pager.dart';
 import 'gallery_asset_picker_sheet.dart';
 import 'gallery_permission_sheet.dart';
 import 'gallery_preview_button.dart';
+import 'premium_upgrade_sheet.dart';
 import 'profile_screen.dart';
 import 'send_image_screen.dart';
 
@@ -39,6 +41,16 @@ const double _cameraZoomedLevel = 1.5;
 
 bool canRecordVideo({required bool cameraReady}) {
   return cameraReady;
+}
+
+Future<bool> runProGatedGalleryFlow({
+  required bool hasConfirmedPro,
+  required Future<bool> Function() upgrade,
+  required Future<void> Function() openPermissionAndPicker,
+}) async {
+  if (!hasConfirmedPro && !await upgrade()) return false;
+  await openPermissionAndPicker();
+  return true;
 }
 
 class CameraScreen extends ConsumerStatefulWidget {
@@ -218,8 +230,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _initCamera() async {
-    final permissionResult =
-        await CameraStartupPermissionFlow.live().resolve();
+    final permissionResult = await CameraStartupPermissionFlow.live().resolve();
 
     if (!mounted) return;
 
@@ -265,8 +276,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _openGalleryPicker() async {
-    final permissionService = const GalleryPermissionService();
+    await runProGatedGalleryFlow(
+      hasConfirmedPro: _isPro,
+      upgrade: _requirePro,
+      openPermissionAndPicker: _openGalleryAfterProGate,
+    );
+  }
+
+  Future<void> _openGalleryAfterProGate() async {
+    const permissionService = GalleryPermissionService();
     var status = await permissionService.currentStatus();
+    if (!mounted) return;
 
     if (!status.hasAccess) {
       final action = await showModalBottomSheet<GalleryPermissionAction>(
@@ -274,7 +294,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         backgroundColor: Colors.transparent,
         builder: (context) => GalleryPermissionSheet(status: status),
       );
-      if (!mounted || action == null || action == GalleryPermissionAction.deny) {
+      if (!mounted ||
+          action == null ||
+          action == GalleryPermissionAction.deny) {
         return;
       }
 
@@ -315,16 +337,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
-  // MVP publish: Pro/payment upgrade UI is hidden until subscriptions return.
-  // Future<bool> _showProFeatureDialog() async {
-  //   final upgraded = await showModalBottomSheet<bool>(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (context) => const PremiumUpgradeSheet(),
-  //   );
-  //   return upgraded == true;
-  // }
+  bool get _isPro {
+    final auth = ref.read(authControllerProvider).valueOrNull;
+    return auth?.tier == UserTier.pro;
+  }
+
+  Future<bool> _requirePro() async {
+    if (_isPro) return true;
+    return await _showProFeatureDialog() == true;
+  }
+
+  Future<bool> _showProFeatureDialog() {
+    return showPremiumUpgradeSheet(context);
+  }
 
   void _switchCamera() {
     if (_cameras == null || _cameras!.length < 2) return;
@@ -399,6 +424,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _startVideoRecording() async {
+    if (!await _requirePro()) return;
+
     final controller = _controller;
     if (!canRecordVideo(
           cameraReady: controller != null && controller.value.isInitialized,
@@ -444,10 +471,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       final video = await controller.stopVideoRecording();
       final durationMs = startedAt == null
           ? cameraVideoMaxDurationMs
-          : DateTime.now().difference(startedAt).inMilliseconds.clamp(
-              0,
-              cameraVideoMaxDurationMs,
-            );
+          : DateTime.now()
+                .difference(startedAt)
+                .inMilliseconds
+                .clamp(0, cameraVideoMaxDurationMs);
 
       if (!mounted) return;
 

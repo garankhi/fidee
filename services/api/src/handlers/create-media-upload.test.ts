@@ -80,7 +80,10 @@ describe('create-media-upload handler', () => {
     );
 
     expect(result.statusCode).toBe(403);
-    expect(JSON.parse(result.body).error).toContain('Pro');
+    expect(JSON.parse(result.body)).toEqual({
+      code: 'PRO_PLAN_REQUIRED',
+      error: 'This upload requires Pro plan',
+    });
     expect(createUploadPost).not.toHaveBeenCalled();
   });
 
@@ -166,6 +169,7 @@ describe('create-media-upload handler', () => {
     );
 
     expect(result.statusCode).toBe(403);
+    expect(JSON.parse(result.body).code).toBe('PRO_PLAN_REQUIRED');
     expect(createUploadPost).not.toHaveBeenCalled();
   });
 

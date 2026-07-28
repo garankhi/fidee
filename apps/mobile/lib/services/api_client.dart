@@ -64,10 +64,7 @@ class ApiClient {
 
   Map<String, dynamic> _decodeJsonResponse(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
-        'Request failed.',
-        statusCode: response.statusCode,
-      );
+      throw ApiException('Request failed.', statusCode: response.statusCode);
     }
 
     final decoded = jsonDecode(response.body);

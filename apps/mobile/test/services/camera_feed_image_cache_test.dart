@@ -34,18 +34,21 @@ void main() {
     expect(cameraFeedImageCacheKey(item), item.imageUrl);
   });
 
-  test('disk prefetch starts at first feed item while user is on camera page', () {
-    final nextItems = nextCameraFeedDiskPrefetchItems(
-      items: items,
-      activeItem: null,
-    );
+  test(
+    'disk prefetch starts at first feed item while user is on camera page',
+    () {
+      final nextItems = nextCameraFeedDiskPrefetchItems(
+        items: items,
+        activeItem: null,
+      );
 
-    expect(nextItems.map((item) => item.id), [
-      'checkin-0',
-      'checkin-1',
-      'checkin-2',
-    ]);
-  });
+      expect(nextItems.map((item) => item.id), [
+        'checkin-0',
+        'checkin-1',
+        'checkin-2',
+      ]);
+    },
+  );
 
   test('disk prefetch selects N+1 through N+3 for the active feed item', () {
     final nextItems = nextCameraFeedDiskPrefetchItems(

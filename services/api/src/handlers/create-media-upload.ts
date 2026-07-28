@@ -147,11 +147,19 @@ export function createMediaUploadHandler(deps: CreateMediaUploadDeps) {
       const uploadRequest = validateUploadRequest(parseJsonBody(event));
       const plan = await deps.getPlan(auth.sub);
 
+      const gallerySources = new Set([
+        'EXIF_GALLERY',
+        'EXIF_GALLERY_VIDEO',
+      ]);
       const requiresPro =
-        uploadRequest.source === 'EXIF_GALLERY' || uploadRequest.mediaType === 'VIDEO';
+        gallerySources.has(uploadRequest.source) ||
+        uploadRequest.mediaType === 'VIDEO';
 
       if (requiresPro && plan !== 'PRO') {
-        return jsonResponse(403, { error: 'This upload requires Pro plan' });
+        return jsonResponse(403, {
+          code: 'PRO_PLAN_REQUIRED',
+          error: 'This upload requires Pro plan',
+        });
       }
 
       const mediaId = deps.mediaIdFactory();

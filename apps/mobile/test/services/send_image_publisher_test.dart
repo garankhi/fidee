@@ -132,6 +132,63 @@ class _FakePlaceCandidateService extends PlaceCandidateService {
 }
 
 void main() {
+  test('plan denial reconciles once and retries admission once', () async {
+    var admissions = 0;
+    var reconciliations = 0;
+
+    final result = await retryAdmissionAfterProReconciliation<String>(
+      requestAdmission: () async {
+        admissions += 1;
+        if (admissions == 1) {
+          throw const UploadException(
+            'Pro required',
+            code: UploadExceptionCode.planRequired,
+          );
+        }
+        return 'media-1';
+      },
+      reconcileProAccess: () async {
+        reconciliations += 1;
+        return true;
+      },
+    );
+
+    expect(result, 'media-1');
+    expect(admissions, 2);
+    expect(reconciliations, 1);
+  });
+
+  test('failed reconciliation does not retry admission', () async {
+    var admissions = 0;
+    var reconciliations = 0;
+
+    await expectLater(
+      retryAdmissionAfterProReconciliation<String>(
+        requestAdmission: () async {
+          admissions += 1;
+          throw const UploadException(
+            'Pro required',
+            code: UploadExceptionCode.planRequired,
+          );
+        },
+        reconcileProAccess: () async {
+          reconciliations += 1;
+          return false;
+        },
+      ),
+      throwsA(
+        isA<UploadException>().having(
+          (error) => error.message,
+          'message',
+          'Không đồng bộ được gói Pro. Vui lòng thử lại.',
+        ),
+      ),
+    );
+
+    expect(admissions, 1);
+    expect(reconciliations, 1);
+  });
+
   test(
     'uploads media then creates a check-in with selected audience',
     () async {
@@ -174,37 +231,34 @@ void main() {
     },
   );
 
-  test(
-    'passes video duration metadata to upload service',
-    () async {
-      final uploadService = _FakeUploadService();
-      final checkinService = _FakeCheckinService();
-      final publisher = SendImagePublisher(
-        uploadService: uploadService,
-        checkinService: checkinService,
-      );
+  test('passes video duration metadata to upload service', () async {
+    final uploadService = _FakeUploadService();
+    final checkinService = _FakeCheckinService();
+    final publisher = SendImagePublisher(
+      uploadService: uploadService,
+      checkinService: checkinService,
+    );
 
-      await publisher.publish(
-        imagePath: 'clip.mp4',
-        source: 'IN_APP_CAMERA_VIDEO',
-        durationMs: 3000,
-        selectedPlace: const SelectedPlaceTag(
-          id: 'place-1',
-          placeId: 'place-1',
-          displayName: 'Cafe',
-          address: '123 Street',
-          lat: 10.7738,
-          lng: 106.7035,
-          source: 'internal',
-        ),
-        audience: CameraShareAudience.allFriends(),
-      );
+    await publisher.publish(
+      imagePath: 'clip.mp4',
+      source: 'IN_APP_CAMERA_VIDEO',
+      durationMs: 3000,
+      selectedPlace: const SelectedPlaceTag(
+        id: 'place-1',
+        placeId: 'place-1',
+        displayName: 'Cafe',
+        address: '123 Street',
+        lat: 10.7738,
+        lng: 106.7035,
+        source: 'internal',
+      ),
+      audience: CameraShareAudience.allFriends(),
+    );
 
-      expect(uploadService.uploadedSource, 'IN_APP_CAMERA_VIDEO');
-      expect(uploadService.uploadedDurationMs, 3000);
-      expect(checkinService.mediaType, 'VIDEO');
-    },
-  );
+    expect(uploadService.uploadedSource, 'IN_APP_CAMERA_VIDEO');
+    expect(uploadService.uploadedDurationMs, 3000);
+    expect(checkinService.mediaType, 'VIDEO');
+  });
 
   test(
     'uses candidate id when selected place has no canonical place id',

@@ -18,6 +18,7 @@ import * as rds from 'aws-cdk-lib/aws-rds';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
@@ -46,6 +47,10 @@ export type FideeMediaWafStackProps = StageProps;
 
 export interface FideeStackProps extends StageProps {
   mediaWebAclArn: string;
+  googleWebClientId: string;
+  revenueCatProjectId: string;
+  revenueCatProEntitlementId: string;
+  revenueCatTimeoutMs: number;
 }
 
 const isProd = (stage: FideeStage) => stage === 'prod';
@@ -147,6 +152,7 @@ export class FideeStack extends cdk.Stack {
     super(scope, id, props);
 
     const stage = assertFideeStage(props.stage);
+    const googleClientId = props.googleWebClientId;
     applyStageTags(this, stage);
 
     const removalPolicy = isProd(stage) ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
@@ -188,7 +194,7 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/triggers/define-auth-challenge.ts',
       handler: 'handler',
       environment: {
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_ID: googleClientId,
       },
     });
 
@@ -200,7 +206,7 @@ export class FideeStack extends cdk.Stack {
       environment: {
         RESEND_API_KEY: process.env.RESEND_API_KEY || '',
         RESEND_SENDER_EMAIL: process.env.RESEND_SENDER_EMAIL || 'onboarding@resend.dev',
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_ID: googleClientId,
       },
       bundling: {
         nodeModules: ['resend'],
@@ -221,7 +227,7 @@ export class FideeStack extends cdk.Stack {
       entry: '../../services/api/src/triggers/verify-auth-challenge.ts',
       handler: 'handler',
       environment: {
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_ID: googleClientId,
       },
     });
 
@@ -494,7 +500,7 @@ export class FideeStack extends cdk.Stack {
     const dbCluster = new rds.DatabaseCluster(this, 'Database', {
       clusterIdentifier: resourceName(stage, 'db'),
       engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_16_4,
+        version: rds.AuroraPostgresEngineVersion.VER_16_9,
       }),
       serverlessV2MinCapacity: 0.5,
       serverlessV2MaxCapacity: isProd(stage) ? 8 : 2,
@@ -589,8 +595,14 @@ export class FideeStack extends cdk.Stack {
 
 
     const billingApiLambdaRole = createSharedLambdaRole('BillingApiLambdaRole', 'billing-api-role');
+    const revenueCatServerSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'RevenueCatServerSecret',
+      resourceName(stage, 'revenuecat-server'),
+    );
     dbCluster.secret!.grantRead(billingApiLambdaRole);
     userProfilesTable.grantReadWriteData(billingApiLambdaRole);
+    revenueCatServerSecret.grantRead(billingApiLambdaRole);
 
     const placeCandidateApiLambdaRole = createSharedLambdaRole(
       'PlaceCandidateApiLambdaRole',
@@ -998,7 +1010,11 @@ export class FideeStack extends cdk.Stack {
       },
     });
     dbCluster.secret!.grantRead(profileFn);
-    userProfilesTable.grantReadWriteData(profileFn);
+    userProfilesTable.grant(
+      profileFn,
+      'dynamodb:GetItem',
+      'dynamodb:UpdateItem',
+    );
 
     const updateProfileFn = new nodejs.NodejsFunction(this, 'UpdateProfileFunction', {
       functionName: resourceName(stage, 'update-profile'),
@@ -1015,12 +1031,18 @@ export class FideeStack extends cdk.Stack {
         DB_SECRET_ARN: dbCluster.secret!.secretArn,
         DB_NAME: 'fidee',
         COGNITO_USER_POOL_ID: userPool.userPoolId,
+        USER_PROFILES_TABLE: userProfilesTable.tableName,
       },
       bundling: {
         nodeModules: ['pg'],
       },
     });
     dbCluster.secret!.grantRead(updateProfileFn);
+    userProfilesTable.grant(
+      updateProfileFn,
+      'dynamodb:GetItem',
+      'dynamodb:UpdateItem',
+    );
     updateProfileFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cognito-idp:AdminUpdateUserAttributes'],
@@ -1127,17 +1149,22 @@ export class FideeStack extends cdk.Stack {
     const billingLambdaProps = {
       runtime: lambda.Runtime.NODEJS_20_X,
       memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
+      timeout: cdk.Duration.seconds(15),
       role: billingApiLambdaRole,
       vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups: [lambdaSecurityGroup],
       environment: {
         STAGE: stage,
         DB_SECRET_ARN: dbCluster.secret!.secretArn,
         DB_NAME: 'fidee',
         USER_PROFILES_TABLE: userProfilesTable.tableName,
-        REVENUECAT_MODE: process.env.REVENUECAT_MODE || 'test',
+        REVENUECAT_PROJECT_ID: props.revenueCatProjectId,
+        REVENUECAT_PRO_ENTITLEMENT_ID:
+          props.revenueCatProEntitlementId,
+        REVENUECAT_SERVER_SECRET_ARN:
+          revenueCatServerSecret.secretArn,
+        REVENUECAT_TIMEOUT_MS: String(props.revenueCatTimeoutMs),
       },
       bundling: {
         nodeModules: ['pg'],
@@ -1160,10 +1187,6 @@ export class FideeStack extends cdk.Stack {
       functionName: resourceName(stage, 'revenuecat-webhook'),
       entry: '../../services/api/src/handlers/revenuecat-webhook.ts',
       handler: 'handler',
-      environment: {
-        ...billingLambdaProps.environment,
-        REVENUECAT_WEBHOOK_SECRET: process.env.REVENUECAT_WEBHOOK_SECRET || '',
-      },
     });
 
     const billingResource = api.root.addResource('billing');
@@ -2027,6 +2050,9 @@ export class FideeStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CustomApiUrl', { value: `https://${apiDomainName}/` });
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
+    new cdk.CfnOutput(this, 'GoogleWebClientId', {
+      value: googleClientId,
+    });
     new cdk.CfnOutput(this, 'PlacesTableName', { value: placesTable.tableName });
     new cdk.CfnOutput(this, 'UserProfilesTableName', { value: userProfilesTable.tableName });
     new cdk.CfnOutput(this, 'MediaUploadEventsQueueUrl', {

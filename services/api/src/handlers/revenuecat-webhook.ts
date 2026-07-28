@@ -1,36 +1,66 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+} from 'aws-lambda';
+import { timingSafeEqual } from 'crypto';
 import {
-  entitlementFromPlan,
+  deleteExpiredPendingIdentityEvents,
   markRevenueCatWebhookProcessed,
-  normalizeRevenueCatEventType,
   recordRevenueCatWebhookEvent,
-  SubscriptionStateInput,
-  upsertSubscriptionState,
+  resolveKnownFideeUserIds,
+  type RevenueCatWebhookEventInput,
+  type RevenueCatWebhookRecord,
 } from '../repositories/subscriptions';
-import type { UserPlan } from '../repositories/user-profiles';
+import {
+  reconcileRevenueCatCustomer,
+  type ReconcileRevenueCatCustomerInput,
+  type ReconciliationResult,
+} from '../services/subscription-reconciler';
+import { loadRevenueCatServerSecrets } from '../services/revenuecat-client';
 
 interface RevenueCatWebhookDeps {
-  env: {
-    webhookSecret: string;
-  };
-  recordEvent: typeof recordRevenueCatWebhookEvent;
-  syncSubscription: typeof upsertSubscriptionState;
-  markProcessed: typeof markRevenueCatWebhookProcessed;
+  loadAuthorization: () => Promise<string>;
+  resolveUserIds: (candidateIds: string[]) => Promise<string[]>;
+  recordEvent: (
+    input: RevenueCatWebhookEventInput,
+  ) => Promise<RevenueCatWebhookRecord>;
+  reconcile: (
+    input: ReconcileRevenueCatCustomerInput,
+  ) => Promise<ReconciliationResult>;
+  markProcessed: (
+    eventId: string,
+    resolvedUserIds: string[],
+  ) => Promise<void>;
+  deleteExpiredPendingIdentities: () => Promise<number>;
 }
 
-interface RevenueCatWebhookEvent {
+interface ParsedRevenueCatWebhookEvent {
   id: string;
   type: string;
-  appUserId: string;
-  productId?: string | null;
-  store?: string | null;
-  periodType?: string | null;
-  expiresAt?: string | null;
-  eventAt?: string | null;
-  raw: unknown;
+  candidateAppUserIds: string[];
+  productId: string | null;
+  store: string | null;
+  expiresAt: string | null;
+  eventAt: string | null;
+  payload: Record<string, unknown>;
 }
 
-function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGatewayProxyResult {
+const lifecycleEventTypes = new Set([
+  'INITIAL_PURCHASE',
+  'RENEWAL',
+  'UNCANCELLATION',
+  'CANCELLATION',
+  'BILLING_ISSUE',
+  'REFUND',
+  'EXPIRATION',
+  'PRODUCT_CHANGE',
+  'TRANSFER',
+]);
+
+function jsonResponse(
+  statusCode: number,
+  body: Record<string, unknown>,
+): APIGatewayProxyResult {
   return {
     statusCode,
     headers: {
@@ -41,7 +71,10 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>): APIGat
   };
 }
 
-function headerValue(event: APIGatewayProxyEvent, name: string): string | undefined {
+function headerValue(
+  event: APIGatewayProxyEvent,
+  name: string,
+): string | undefined {
   const target = name.toLowerCase();
   for (const [key, value] of Object.entries(event.headers ?? {})) {
     if (key.toLowerCase() === target) return value;
@@ -49,13 +82,28 @@ function headerValue(event: APIGatewayProxyEvent, name: string): string | undefi
   return undefined;
 }
 
-function hasValidSecret(event: APIGatewayProxyEvent, secret: string): boolean {
-  if (!secret) return false;
-  const authorization = headerValue(event, 'authorization');
-  if (authorization === `Bearer ${secret}`) return true;
+function constantTimeEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
 
-  const signature = headerValue(event, 'x-revenuecat-signature');
-  return signature === secret;
+function hasValidAuthorization(
+  event: APIGatewayProxyEvent,
+  expected: string,
+): boolean {
+  if (!expected) return false;
+  const supplied =
+    headerValue(event, 'authorization') ??
+    headerValue(event, 'x-revenuecat-signature') ??
+    '';
+  return (
+    constantTimeEqual(supplied, expected) ||
+    constantTimeEqual(supplied, `Bearer ${expected}`)
+  );
 }
 
 function timestampFromMs(value: unknown): string | null {
@@ -63,123 +111,195 @@ function timestampFromMs(value: unknown): string | null {
   return new Date(value).toISOString();
 }
 
-function parseWebhookEvent(event: APIGatewayProxyEvent): RevenueCatWebhookEvent {
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim()
+    ? value.trim()
+    : null;
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is string =>
+        typeof item === 'string' && item.trim().length > 0,
+    )
+    .map((item) => item.trim());
+}
+
+function parseWebhookEvent(
+  event: APIGatewayProxyEvent,
+): ParsedRevenueCatWebhookEvent {
   let parsed: unknown;
   try {
     parsed = JSON.parse(event.body ?? '{}') as unknown;
   } catch {
-    throw new Error('Request body must be valid JSON');
+    throw new SyntaxError('Request body must be valid JSON');
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('Request body must be a JSON object');
+    throw new SyntaxError('Request body must be a JSON object');
   }
 
-  const body = parsed as Record<string, unknown>;
-  const rawEvent = body.event;
-  if (typeof rawEvent !== 'object' || rawEvent === null || Array.isArray(rawEvent)) {
-    throw new Error('event is required');
+  const rawEvent = (parsed as Record<string, unknown>).event;
+  if (
+    typeof rawEvent !== 'object' ||
+    rawEvent === null ||
+    Array.isArray(rawEvent)
+  ) {
+    throw new SyntaxError('event is required');
   }
 
-  const revenueCatEvent = rawEvent as Record<string, unknown>;
-  const id = revenueCatEvent.id;
-  const type = revenueCatEvent.type;
-  const appUserId = revenueCatEvent.app_user_id;
-  if (typeof id !== 'string' || id.trim().length === 0) {
-    throw new Error('event.id is required');
+  const value = rawEvent as Record<string, unknown>;
+  const id = optionalString(value.id);
+  const type = optionalString(value.type);
+  if (!id) throw new SyntaxError('event.id is required');
+  if (!type) throw new SyntaxError('event.type is required');
+
+  const aliases = stringArray(value.aliases);
+  const transferredFrom = stringArray(value.transferred_from);
+  const transferredTo = stringArray(value.transferred_to);
+  const candidateAppUserIds = [
+    ...new Set(
+      [
+        optionalString(value.app_user_id),
+        optionalString(value.original_app_user_id),
+        ...aliases,
+        ...transferredFrom,
+        ...transferredTo,
+      ].filter((candidate): candidate is string => candidate !== null),
+    ),
+  ];
+  if (candidateAppUserIds.length === 0) {
+    throw new SyntaxError('event customer identity is required');
   }
-  if (typeof type !== 'string' || type.trim().length === 0) {
-    throw new Error('event.type is required');
-  }
-  if (typeof appUserId !== 'string' || appUserId.trim().length === 0) {
-    throw new Error('event.app_user_id is required');
-  }
+
+  const productId = optionalString(value.product_id);
+  const store = optionalString(value.store);
+  const expiresAt = timestampFromMs(value.expiration_at_ms);
+  const eventAt = timestampFromMs(value.event_timestamp_ms);
 
   return {
-    id: id.trim(),
-    type: type.trim(),
-    appUserId: appUserId.trim(),
-    productId: typeof revenueCatEvent.product_id === 'string' ? revenueCatEvent.product_id : null,
-    store: typeof revenueCatEvent.store === 'string' ? revenueCatEvent.store : null,
-    periodType:
-      typeof revenueCatEvent.period_type === 'string' ? revenueCatEvent.period_type : null,
-    expiresAt: timestampFromMs(revenueCatEvent.expiration_at_ms),
-    eventAt: timestampFromMs(revenueCatEvent.event_timestamp_ms),
-    raw: parsed,
+    id,
+    type,
+    candidateAppUserIds,
+    productId,
+    store,
+    expiresAt,
+    eventAt,
+    payload: {
+      eventId: id,
+      eventType: type,
+      productId,
+      store,
+      expiresAt,
+      eventAt,
+    },
   };
 }
 
-function planFromWebhookType(eventType: string): UserPlan | null {
-  const normalized = normalizeRevenueCatEventType(eventType);
-  if (normalized === 'ACTIVE') return 'PRO';
-  if (normalized === 'INACTIVE') return 'FREE';
-  return null;
+async function loadDefaultAuthorization(): Promise<string> {
+  const secretArn = process.env.REVENUECAT_SERVER_SECRET_ARN?.trim();
+  if (!secretArn) {
+    throw new Error('RevenueCat server secret is not configured');
+  }
+  const secret = await loadRevenueCatServerSecrets(secretArn);
+  if (!secret.webhookAuthorization) {
+    throw new Error('RevenueCat webhook authorization is not configured');
+  }
+  return secret.webhookAuthorization;
 }
 
 function defaultDeps(): RevenueCatWebhookDeps {
   return {
-    env: { webhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET ?? '' },
+    loadAuthorization: loadDefaultAuthorization,
+    resolveUserIds: resolveKnownFideeUserIds,
     recordEvent: recordRevenueCatWebhookEvent,
-    syncSubscription: upsertSubscriptionState,
+    reconcile: reconcileRevenueCatCustomer,
     markProcessed: markRevenueCatWebhookProcessed,
+    deleteExpiredPendingIdentities:
+      deleteExpiredPendingIdentityEvents,
   };
 }
 
-export function createRevenueCatWebhookHandler(deps: RevenueCatWebhookDeps = defaultDeps()) {
-  return async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-    if (!hasValidSecret(event, deps.env.webhookSecret)) {
+export function createRevenueCatWebhookHandler(
+  deps: RevenueCatWebhookDeps = defaultDeps(),
+) {
+  return async (
+    event: APIGatewayProxyEvent,
+  ): Promise<APIGatewayProxyResult> => {
+    let expectedAuthorization: string;
+    try {
+      expectedAuthorization = await deps.loadAuthorization();
+    } catch {
+      console.error('RevenueCat webhook authorization is unavailable');
+      return jsonResponse(500, { error: 'Webhook is not configured' });
+    }
+
+    if (!hasValidAuthorization(event, expectedAuthorization)) {
       return jsonResponse(401, { error: 'Unauthorized' });
     }
 
     try {
-      const revenueCatEvent = parseWebhookEvent(event);
-      const recordStatus = await deps.recordEvent({
-        eventId: revenueCatEvent.id,
-        appUserId: revenueCatEvent.appUserId,
-        eventType: revenueCatEvent.type,
-        productId: revenueCatEvent.productId,
-        payload: revenueCatEvent.raw,
+      await deps.deleteExpiredPendingIdentities();
+      const parsed = parseWebhookEvent(event);
+      const resolvedUserIds = await deps.resolveUserIds(
+        parsed.candidateAppUserIds,
+      );
+      const record = await deps.recordEvent({
+        eventId: parsed.id,
+        eventType: parsed.type,
+        candidateAppUserIds: parsed.candidateAppUserIds,
+        resolvedUserIds,
+        state: resolvedUserIds.length > 0 ? 'pending' : 'pending_identity',
+        productId: parsed.productId,
+        store: parsed.store,
+        eventAt: parsed.eventAt,
+        expiresAt: parsed.expiresAt,
+        payload: parsed.payload,
       });
 
-      if (recordStatus === 'duplicate') {
+      if (record.state === 'processed') {
         return jsonResponse(200, { status: 'duplicate' });
       }
 
-      const plan = planFromWebhookType(revenueCatEvent.type);
-      if (plan === null) {
-        await deps.markProcessed(revenueCatEvent.id);
+      const knownUserIds = [
+        ...new Set([...record.resolvedUserIds, ...resolvedUserIds]),
+      ];
+      if (knownUserIds.length === 0) {
+        return jsonResponse(200, { status: 'pending_identity' });
+      }
+
+      if (!lifecycleEventTypes.has(parsed.type)) {
+        await deps.markProcessed(parsed.id, knownUserIds);
         return jsonResponse(200, { status: 'ignored' });
       }
 
-      const subscriptionState: SubscriptionStateInput = {
-        userId: revenueCatEvent.appUserId,
-        revenueCatAppUserId: revenueCatEvent.appUserId,
-        plan,
-        productId: revenueCatEvent.productId,
-        store: revenueCatEvent.store,
-        periodType: revenueCatEvent.periodType,
-        expiresAt: revenueCatEvent.expiresAt,
-        lastEventAt: revenueCatEvent.eventAt,
-        rawCustomerInfo: revenueCatEvent.raw,
-      };
-      await deps.syncSubscription(subscriptionState);
-      await deps.markProcessed(revenueCatEvent.id);
+      const results = await Promise.all(
+        knownUserIds.map((knownUserId) =>
+          deps.reconcile({
+            userId: knownUserId,
+            revenueCatCustomerId: knownUserId,
+          }),
+        ),
+      );
+      await deps.markProcessed(parsed.id, knownUserIds);
 
       return jsonResponse(200, {
         status: 'processed',
-        plan,
-        entitlement: entitlementFromPlan(plan),
+        ...(results.length === 1
+          ? results[0]
+          : { reconciliations: results }),
       });
     } catch (error) {
-      if (error instanceof Error && error.message.includes('required')) {
-        return jsonResponse(400, { error: error.message });
-      }
-      if (error instanceof Error && error.message.includes('JSON')) {
+      if (error instanceof SyntaxError) {
         return jsonResponse(400, { error: error.message });
       }
 
-      console.error('Failed to process RevenueCat webhook', error);
-      return jsonResponse(500, { error: 'Internal server error' });
+      console.error('RevenueCat webhook reconciliation failed');
+      return jsonResponse(503, {
+        error: 'RevenueCat webhook reconciliation is temporarily unavailable',
+      });
     }
   };
 }

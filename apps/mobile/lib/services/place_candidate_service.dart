@@ -42,7 +42,11 @@ String _truncateForDebug(String value, [int maxLength = 1200]) {
   return '${value.substring(0, maxLength)}...';
 }
 
-String _requiredString(Map<String, dynamic> json, String snakeKey, String camelKey) {
+String _requiredString(
+  Map<String, dynamic> json,
+  String snakeKey,
+  String camelKey,
+) {
   final value = json[snakeKey] ?? json[camelKey];
   if (value is String) return value;
   throw FormatException('Missing string field $snakeKey/$camelKey');

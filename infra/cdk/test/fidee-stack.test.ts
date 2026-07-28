@@ -19,6 +19,10 @@ const createDevTemplates = () => {
     stage: 'dev',
     env: { account: '123456789012', region: MAIN_REGION },
     mediaWebAclArn: mediaWafStack.webAclArn,
+    googleWebClientId: 'google-web-client.apps.googleusercontent.com',
+    revenueCatProjectId: 'proj_test',
+    revenueCatProEntitlementId: 'entl_test',
+    revenueCatTimeoutMs: 5000,
   });
 
   return {
@@ -40,11 +44,13 @@ type CfnInlinePolicy = {
   };
 };
 type CfnResource = {
+  Type?: string;
   Properties?: {
     PolicyDocument?: {
       Statement?: CfnPolicyStatement | CfnPolicyStatement[];
     };
     Policies?: CfnInlinePolicy[];
+    Roles?: CfnValue | CfnValue[];
   };
 };
 type CfnTemplateResource = {
@@ -52,6 +58,8 @@ type CfnTemplateResource = {
   Properties?: {
     FunctionName?: string;
     Role?: unknown;
+    Environment?: { Variables?: Record<string, unknown> };
+    VpcConfig?: unknown;
   };
 };
 type CfnPolicyStatementWithOwner = {
@@ -104,6 +112,33 @@ const roleRefForFunctionName = (resources: Record<string, unknown>, functionName
 
   expect(resource).toBeDefined();
   return resource?.Properties?.Role;
+};
+
+const policyStatementsForFunctionRole = (
+  resources: Record<string, unknown>,
+  functionName: string,
+): CfnPolicyStatement[] => {
+  const roleRef = roleRefForFunctionName(resources, functionName) as
+    | { 'Fn::GetAtt'?: [string, string] }
+    | undefined;
+  const roleLogicalId = roleRef?.['Fn::GetAtt']?.[0];
+  expect(roleLogicalId).toBeDefined();
+
+  const policies = Object.fromEntries(
+    Object.entries(resources).filter(([, resource]) => {
+      const cfnResource = resource as CfnResource;
+      return (
+        cfnResource.Type === 'AWS::IAM::Policy' &&
+        JSON.stringify(cfnResource.Properties?.Roles).includes(
+          roleLogicalId!,
+        )
+      );
+    }),
+  );
+
+  return policyStatementsFromResources(policies).map(
+    ({ statement }) => statement,
+  );
 };
 
 const stringValues = (value: CfnValue | CfnValue[] | undefined): string[] =>
@@ -274,9 +309,84 @@ describe('FideeStack', () => {
     });
   });
 
+  it('grants profile Lambdas only the DynamoDB actions their handlers use', () => {
+    const resources = stackResources(template);
+
+    for (const functionName of [
+      'fidee-dev-get-profile',
+      'fidee-dev-update-profile',
+    ]) {
+      const dynamoActions = policyStatementsForFunctionRole(
+        resources,
+        functionName,
+      )
+        .flatMap((statement) => stringValues(statement.Action))
+        .filter((action) => action.startsWith('dynamodb:'));
+
+      expect(sorted([...new Set(dynamoActions)])).toEqual([
+        'dynamodb:GetItem',
+        'dynamodb:UpdateItem',
+      ]);
+    }
+  });
+
+  it('configures only billing Lambdas for RevenueCat server verification', () => {
+    for (const functionName of [
+      'fidee-dev-sync-revenuecat-customer',
+      'fidee-dev-revenuecat-webhook',
+    ]) {
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        FunctionName: functionName,
+        Timeout: 15,
+        Environment: {
+          Variables: Match.objectLike({
+            REVENUECAT_PROJECT_ID: 'proj_test',
+            REVENUECAT_PRO_ENTITLEMENT_ID: 'entl_test',
+            REVENUECAT_SERVER_SECRET_ARN: Match.anyValue(),
+            REVENUECAT_TIMEOUT_MS: '5000',
+          }),
+        },
+      });
+    }
+
+    const resources = stackResources(template);
+    for (const functionName of [
+      'fidee-dev-sync-revenuecat-customer',
+      'fidee-dev-revenuecat-webhook',
+    ]) {
+      const fn = Object.values(resources).find(
+        (item) =>
+          (item as CfnTemplateResource).Properties?.FunctionName ===
+          functionName,
+      ) as CfnTemplateResource;
+      expect(JSON.stringify(fn.Properties?.VpcConfig)).toContain(
+        'privateegressSubnet',
+      );
+      expect(JSON.stringify(fn.Properties?.VpcConfig)).not.toContain(
+        'isolatedSubnet',
+      );
+    }
+
+    expect(JSON.stringify(template.toJSON())).not.toContain('apiV2Key');
+    expect(JSON.stringify(template.toJSON())).not.toContain(
+      'webhookAuthorization',
+    );
+  });
+
+  it('outputs the shared Google Web OAuth client id', () => {
+    template.hasOutput('GoogleWebClientId', {
+      Value: 'google-web-client.apps.googleusercontent.com',
+    });
+  });
+
   it('creates a protected PATCH /profile endpoint for unique username updates', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'fidee-dev-update-profile',
+      Environment: {
+        Variables: Match.objectLike({
+          USER_PROFILES_TABLE: Match.anyValue(),
+        }),
+      },
     });
     template.hasResourceProperties('AWS::ApiGateway::Method', {
       HttpMethod: 'PATCH',

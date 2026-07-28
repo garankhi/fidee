@@ -59,7 +59,7 @@ void main() {
     test('maps gallery media types to upload sources', () {
       expect(
         galleryAssetSourceForMediaType(GalleryAssetMediaType.image),
-        'IN_APP_CAMERA',
+        'EXIF_GALLERY',
       );
       expect(
         galleryAssetSourceForMediaType(GalleryAssetMediaType.video),

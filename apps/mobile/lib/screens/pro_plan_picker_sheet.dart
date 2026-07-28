@@ -5,11 +5,19 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../config.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/auth/billing_provider.dart';
-import '../services/billing_sync_service.dart';
+import '../models/pro_access.dart';
 
 const _sheetBackground = Color(0xFF252020);
 const _primaryRed = Color(0xFFEF484F);
 const _softSurface = Color(0x33FFFFFF);
+
+Future<T?> runIdentityReadyBillingAction<T>({
+  required Future<bool> Function() ensureIdentity,
+  required Future<T> Function() action,
+}) async {
+  if (!await ensureIdentity()) return null;
+  return action();
+}
 
 Future<bool?> showProPlanPickerSheet(BuildContext context) {
   return showModalBottomSheet<bool>(
@@ -33,13 +41,20 @@ class _ProPlanPickerSheetState extends ConsumerState<ProPlanPickerSheet> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (!mounted) return;
-      final state = ref.read(billingControllerProvider);
-      if (state.offerings == null) {
-        ref.read(billingControllerProvider.notifier).loadOfferings();
-      }
-    });
+    Future.microtask(_loadOfferingsAfterIdentity);
+  }
+
+  Future<void> _loadOfferingsAfterIdentity() async {
+    if (!mounted) return;
+    final state = ref.read(billingControllerProvider);
+    if (state.offerings != null) return;
+
+    await runIdentityReadyBillingAction<void>(
+      ensureIdentity: ref
+          .read(authControllerProvider.notifier)
+          .ensureRevenueCatIdentity,
+      action: ref.read(billingControllerProvider.notifier).loadOfferings,
+    );
   }
 
   @override
@@ -49,7 +64,11 @@ class _ProPlanPickerSheetState extends ConsumerState<ProPlanPickerSheet> {
     final monthly = _findPackage(packages, Config.revenueCatMonthlyProductId);
     final yearly = _findPackage(packages, Config.revenueCatYearlyProductId);
     final selectedPackage = _findPackage(packages, _selectedProductId);
-    final isBusy = billingState.isPurchasing || billingState.isRestoring;
+    final isBusy =
+        billingState.isPurchasing ||
+        billingState.isRestoring ||
+        billingState.syncStatus == BillingSyncStatus.reconciling ||
+        billingState.activationStatus == BillingActivationStatus.pending;
 
     return ProPlanPickerShell(
       monthlyPrice: monthly?.storeProduct.priceString ?? '49.000đ/tháng',
@@ -58,62 +77,74 @@ class _ProPlanPickerSheetState extends ConsumerState<ProPlanPickerSheet> {
       isLoading: billingState.isLoading && packages.isEmpty,
       isBusy: isBusy,
       errorMessage: billingState.errorMessage,
+      syncStatus: billingState.syncStatus,
+      activationStatus: billingState.activationStatus,
       hasPackages: packages.isNotEmpty,
       onSelect: (productId) => setState(() => _selectedProductId = productId),
-      onContinue: selectedPackage == null || isBusy
+      onContinue:
+          selectedPackage == null ||
+              isBusy ||
+              billingState.activationStatus != BillingActivationStatus.none
           ? null
           : () => _purchaseSelected(selectedPackage),
-      onRestore: isBusy ? null : _restore,
+      onRestore:
+          isBusy ||
+              billingState.activationStatus != BillingActivationStatus.none
+          ? null
+          : _restore,
+      onRetry:
+          billingState.activationStatus == BillingActivationStatus.failed &&
+              !isBusy
+          ? _reconcileAndClose
+          : null,
     );
   }
 
   Package? _findPackage(List<Package> packages, String productId) {
     for (final package in packages) {
-      if (package.storeProduct.identifier == productId) return package;
+      if (matchesProProductId(package.storeProduct.identifier, productId)) {
+        return package;
+      }
     }
     return null;
   }
 
   Future<void> _purchaseSelected(Package package) async {
-    final authService = ref.read(authServiceProvider);
-    final appUserId = await authService.getCurrentUserSub();
-    final customerInfo = await ref.read(billingControllerProvider.notifier).purchasePackage(
-          package,
-          appUserId: appUserId,
-          billingSyncService: BillingSyncService(authService: authService),
-        );
-    if (!mounted) return;
+    final outcome = await runIdentityReadyBillingAction<BillingPurchaseOutcome>(
+      ensureIdentity: ref
+          .read(authControllerProvider.notifier)
+          .ensureRevenueCatIdentity,
+      action: () => ref
+          .read(billingControllerProvider.notifier)
+          .purchasePackage(package),
+    );
+    if (!mounted || outcome == null) return;
 
-    final hasPro = customerInfo?.entitlements.active.containsKey(
-          Config.revenueCatEntitlementPro,
-        ) ??
-        false;
-    if (hasPro) {
-      await _refreshProfileAndClose();
+    if (outcome == BillingPurchaseOutcome.purchased ||
+        outcome == BillingPurchaseOutcome.alreadyOwned) {
+      await _reconcileAndClose();
     }
   }
 
   Future<void> _restore() async {
-    final authService = ref.read(authServiceProvider);
-    final appUserId = await authService.getCurrentUserSub();
-    final customerInfo = await ref.read(billingControllerProvider.notifier).restorePurchases(
-          appUserId: appUserId,
-          billingSyncService: BillingSyncService(authService: authService),
-        );
-    if (!mounted) return;
+    final outcome = await runIdentityReadyBillingAction<BillingPurchaseOutcome>(
+      ensureIdentity: ref
+          .read(authControllerProvider.notifier)
+          .ensureRevenueCatIdentity,
+      action: ref.read(billingControllerProvider.notifier).restorePurchases,
+    );
+    if (!mounted || outcome == null) return;
 
-    final hasPro = customerInfo?.entitlements.active.containsKey(
-          Config.revenueCatEntitlementPro,
-        ) ??
-        false;
-    if (hasPro) {
-      await _refreshProfileAndClose();
+    if (outcome == BillingPurchaseOutcome.alreadyOwned) {
+      await _reconcileAndClose();
     }
   }
 
-  Future<void> _refreshProfileAndClose() async {
-    await ref.read(authControllerProvider.notifier).refreshProfileDetails();
-    if (!mounted) return;
+  Future<void> _reconcileAndClose() async {
+    final hasConfirmedPro = await ref
+        .read(authControllerProvider.notifier)
+        .reconcileProAccess();
+    if (!mounted || !hasConfirmedPro) return;
     Navigator.pop(context, true);
   }
 }
@@ -121,11 +152,15 @@ class _ProPlanPickerSheetState extends ConsumerState<ProPlanPickerSheet> {
 class ProPlanPickerPreview extends StatelessWidget {
   final String monthlyPrice;
   final String yearlyPrice;
+  final BillingSyncStatus syncStatus;
+  final BillingActivationStatus activationStatus;
 
   const ProPlanPickerPreview({
     super.key,
     required this.monthlyPrice,
     required this.yearlyPrice,
+    this.syncStatus = BillingSyncStatus.idle,
+    this.activationStatus = BillingActivationStatus.none,
   });
 
   @override
@@ -135,11 +170,20 @@ class ProPlanPickerPreview extends StatelessWidget {
       yearlyPrice: yearlyPrice,
       selectedProductId: Config.revenueCatMonthlyProductId,
       isLoading: false,
-      isBusy: false,
+      isBusy: syncStatus == BillingSyncStatus.reconciling,
+      syncStatus: syncStatus,
+      activationStatus: activationStatus,
       hasPackages: true,
       onSelect: (_) {},
-      onContinue: () {},
-      onRestore: () {},
+      onContinue: activationStatus == BillingActivationStatus.none
+          ? () {}
+          : null,
+      onRestore: activationStatus == BillingActivationStatus.none
+          ? () {}
+          : null,
+      onRetry: activationStatus == BillingActivationStatus.failed
+          ? () {}
+          : null,
     );
   }
 }
@@ -152,9 +196,12 @@ class ProPlanPickerShell extends StatelessWidget {
   final bool isBusy;
   final bool hasPackages;
   final String? errorMessage;
+  final BillingSyncStatus syncStatus;
+  final BillingActivationStatus activationStatus;
   final ValueChanged<String> onSelect;
   final VoidCallback? onContinue;
   final VoidCallback? onRestore;
+  final VoidCallback? onRetry;
 
   const ProPlanPickerShell({
     super.key,
@@ -164,9 +211,12 @@ class ProPlanPickerShell extends StatelessWidget {
     required this.isLoading,
     required this.isBusy,
     required this.hasPackages,
+    required this.syncStatus,
+    required this.activationStatus,
     required this.onSelect,
     required this.onContinue,
     required this.onRestore,
+    required this.onRetry,
     this.errorMessage,
   });
 
@@ -257,6 +307,20 @@ class ProPlanPickerShell extends StatelessWidget {
                 ),
               ),
             ],
+            if (activationStatus == BillingActivationStatus.failed) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'Đã thanh toán, chưa kích hoạt được Pro',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFFFFA3A8),
+                  fontSize: 13,
+                  fontFamily: 'SF Pro',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+            ],
             if (errorMessage != null) ...[
               const SizedBox(height: 14),
               Text(
@@ -283,12 +347,14 @@ class ProPlanPickerShell extends StatelessWidget {
                 ),
               ),
               child: isBusy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+                  ? Text(
+                      syncStatus == BillingSyncStatus.reconciling
+                          ? 'Đang kích hoạt Pro…'
+                          : 'Đang xử lý…',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontFamily: 'SF Pro',
+                        fontWeight: FontWeight.w800,
                       ),
                     )
                   : const Text(
@@ -345,7 +411,9 @@ class _PlanOption extends StatelessWidget {
           color: isSelected ? const Color(0x33EF484F) : _softSurface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? _primaryRed : Colors.white.withValues(alpha: 0.1),
+            color: isSelected
+                ? _primaryRed
+                : Colors.white.withValues(alpha: 0.1),
             width: 1.4,
           ),
         ),

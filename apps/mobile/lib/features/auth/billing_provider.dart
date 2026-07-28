@@ -1,19 +1,27 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../config.dart';
+import '../../models/pro_access.dart';
+import '../../services/auth_service.dart';
 import '../../services/billing_sync_service.dart';
 import '../../services/revenuecat_service.dart';
 
 part 'billing_provider.g.dart';
 
+bool matchesProProductId(String identifier, String productId) {
+  if (identifier == productId) return true;
+  return identifier.startsWith('$productId:');
+}
+
 List<String> visibleProPackageIds(List<String> productIds) {
   return productIds
       .where(
         (id) =>
-            id == Config.revenueCatMonthlyProductId ||
-            id == Config.revenueCatYearlyProductId,
+            matchesProProductId(id, Config.revenueCatMonthlyProductId) ||
+            matchesProProductId(id, Config.revenueCatYearlyProductId),
       )
       .toList(growable: false);
 }
@@ -33,17 +41,11 @@ void logRevenueCatCustomerInfo(String event, CustomerInfo customerInfo) {
   if (!kDebugMode) return;
 
   debugPrint(
-    '[RevenueCat] $event originalAppUserId=${customerInfo.originalAppUserId} '
+    '[RevenueCat] $event '
     'activeEntitlements=${customerInfo.entitlements.active.keys.toList()} '
     'allPurchasedProducts=${customerInfo.allPurchasedProductIdentifiers} '
     'latestExpirationDate=${customerInfo.latestExpirationDate}',
   );
-}
-
-String revenueCatStoreForPlatform() {
-  return defaultTargetPlatform == TargetPlatform.android
-      ? 'PLAY_STORE'
-      : 'APP_STORE';
 }
 
 class BillingState {
@@ -53,23 +55,35 @@ class BillingState {
   final String? errorMessage;
   final CustomerInfo? customerInfo;
   final Offerings? offerings;
+  final ConfirmedProPlan confirmedPlan;
+  final BillingSyncStatus syncStatus;
+  final BillingActivationStatus activationStatus;
+  final String? syncMessage;
 
   const BillingState({
     required this.isLoading,
     required this.isPurchasing,
     required this.isRestoring,
+    required this.confirmedPlan,
+    required this.syncStatus,
+    required this.activationStatus,
     this.errorMessage,
     this.customerInfo,
     this.offerings,
+    this.syncMessage,
   });
 
   const BillingState.idle()
     : isLoading = false,
       isPurchasing = false,
       isRestoring = false,
+      confirmedPlan = ConfirmedProPlan.free,
+      syncStatus = BillingSyncStatus.idle,
+      activationStatus = BillingActivationStatus.none,
       errorMessage = null,
       customerInfo = null,
-      offerings = null;
+      offerings = null,
+      syncMessage = null;
 
   BillingState copyWith({
     bool? isLoading,
@@ -78,24 +92,28 @@ class BillingState {
     String? errorMessage,
     CustomerInfo? customerInfo,
     Offerings? offerings,
+    ConfirmedProPlan? confirmedPlan,
+    BillingSyncStatus? syncStatus,
+    BillingActivationStatus? activationStatus,
+    String? syncMessage,
     bool clearError = false,
+    bool clearSyncMessage = false,
   }) {
     return BillingState(
       isLoading: isLoading ?? this.isLoading,
       isPurchasing: isPurchasing ?? this.isPurchasing,
       isRestoring: isRestoring ?? this.isRestoring,
+      confirmedPlan: confirmedPlan ?? this.confirmedPlan,
+      syncStatus: syncStatus ?? this.syncStatus,
+      activationStatus: activationStatus ?? this.activationStatus,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       customerInfo: customerInfo ?? this.customerInfo,
       offerings: offerings ?? this.offerings,
+      syncMessage: clearSyncMessage ? null : syncMessage ?? this.syncMessage,
     );
   }
 
-  bool get hasPro {
-    return customerInfo?.entitlements.active.containsKey(
-          Config.revenueCatEntitlementPro,
-        ) ??
-        false;
-  }
+  bool get hasPro => confirmedPlan == ConfirmedProPlan.pro;
 
   List<Package> get proPackages {
     return visibleProPackages(offerings);
@@ -104,25 +122,92 @@ class BillingState {
 
 @Riverpod(keepAlive: true)
 RevenueCatService revenueCatService(RevenueCatServiceRef ref) {
-  return const RevenueCatService();
+  return RevenueCatService();
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class BillingController extends _$BillingController {
+  int _accountRevision = 0;
+
   @override
   BillingState build() {
     return const BillingState.idle();
   }
 
+  void resetForAccountChange() {
+    _accountRevision += 1;
+    state = const BillingState.idle();
+  }
+
+  void seedConfirmedPlan(UserTier tier) {
+    state = state.copyWith(
+      confirmedPlan: tier == UserTier.pro
+          ? ConfirmedProPlan.pro
+          : ConfirmedProPlan.free,
+      activationStatus: tier == UserTier.pro
+          ? BillingActivationStatus.none
+          : state.activationStatus,
+    );
+  }
+
+  Future<BillingSyncResult?> reconcile(
+    BillingSyncService billingSyncService,
+  ) async {
+    final accountRevision = _accountRevision;
+    state = state.copyWith(
+      syncStatus: BillingSyncStatus.reconciling,
+      clearSyncMessage: true,
+      clearError: true,
+    );
+    try {
+      final result = await billingSyncService.syncRevenueCat();
+      if (accountRevision != _accountRevision) return null;
+
+      final hasPendingActivation =
+          state.activationStatus != BillingActivationStatus.none;
+      state = state.copyWith(
+        confirmedPlan: result.plan,
+        syncStatus: BillingSyncStatus.idle,
+        activationStatus: result.plan == ConfirmedProPlan.pro
+            ? BillingActivationStatus.none
+            : hasPendingActivation
+            ? BillingActivationStatus.failed
+            : BillingActivationStatus.none,
+        clearSyncMessage: true,
+      );
+      return result;
+    } catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) return null;
+
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] backend reconciliation failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      state = state.copyWith(
+        syncStatus: BillingSyncStatus.failed,
+        activationStatus: state.activationStatus == BillingActivationStatus.none
+            ? BillingActivationStatus.none
+            : BillingActivationStatus.failed,
+        syncMessage: 'Không đồng bộ được gói Pro. Vui lòng thử lại.',
+      );
+      return null;
+    }
+  }
+
   Future<void> loadCustomerInfo() async {
+    final accountRevision = _accountRevision;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final customerInfo = await ref
           .read(revenueCatServiceProvider)
           .getCustomerInfo();
+      if (accountRevision != _accountRevision) return;
+
       logRevenueCatCustomerInfo('loadCustomerInfo', customerInfo);
       state = state.copyWith(isLoading: false, customerInfo: customerInfo);
     } catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) return;
+
       if (kDebugMode) {
         debugPrint('[RevenueCat] loadCustomerInfo failed: $error');
         debugPrintStack(stackTrace: stackTrace);
@@ -135,22 +220,18 @@ class BillingController extends _$BillingController {
   }
 
   Future<void> loadOfferings() async {
+    final accountRevision = _accountRevision;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final offerings = await ref
           .read(revenueCatServiceProvider)
           .getOfferings();
-      final packages =
-          offerings.current?.availablePackages ?? const <Package>[];
-      if (kDebugMode) {
-        debugPrint(
-          '[RevenueCat] loadOfferings current=${offerings.current?.identifier} '
-          'packages=${packages.map((package) => '${package.identifier}:${package.storeProduct.identifier}').toList()} '
-          'visiblePro=${visibleProPackages(offerings).map((package) => package.storeProduct.identifier).toList()}',
-        );
-      }
+      if (accountRevision != _accountRevision) return;
+
       state = state.copyWith(isLoading: false, offerings: offerings);
     } catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) return;
+
       if (kDebugMode) {
         debugPrint('[RevenueCat] loadOfferings failed: $error');
         debugPrintStack(stackTrace: stackTrace);
@@ -162,64 +243,78 @@ class BillingController extends _$BillingController {
     }
   }
 
-  Future<CustomerInfo?> purchasePackage(
-    Package package, {
-    String? appUserId,
-    BillingSyncService? billingSyncService,
-  }) async {
+  Future<BillingPurchaseOutcome> purchasePackage(Package package) async {
+    final accountRevision = _accountRevision;
     state = state.copyWith(isPurchasing: true, clearError: true);
     try {
-      if (kDebugMode) {
-        debugPrint(
-          '[RevenueCat] purchase start package=${package.identifier} '
-          'product=${package.storeProduct.identifier} appUserId=$appUserId',
-        );
-      }
       final result = await ref
           .read(revenueCatServiceProvider)
           .purchase(package);
-      final customerInfo = result.customerInfo;
-      logRevenueCatCustomerInfo('purchase success', customerInfo);
-      await _syncCustomerInfo(
-        customerInfo: customerInfo,
-        appUserId: appUserId,
-        billingSyncService: billingSyncService,
-        productId: result.storeTransaction.productIdentifier,
-      );
-      state = state.copyWith(isPurchasing: false, customerInfo: customerInfo);
-      return customerInfo;
-    } catch (error, stackTrace) {
-      if (kDebugMode) {
-        debugPrint('[RevenueCat] purchase failed: $error');
-        debugPrintStack(stackTrace: stackTrace);
+      if (accountRevision != _accountRevision) {
+        return BillingPurchaseOutcome.failed;
       }
+
+      logRevenueCatCustomerInfo('purchase success', result.customerInfo);
       state = state.copyWith(
         isPurchasing: false,
-        errorMessage: 'Không hoàn tất được thanh toán',
+        customerInfo: result.customerInfo,
+        activationStatus: BillingActivationStatus.pending,
       );
-      return null;
+      return BillingPurchaseOutcome.purchased;
+    } on PlatformException catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) {
+        return BillingPurchaseOutcome.failed;
+      }
+
+      final errorCode = PurchasesErrorHelper.getErrorCode(error);
+      if (errorCode == PurchasesErrorCode.purchaseCancelledError) {
+        state = state.copyWith(isPurchasing: false, clearError: true);
+        return BillingPurchaseOutcome.cancelled;
+      }
+      if (errorCode == PurchasesErrorCode.productAlreadyPurchasedError) {
+        await _recoverAlreadyOwnedCustomerInfo(accountRevision);
+        if (accountRevision != _accountRevision) {
+          return BillingPurchaseOutcome.failed;
+        }
+        state = state.copyWith(
+          isPurchasing: false,
+          activationStatus: BillingActivationStatus.pending,
+          clearError: true,
+        );
+        return BillingPurchaseOutcome.alreadyOwned;
+      }
+      _recordPurchaseFailure(error, stackTrace);
+      return BillingPurchaseOutcome.failed;
+    } catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) {
+        return BillingPurchaseOutcome.failed;
+      }
+      _recordPurchaseFailure(error, stackTrace);
+      return BillingPurchaseOutcome.failed;
     }
   }
 
-  Future<CustomerInfo?> restorePurchases({
-    String? appUserId,
-    BillingSyncService? billingSyncService,
-  }) async {
+  Future<BillingPurchaseOutcome> restorePurchases() async {
+    final accountRevision = _accountRevision;
     state = state.copyWith(isRestoring: true, clearError: true);
     try {
-      if (kDebugMode) {
-        debugPrint('[RevenueCat] restore start appUserId=$appUserId');
-      }
       final customerInfo = await ref.read(revenueCatServiceProvider).restore();
+      if (accountRevision != _accountRevision) {
+        return BillingPurchaseOutcome.failed;
+      }
+
       logRevenueCatCustomerInfo('restore success', customerInfo);
-      await _syncCustomerInfo(
+      state = state.copyWith(
+        isRestoring: false,
         customerInfo: customerInfo,
-        appUserId: appUserId,
-        billingSyncService: billingSyncService,
+        activationStatus: BillingActivationStatus.pending,
       );
-      state = state.copyWith(isRestoring: false, customerInfo: customerInfo);
-      return customerInfo;
+      return BillingPurchaseOutcome.alreadyOwned;
     } catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) {
+        return BillingPurchaseOutcome.failed;
+      }
+
       if (kDebugMode) {
         debugPrint('[RevenueCat] restore failed: $error');
         debugPrintStack(stackTrace: stackTrace);
@@ -228,57 +323,39 @@ class BillingController extends _$BillingController {
         isRestoring: false,
         errorMessage: 'Không khôi phục được giao dịch',
       );
-      return null;
+      return BillingPurchaseOutcome.failed;
     }
   }
 
-  Future<void> _syncCustomerInfo({
-    required CustomerInfo customerInfo,
-    required String? appUserId,
-    required BillingSyncService? billingSyncService,
-    String? productId,
-  }) async {
-    final trimmedAppUserId = appUserId?.trim();
-    if (trimmedAppUserId == null || trimmedAppUserId.isEmpty) {
-      if (kDebugMode) {
-        debugPrint('[RevenueCat] backend sync skipped: missing appUserId');
-      }
-      return;
-    }
-    if (billingSyncService == null) {
-      if (kDebugMode) {
-        debugPrint(
-          '[RevenueCat] backend sync skipped: missing BillingSyncService',
-        );
-      }
-      return;
-    }
-
+  Future<void> _recoverAlreadyOwnedCustomerInfo(
+    int accountRevision,
+  ) async {
     try {
-      if (kDebugMode) {
-        debugPrint(
-          '[RevenueCat] backend sync start appUserId=$trimmedAppUserId '
-          'activeEntitlements=${customerInfo.entitlements.active.keys.toList()} '
-          'productId=$productId',
-        );
-      }
-      await billingSyncService.syncRevenueCat(
-        appUserId: trimmedAppUserId,
-        activeEntitlementIds: customerInfo.entitlements.active.keys.toSet(),
-        productId: productId,
-        store: revenueCatStoreForPlatform(),
-      );
-      if (kDebugMode) {
-        debugPrint('[RevenueCat] backend sync success');
-      }
+      final customerInfo = await ref
+          .read(revenueCatServiceProvider)
+          .getCustomerInfo();
+      if (accountRevision != _accountRevision) return;
+
+      logRevenueCatCustomerInfo('already owned recovery', customerInfo);
+      state = state.copyWith(customerInfo: customerInfo);
     } catch (error, stackTrace) {
+      if (accountRevision != _accountRevision) return;
+
       if (kDebugMode) {
-        debugPrint('[RevenueCat] backend sync failed: $error');
+        debugPrint('[RevenueCat] already owned recovery failed: $error');
         debugPrintStack(stackTrace: stackTrace);
       }
-      state = state.copyWith(
-        errorMessage: 'Thanh toán xong nhưng chưa đồng bộ được gói Pro',
-      );
     }
+  }
+
+  void _recordPurchaseFailure(Object error, StackTrace stackTrace) {
+    if (kDebugMode) {
+      debugPrint('[RevenueCat] purchase failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+    state = state.copyWith(
+      isPurchasing: false,
+      errorMessage: 'Không hoàn tất được thanh toán',
+    );
   }
 }

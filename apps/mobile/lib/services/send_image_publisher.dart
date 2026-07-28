@@ -8,15 +8,36 @@ String checkinMediaTypeForSource(String source) {
   return source.endsWith('_VIDEO') ? 'VIDEO' : 'IMAGE';
 }
 
+Future<T> retryAdmissionAfterProReconciliation<T>({
+  required Future<T> Function() requestAdmission,
+  required Future<bool> Function() reconcileProAccess,
+}) async {
+  try {
+    return await requestAdmission();
+  } on UploadException catch (error) {
+    if (error.code != UploadExceptionCode.planRequired) rethrow;
+    final reconciled = await reconcileProAccess();
+    if (!reconciled) {
+      throw const UploadException(
+        'Không đồng bộ được gói Pro. Vui lòng thử lại.',
+        code: UploadExceptionCode.planRequired,
+      );
+    }
+    return requestAdmission();
+  }
+}
+
 class SendImagePublisher {
   final UploadService uploadService;
   final CheckinService checkinService;
   final PlaceCandidateService? placeCandidateService;
+  final Future<bool> Function()? reconcileProAccess;
 
   const SendImagePublisher({
     required this.uploadService,
     required this.checkinService,
     this.placeCandidateService,
+    this.reconcileProAccess,
   });
 
   Future<CheckinResult> publish({
@@ -27,12 +48,15 @@ class SendImagePublisher {
     String? caption,
     int? durationMs,
   }) async {
-    final mediaId = await uploadService.upload(
-      imagePath: imagePath,
-      latitude: selectedPlace.lat,
-      longitude: selectedPlace.lng,
-      source: source,
-      durationMs: durationMs,
+    final mediaId = await retryAdmissionAfterProReconciliation<String>(
+      requestAdmission: () => uploadService.upload(
+        imagePath: imagePath,
+        latitude: selectedPlace.lat,
+        longitude: selectedPlace.lng,
+        source: source,
+        durationMs: durationMs,
+      ),
+      reconcileProAccess: reconcileProAccess ?? () async => false,
     );
 
     final checkinPlace = await _resolveCheckinPlace(selectedPlace, mediaId);
@@ -57,7 +81,9 @@ class SendImagePublisher {
 
     final service = placeCandidateService;
     if (service == null) {
-      throw const CheckinException('Không tạo được địa điểm mới, vui lòng thử lại');
+      throw const CheckinException(
+        'Không tạo được địa điểm mới, vui lòng thử lại',
+      );
     }
 
     final response = await service.createCandidate(
@@ -87,8 +113,10 @@ class SendImagePublisher {
 
   String _candidateErrorMessage(PlaceCandidateResponse response) {
     if (response.isConflict) return 'Địa điểm này có vẻ đã tồn tại gần đây';
-    if (response.isQuotaExceeded) return 'Bạn đã đạt giới hạn tạo địa điểm hôm nay';
-    return response.error?.message ?? 'Không tạo được địa điểm mới, vui lòng thử lại';
+    if (response.isQuotaExceeded)
+      return 'Bạn đã đạt giới hạn tạo địa điểm hôm nay';
+    return response.error?.message ??
+        'Không tạo được địa điểm mới, vui lòng thử lại';
   }
 
   String? _placeIdForCheckin(SelectedPlaceTag place) {

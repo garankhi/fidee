@@ -11,6 +11,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' as goong;
 import '../config.dart';
 import '../features/auth/auth_providers.dart';
 import '../models/map_feed_item.dart';
+import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../services/map_feed_service.dart';
 import 'ai_chat_screen.dart';
@@ -19,6 +20,7 @@ import 'camera_screen.dart';
 import 'dashboard.dart';
 import 'home_ai_search_bar.dart';
 import 'place_details_friends.dart';
+import 'premium_upgrade_sheet.dart';
 import 'profile_screen.dart';
 
 enum MapFeedMode { friends, private }
@@ -111,10 +113,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool get _isLimitedMode => _locationService.status != LocationStatus.granted;
 
   List<MapFeedItem> get _visibleFeedItems {
-    return _feedItems.where((item) {
-      final isPrivate = _isPrivateFeedItem(item);
-      return _feedMode == MapFeedMode.private ? isPrivate : !isPrivate;
-    }).toList(growable: false);
+    return _feedItems
+        .where((item) {
+          final isPrivate = _isPrivateFeedItem(item);
+          return _feedMode == MapFeedMode.private ? isPrivate : !isPrivate;
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -369,7 +373,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       RRect.fromRectAndRadius(labelRect, const Radius.circular(17)),
       Paint()..color = Colors.white,
     );
-    canvas.drawCircle(iconCenter, iconRadius + 4, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      iconCenter,
+      iconRadius + 4,
+      Paint()..color = Colors.white,
+    );
     canvas.drawCircle(iconCenter, iconRadius, Paint()..color = accent);
 
     final iconPainter = TextPainter(
@@ -401,7 +409,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     labelPainter.layout(
       maxWidth:
-          labelRect.width - MapFeedMarkerPresentation.labelHorizontalPadding * 2,
+          labelRect.width -
+          MapFeedMarkerPresentation.labelHorizontalPadding * 2,
     );
     labelPainter.paint(
       canvas,
@@ -547,6 +556,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider).valueOrNull;
+    final firstName = authState?.firstName ?? '';
+    final lastName = authState?.lastName ?? '';
+    final avatarUrl = authState?.avatarUrl;
+    final isPro = authState?.tier == UserTier.pro;
+    final usesCompactUpgrade = MediaQuery.sizeOf(context).width < 360;
+    final firstInitial = firstName.trim().isNotEmpty
+        ? firstName.trim().substring(0, 1)
+        : '';
+    final lastInitial = lastName.trim().isNotEmpty
+        ? lastName.trim().substring(0, 1)
+        : '';
+    final initials = '$firstInitial$lastInitial'.isEmpty
+        ? 'U'
+        : '$firstInitial$lastInitial'.toUpperCase();
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
@@ -608,83 +633,127 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         Expanded(
                           child: Align(
                             alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const ProfileScreen(),
-                                  ),
-                                );
-                              },
-                              child: Consumer(
-                                builder: (context, ref, _) {
-                                  final authService = ref.watch(
-                                    authServiceProvider,
-                                  );
-                                  final firstName = authService.firstName ?? '';
-                                  final lastName = authService.lastName ?? '';
-                                  String initials = 'U';
-                                  if (firstName.isNotEmpty ||
-                                      lastName.isNotEmpty) {
-                                    final first = firstName.trim().isNotEmpty
-                                        ? firstName.trim().substring(0, 1)
-                                        : '';
-                                    final last = lastName.trim().isNotEmpty
-                                        ? lastName.trim().substring(0, 1)
-                                        : '';
-                                    initials = '$first$last'.toUpperCase();
-                                    if (initials.isEmpty) initials = 'U';
-                                  } else if (authService.username != null &&
-                                      authService.username!.isNotEmpty) {
-                                    initials = authService.username!
-                                        .substring(0, 1)
-                                        .toUpperCase();
-                                  }
-
-                                  return Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEF4050),
-                                      shape: BoxShape.circle,
-                                      image:
-                                          authService.avatarUrl != null &&
-                                              authService.avatarUrl!.isNotEmpty
-                                          ? DecorationImage(
-                                              image:
-                                                  authService.avatarUrl!
-                                                      .startsWith('http')
-                                                  ? NetworkImage(
-                                                          authService
-                                                              .avatarUrl!,
-                                                        )
-                                                        as ImageProvider
-                                                  : FileImage(
-                                                      File(
-                                                        authService.avatarUrl!,
-                                                      ),
-                                                    ),
-                                              fit: BoxFit.cover,
-                                            )
-                                          : null,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!isPro) ...[
+                                  GestureDetector(
+                                    onTap: () =>
+                                        showPremiumUpgradeSheet(context),
+                                    child: Tooltip(
+                                      message: 'Nâng cấp Pro',
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 7,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            99,
+                                          ),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Color(0x22000000),
+                                              blurRadius: 8,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          usesCompactUpgrade
+                                              ? '♛'
+                                              : '♛ Nâng cấp',
+                                          style: const TextStyle(
+                                            color: Color(0xFFEF4050),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    child:
-                                        authService.avatarUrl == null ||
-                                            authService.avatarUrl!.isEmpty
-                                        ? Center(
-                                            child: Text(
-                                              initials,
-                                              style: const TextStyle(
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => const ProfileScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEF4050),
+                                          shape: BoxShape.circle,
+                                          image:
+                                              avatarUrl != null &&
+                                                  avatarUrl.isNotEmpty
+                                              ? DecorationImage(
+                                                  image:
+                                                      avatarUrl.startsWith(
+                                                        'http',
+                                                      )
+                                                      ? NetworkImage(avatarUrl)
+                                                            as ImageProvider
+                                                      : FileImage(
+                                                          File(avatarUrl),
+                                                        ),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
+                                        ),
+                                        child:
+                                            avatarUrl == null ||
+                                                avatarUrl.isEmpty
+                                            ? Center(
+                                                child: Text(
+                                                  initials,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      if (isPro)
+                                        Positioned(
+                                          right: -5,
+                                          bottom: -4,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEF4050),
+                                              borderRadius:
+                                                  BorderRadius.circular(99),
+                                              border: Border.all(
                                                 color: Colors.white,
-                                                fontWeight: FontWeight.bold,
                                               ),
                                             ),
-                                          )
-                                        : null,
-                                  );
-                                },
-                              ),
+                                            child: const Text(
+                                              'PRO',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1074,7 +1143,11 @@ class MapModeToggleButton extends StatelessWidget {
   final MapFeedMode mode;
   final VoidCallback onTap;
 
-  const MapModeToggleButton({super.key, required this.mode, required this.onTap});
+  const MapModeToggleButton({
+    super.key,
+    required this.mode,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1171,7 +1244,9 @@ class FeedPlaceSheet extends StatelessWidget {
       return 'Địa điểm mới được đề xuất';
     }
 
-    final latestUser = item.userName.trim().isNotEmpty ? item.userName.trim() : 'Bạn bè';
+    final latestUser = item.userName.trim().isNotEmpty
+        ? item.userName.trim()
+        : 'Bạn bè';
     final caption = item.caption.trim();
     if (caption.isEmpty) return '$latestUser vừa check-in tại đây';
     return '$latestUser vừa check-in: $caption';
@@ -1195,126 +1270,126 @@ class FeedPlaceSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.placeName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontSize: 24,
-                          height: 1.08,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (address != null && address.isNotEmpty) ...[
-                        const SizedBox(height: 7),
-                        Text(
-                          address,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF8B95A1),
-                            fontSize: 14,
-                            height: 1.25,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FeedAvatarStack(
-                  names: item.recentUserNames.isEmpty
-                      ? <String>[item.userName]
-                      : item.recentUserNames,
-                  avatars: item.recentAvatars,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _FeedChip(label: _contextChip),
-                _FeedChip(label: _checkinCountLabel),
-                if (item.createdByName != null && item.createdByName!.isNotEmpty)
-                  _FeedChip(label: 'Tạo bởi ${item.createdByName}'),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                color: const Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.circular(999),
               ),
-              child: Row(
-                children: [
-                  _InitialAvatar(name: item.userName, avatarUrl: item.userAvatar),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _latestLine,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.placeName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Color(0xFF374151),
-                        fontSize: 14,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827),
+                        fontSize: 24,
+                        height: 1.08,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: onViewDetails,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4050),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Xem chi tiết',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                    if (address != null && address.isNotEmpty) ...[
+                      const SizedBox(height: 7),
+                      Text(
+                        address,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF8B95A1),
+                          fontSize: 14,
+                          height: 1.25,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
+              const SizedBox(width: 12),
+              FeedAvatarStack(
+                names: item.recentUserNames.isEmpty
+                    ? <String>[item.userName]
+                    : item.recentUserNames,
+                avatars: item.recentAvatars,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _FeedChip(label: _contextChip),
+              _FeedChip(label: _checkinCountLabel),
+              if (item.createdByName != null && item.createdByName!.isNotEmpty)
+                _FeedChip(label: 'Tạo bởi ${item.createdByName}'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-          ],
-        ),
+            child: Row(
+              children: [
+                _InitialAvatar(name: item.userName, avatarUrl: item.userAvatar),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _latestLine,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF374151),
+                      fontSize: 14,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: onViewDetails,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4050),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'Xem chi tiết',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

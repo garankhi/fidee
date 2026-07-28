@@ -32,10 +32,6 @@ class GalleryPreviewService {
     try {
       permissionStatus = await permissionService.currentStatus();
 
-      if (permissionStatus == GalleryPermissionStatus.notDetermined) {
-        permissionStatus = await permissionService.requestAccess();
-      }
-
       if (limit <= 0 || !permissionStatus.hasAccess) {
         return GalleryPreviewResult(
           permissionStatus: permissionStatus,

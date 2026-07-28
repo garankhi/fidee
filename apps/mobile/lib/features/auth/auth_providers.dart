@@ -1,9 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../models/pro_access.dart';
 import '../../services/auth_service.dart';
+import '../../services/billing_sync_service.dart';
 import '../../services/location_service.dart';
+import 'billing_provider.dart';
 
 part 'auth_providers.g.dart';
 
@@ -96,14 +100,13 @@ class AuthUiState {
   }
 }
 
-// MVP publish: RevenueCat auth sync is disabled until subscriptions return.
-// bool shouldLogInRevenueCat(AuthUiState state, String? appUserId) {
-//   final hasAppUserId = appUserId != null && appUserId.trim().isNotEmpty;
-//   if (!hasAppUserId) return false;
-//
-//   return state.authState == AuthState.authenticated ||
-//       state.authState == AuthState.incompleteProfile;
-// }
+bool shouldLogInRevenueCat(AuthUiState state, String? appUserId) {
+  final hasAppUserId = appUserId != null && appUserId.trim().isNotEmpty;
+  if (!hasAppUserId) return false;
+
+  return state.authState == AuthState.authenticated ||
+      state.authState == AuthState.incompleteProfile;
+}
 
 @Riverpod(keepAlive: true)
 AuthService authService(AuthServiceRef ref) {
@@ -125,12 +128,21 @@ Future<LocationService> locationController(LocationControllerRef ref) async {
 
 @Riverpod(keepAlive: true)
 class AuthController extends _$AuthController {
+  int _billingSessionRevision = 0;
+
   @override
   Future<AuthUiState> build() async {
     final service = ref.read(authServiceProvider);
     await service.initialize();
-    // await _syncRevenueCatLogin(service);
-    return AuthUiState.fromService(service);
+    ref
+        .read(billingControllerProvider.notifier)
+        .seedConfirmedPlan(service.tier);
+    final initialState = AuthUiState.fromService(service);
+    if (initialState.authState == AuthState.authenticated ||
+        initialState.authState == AuthState.incompleteProfile) {
+      unawaited(reconcileProAccess());
+    }
+    return initialState;
   }
 
   Future<AuthResult> signIn(String email, String password) async {
@@ -139,15 +151,17 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.signIn(email, password);
-    // if (result.success) {
-    //   await _syncRevenueCatLogin(service);
-    // }
     state = AsyncData(
       AuthUiState.fromService(
         service,
         errorMessage: result.success ? null : result.errorMessage,
       ),
     );
+    if (result.success) {
+      _resetBillingForAccountChange();
+      await _refreshConfirmedProfilePlan(service);
+      unawaited(reconcileProAccess());
+    }
     return result;
   }
 
@@ -172,15 +186,17 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.signInWithGoogle();
-    // if (result.success) {
-    //   await _syncRevenueCatLogin(service);
-    // }
     state = AsyncData(
       AuthUiState.fromService(
         service,
         errorMessage: result.success ? null : result.errorMessage,
       ),
     );
+    if (result.success) {
+      _resetBillingForAccountChange();
+      await _refreshConfirmedProfilePlan(service);
+      unawaited(reconcileProAccess());
+    }
     return result;
   }
 
@@ -190,15 +206,17 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.verifyOtp(code);
-    // if (result.success) {
-    //   await _syncRevenueCatLogin(service);
-    // }
     state = AsyncData(
       AuthUiState.fromService(
         service,
         errorMessage: result.success ? null : result.errorMessage,
       ),
     );
+    if (result.success) {
+      _resetBillingForAccountChange();
+      await _refreshConfirmedProfilePlan(service);
+      unawaited(reconcileProAccess());
+    }
     return result;
   }
 
@@ -217,8 +235,9 @@ class AuthController extends _$AuthController {
 
   Future<void> signOut() async {
     final service = ref.read(authServiceProvider);
+    _resetBillingForAccountChange();
+    unawaited(_syncRevenueCatLogout());
     await service.signOut();
-    // await _syncRevenueCatLogout();
     state = AsyncData(AuthUiState.fromService(service));
   }
 
@@ -228,9 +247,10 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.deleteAccount();
-    // if (result.success) {
-    //   await _syncRevenueCatLogout();
-    // }
+    if (result.success) {
+      _resetBillingForAccountChange();
+      unawaited(_syncRevenueCatLogout());
+    }
     state = AsyncData(
       AuthUiState.fromService(
         service,
@@ -250,15 +270,19 @@ class AuthController extends _$AuthController {
 
     final service = ref.read(authServiceProvider);
     final result = await service.completeProfile(firstName, lastName, username);
-    // if (result.success) {
-    //   await _syncRevenueCatLogin(service);
-    // }
     state = AsyncData(
       AuthUiState.fromService(
         service,
         errorMessage: result.success ? null : result.errorMessage,
       ),
     );
+    if (result.success) {
+      _resetBillingForAccountChange();
+      ref
+          .read(billingControllerProvider.notifier)
+          .seedConfirmedPlan(service.tier);
+      unawaited(reconcileProAccess());
+    }
     return result;
   }
 
@@ -286,13 +310,99 @@ class AuthController extends _$AuthController {
         errorMessage: result.success ? null : result.errorMessage,
       ),
     );
+    if (result.success) {
+      ref
+          .read(billingControllerProvider.notifier)
+          .seedConfirmedPlan(service.tier);
+    }
     return result;
   }
 
   Future<void> refreshProfileDetails() async {
     final service = ref.read(authServiceProvider);
-    await service.fetchProfileDetails();
+    await _refreshConfirmedProfilePlan(service);
     state = AsyncData(AuthUiState.fromService(service));
+  }
+
+  Future<bool> _refreshConfirmedProfilePlan(AuthService service) async {
+    final refreshed = await service.fetchProfileDetails();
+    if (refreshed) {
+      ref
+          .read(billingControllerProvider.notifier)
+          .seedConfirmedPlan(service.tier);
+    }
+    return refreshed;
+  }
+
+  Future<bool> ensureRevenueCatIdentity() async {
+    final billingSessionRevision = _billingSessionRevision;
+    final service = ref.read(authServiceProvider);
+    final userId = await service.getCurrentUserSub();
+    final authState = AuthUiState.fromService(service);
+    if (!shouldLogInRevenueCat(authState, userId) ||
+        billingSessionRevision != _billingSessionRevision) {
+      return false;
+    }
+
+    try {
+      await ref.read(revenueCatServiceProvider).logIn(userId!.trim());
+      if (billingSessionRevision != _billingSessionRevision) return false;
+
+      final currentUserId = await service.getCurrentUserSub();
+      return billingSessionRevision == _billingSessionRevision &&
+          currentUserId?.trim() == userId.trim();
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] identity preparation failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      return false;
+    }
+  }
+
+  Future<bool> reconcileProAccess() async {
+    final billingSessionRevision = _billingSessionRevision;
+    final service = ref.read(authServiceProvider);
+    final userId = await service.getCurrentUserSub();
+    final authState = AuthUiState.fromService(service);
+    if (!shouldLogInRevenueCat(authState, userId) ||
+        billingSessionRevision != _billingSessionRevision) {
+      return false;
+    }
+
+    try {
+      await ref.read(revenueCatServiceProvider).logIn(userId!.trim());
+      if (billingSessionRevision != _billingSessionRevision) return false;
+
+      final result = await ref
+          .read(billingControllerProvider.notifier)
+          .reconcile(BillingSyncService(authService: service));
+      if (result == null ||
+          billingSessionRevision != _billingSessionRevision) {
+        return false;
+      }
+
+      await service.fetchProfileDetails();
+      final currentUserId = await service.getCurrentUserSub();
+      if (billingSessionRevision != _billingSessionRevision ||
+          currentUserId?.trim() != userId.trim()) {
+        return false;
+      }
+
+      final confirmedTier = result.plan == ConfirmedProPlan.pro
+          ? UserTier.pro
+          : UserTier.free;
+      state = AsyncData(
+        AuthUiState.fromService(service).copyWith(tier: confirmedTier),
+      );
+      return result.plan == ConfirmedProPlan.pro;
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] auth reconciliation failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      return false;
+    }
   }
 
   void setError(String message) {
@@ -303,33 +413,24 @@ class AuthController extends _$AuthController {
     state = AsyncData(_currentState().copyWith(clearError: true));
   }
 
-  // Future<void> _syncRevenueCatLogin(AuthService service) async {
-  //   final nextState = AuthUiState.fromService(service);
-  //   final userId = await service.getCurrentUserSub();
-  //   if (!shouldLogInRevenueCat(nextState, userId)) return;
-  //
-  //   try {
-  //     await ref.read(revenueCatServiceProvider).logIn(userId!.trim());
-  //   } catch (error, stackTrace) {
-  //     if (kDebugMode) {
-  //       debugPrint('[RevenueCat] auth logIn failed: $error');
-  //       debugPrintStack(stackTrace: stackTrace);
-  //     }
-  //     // Billing sync must not block auth state transitions.
-  //   }
-  // }
+  void _resetBillingForAccountChange() {
+    _billingSessionRevision += 1;
+    ref
+        .read(billingControllerProvider.notifier)
+        .resetForAccountChange();
+  }
 
-  // Future<void> _syncRevenueCatLogout() async {
-  //   try {
-  //     await ref.read(revenueCatServiceProvider).logOut();
-  //   } catch (error, stackTrace) {
-  //     if (kDebugMode) {
-  //       debugPrint('[RevenueCat] auth logOut failed: $error');
-  //       debugPrintStack(stackTrace: stackTrace);
-  //     }
-  //     // Billing sync must not block auth state transitions.
-  //   }
-  // }
+  Future<void> _syncRevenueCatLogout() async {
+    try {
+      await ref.read(revenueCatServiceProvider).logOut();
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] auth logOut failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      // Billing sync must not block auth state transitions.
+    }
+  }
 
   AuthUiState _currentState() {
     return state.valueOrNull ??

@@ -328,6 +328,7 @@ class _FeedSwipePage extends StatelessWidget {
     );
   }
 }
+
 class _FeedPlaceTagPill extends StatelessWidget {
   final String label;
 
@@ -345,11 +346,7 @@ class _FeedPlaceTagPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.location_on_rounded,
-            color: Colors.white,
-            size: 18,
-          ),
+          const Icon(Icons.location_on_rounded, color: Colors.white, size: 18),
           const SizedBox(width: 8),
           Flexible(
             child: Text(

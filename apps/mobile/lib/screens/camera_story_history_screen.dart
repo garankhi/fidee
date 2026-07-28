@@ -16,7 +16,9 @@ class CameraStoryHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feedState = ref.watch(cameraCheckinFeedControllerProvider);
-    final feedController = ref.read(cameraCheckinFeedControllerProvider.notifier);
+    final feedController = ref.read(
+      cameraCheckinFeedControllerProvider.notifier,
+    );
     final authState = ref.watch(authControllerProvider).valueOrNull;
     final friendsState = ref.watch(friendsControllerProvider);
     final currentUserInitials =

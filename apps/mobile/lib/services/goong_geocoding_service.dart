@@ -22,16 +22,16 @@ class GoongGeocodingService {
   }) : apiKey = apiKey ?? Config.goongApiKey,
        _client = client ?? http.Client();
 
-  Future<String?> reverseGeocode({required double lat, required double lng}) async {
+  Future<String?> reverseGeocode({
+    required double lat,
+    required double lng,
+  }) async {
     if (apiKey.trim().isEmpty) return null;
 
     try {
-      final uri = Uri.parse(_baseUrl).replace(
-        queryParameters: {
-          'latlng': '$lat,$lng',
-          'api_key': apiKey,
-        },
-      );
+      final uri = Uri.parse(
+        _baseUrl,
+      ).replace(queryParameters: {'latlng': '$lat,$lng', 'api_key': apiKey});
       final response = await _client.get(uri);
       if (response.statusCode != 200) return null;
 
@@ -55,10 +55,7 @@ class GoongGeocodingService {
 
     try {
       final uri = Uri.parse(_baseUrl).replace(
-        queryParameters: {
-          'address': address.trim(),
-          'api_key': apiKey,
-        },
+        queryParameters: {'address': address.trim(), 'api_key': apiKey},
       );
       final response = await _client.get(uri);
       if (response.statusCode != 200) return null;
@@ -67,11 +64,13 @@ class GoongGeocodingService {
       final location = _firstLocation(decoded);
       if (location == null) return null;
 
-      final distanceMeters = _distance.as(
-        LengthUnit.Meter,
-        LatLng(lat, lng),
-        LatLng(location.lat, location.lng),
-      ).round();
+      final distanceMeters = _distance
+          .as(
+            LengthUnit.Meter,
+            LatLng(lat, lng),
+            LatLng(location.lat, location.lng),
+          )
+          .round();
 
       return CustomAddressValidation(
         isFarFromCurrentLocation: distanceMeters > farDistanceMeters,

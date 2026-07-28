@@ -1,13 +1,35 @@
 import 'dart:async';
 
+import 'package:fidey_mobile/features/auth/auth_providers.dart';
 import 'package:fidey_mobile/models/map_feed_item.dart';
 import 'package:fidey_mobile/screens/home_screen.dart';
+import 'package:fidey_mobile/services/auth_service.dart';
 import 'package:fidey_mobile/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
+
+class _FreeHomeAuthController extends AuthController {
+  @override
+  Future<AuthUiState> build() async => const AuthUiState(
+    authState: AuthState.authenticated,
+    tier: UserTier.free,
+    firstName: 'Nguyen',
+    lastName: 'Minh',
+  );
+}
+
+class _ProHomeAuthController extends AuthController {
+  @override
+  Future<AuthUiState> build() async => const AuthUiState(
+    authState: AuthState.authenticated,
+    tier: UserTier.pro,
+    firstName: 'Nguyen',
+    lastName: 'Minh',
+  );
+}
 
 class _ForegroundLocationService extends LocationService {
   final StreamController<LatLng> _positions =
@@ -60,6 +82,66 @@ void main() {
     );
 
     expect(find.text('GOONG_MAPTILES_KEY chưa được cấu hình.'), findsOneWidget);
+  });
+
+  testWidgets('free home shows compact upgrade beside avatar', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_FreeHomeAuthController.new),
+        ],
+        child: MaterialApp(
+          home: HomeScreen(locationService: LocationService()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('♛ Nâng cấp'), findsOneWidget);
+    expect(find.text('PRO'), findsNothing);
+  });
+
+  testWidgets('narrow free home uses compact semantic upgrade pill', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_FreeHomeAuthController.new),
+        ],
+        child: MaterialApp(
+          home: HomeScreen(locationService: LocationService()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('♛'), findsOneWidget);
+    expect(find.text('♛ Nâng cấp'), findsNothing);
+    expect(find.byTooltip('Nâng cấp Pro'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pro home replaces upgrade with avatar badge', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_ProHomeAuthController.new),
+        ],
+        child: MaterialApp(
+          home: HomeScreen(locationService: LocationService()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('♛ Nâng cấp'), findsNothing);
+    expect(find.text('PRO'), findsOneWidget);
   });
 
   testWidgets('starts and stops foreground location updates with the screen', (
@@ -145,10 +227,7 @@ void main() {
       MapFeedMarkerPresentation.fromItem(cafe).icon,
       Icons.local_cafe_rounded,
     );
-    expect(
-      MapFeedMarkerPresentation.fromItem(cafe).label,
-      'Bamos Coffee &…',
-    );
+    expect(MapFeedMarkerPresentation.fromItem(cafe).label, 'Bamos Coffee &…');
     expect(
       MapFeedMarkerPresentation.fromItem(restaurant).icon,
       Icons.restaurant_rounded,
@@ -156,18 +235,9 @@ void main() {
   });
 
   test('map feed marker label width follows text with compact padding', () {
-    expect(
-      MapFeedMarkerPresentation.labelPillWidth(30),
-      44,
-    );
-    expect(
-      MapFeedMarkerPresentation.labelPillWidth(80),
-      86,
-    );
-    expect(
-      MapFeedMarkerPresentation.labelPillWidth(220),
-      160,
-    );
+    expect(MapFeedMarkerPresentation.labelPillWidth(30), 44);
+    expect(MapFeedMarkerPresentation.labelPillWidth(80), 86);
+    expect(MapFeedMarkerPresentation.labelPillWidth(220), 160);
   });
 
   testWidgets('feed place sheet shows candidate place without fake check-in', (
@@ -195,7 +265,9 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: FeedPlaceSheet(item: item))),
+      MaterialApp(
+        home: Scaffold(body: FeedPlaceSheet(item: item)),
+      ),
     );
 
     expect(find.text('Cafe mới'), findsOneWidget);
@@ -231,7 +303,9 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: FeedPlaceSheet(item: item))),
+      MaterialApp(
+        home: Scaffold(body: FeedPlaceSheet(item: item)),
+      ),
     );
 
     expect(find.text('Cafe mới'), findsOneWidget);

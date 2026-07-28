@@ -291,6 +291,9 @@ class _SendImageScreenState extends ConsumerState<SendImageScreen> {
         uploadService: UploadService(authService: authService),
         checkinService: CheckinService(authService),
         placeCandidateService: PlaceCandidateService(authService),
+        reconcileProAccess: ref
+            .read(authControllerProvider.notifier)
+            .reconcileProAccess,
       );
 
       await publisher.publish(

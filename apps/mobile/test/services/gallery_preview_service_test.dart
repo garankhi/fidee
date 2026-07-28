@@ -53,10 +53,9 @@ void main() {
     });
 
     test(
-      'requests access before loading thumbnails when not determined',
+      'does not request access or load thumbnails when not determined',
       () async {
         var requests = 0;
-        final expectedThumbnail = Uint8List.fromList(<int>[7]);
         final service = GalleryPreviewService(
           permissionService: GalleryPermissionService(
             getPermissionState: () async => PermissionState.notDetermined,
@@ -67,14 +66,16 @@ void main() {
             presentLimited: () async {},
             openSettings: () async {},
           ),
-          loadThumbnails: (limit) async => <Uint8List>[expectedThumbnail],
+          loadThumbnails: (limit) async => <Uint8List>[
+            Uint8List.fromList(<int>[7]),
+          ],
         );
 
         final result = await service.loadRecentThumbnails();
 
-        expect(requests, 1);
-        expect(result.permissionStatus, GalleryPermissionStatus.limited);
-        expect(result.thumbnails, <Uint8List>[expectedThumbnail]);
+        expect(requests, 0);
+        expect(result.permissionStatus, GalleryPermissionStatus.notDetermined);
+        expect(result.thumbnails, isEmpty);
       },
     );
 

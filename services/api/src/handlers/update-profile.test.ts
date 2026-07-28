@@ -1,10 +1,11 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockQuery, mockExtractAuth, mockCognitoSend } = vi.hoisted(() => ({
+const { mockQuery, mockExtractAuth, mockCognitoSend, mockGetUserPlan } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockExtractAuth: vi.fn(),
   mockCognitoSend: vi.fn(),
+  mockGetUserPlan: vi.fn(),
 }));
 
 vi.mock('../db/client', () => ({
@@ -13,6 +14,10 @@ vi.mock('../db/client', () => ({
 
 vi.mock('../middleware/auth', () => ({
   extractAuth: mockExtractAuth,
+}));
+
+vi.mock('../repositories/user-profiles', () => ({
+  getUserPlan: mockGetUserPlan,
 }));
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
@@ -47,8 +52,11 @@ describe('update-profile handler', () => {
     mockQuery.mockReset();
     mockExtractAuth.mockReset();
     mockCognitoSend.mockReset();
+    mockGetUserPlan.mockReset();
+    mockGetUserPlan.mockResolvedValue('FREE');
     delete process.env.COGNITO_PROFILE_MIRROR_TIMEOUT_MS;
     process.env.COGNITO_USER_POOL_ID = 'pool-1';
+    process.env.USER_PROFILES_TABLE = 'user-profiles';
     mockExtractAuth.mockResolvedValue({
       sub: 'user-1',
       username: 'user@example.com',
@@ -107,6 +115,35 @@ describe('update-profile handler', () => {
     );
     expect(JSON.parse(result.body).profile.username).toBe('minh');
     expect(JSON.parse(result.body).profile.bio).toBe('Coffee hunter');
+  });
+
+  it('returns the authoritative DynamoDB plan when PostgreSQL differs', async () => {
+    mockGetUserPlan.mockResolvedValueOnce('PRO');
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'user-1',
+          display_name: 'Nguyen Minh',
+          family_name: 'Nguyen',
+          given_name: 'Minh',
+          username: 'minh',
+          avatar_url: null,
+          bio: null,
+          plan: 'FREE',
+          created_at: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+    });
+    mockCognitoSend.mockResolvedValueOnce({});
+
+    const result = await handler(
+      mockEvent({ firstName: 'Nguyen', lastName: 'Minh', username: 'minh' }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    expect(mockGetUserPlan).toHaveBeenCalledWith('user-1', 'user-profiles');
+    expect(JSON.parse(result.body).profile.plan).toBe('PRO');
   });
 
   it('persists an avatar URL and mirrors it to Cognito', async () => {

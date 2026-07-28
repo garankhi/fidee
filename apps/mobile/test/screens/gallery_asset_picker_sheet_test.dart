@@ -93,14 +93,17 @@ void main() {
             return Scaffold(
               body: ElevatedButton(
                 onPressed: () async {
-                  selectedAsset = await showModalBottomSheet<GalleryAssetPickerSelection>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => GalleryAssetPickerSheet(
-                      loadAssets: () async => <GalleryAssetPickerItem>[item],
-                    ),
-                  );
+                  selectedAsset =
+                      await showModalBottomSheet<GalleryAssetPickerSelection>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => GalleryAssetPickerSheet(
+                          loadAssets: () async => <GalleryAssetPickerItem>[
+                            item,
+                          ],
+                        ),
+                      );
                 },
                 child: const Text('Open'),
               ),
@@ -116,7 +119,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(selectedAsset?.path, 'D:/tmp/first.jpg');
-    expect(selectedAsset?.source, 'IN_APP_CAMERA');
+    expect(selectedAsset?.source, 'EXIF_GALLERY');
     expect(selectedAsset?.mediaType, GalleryAssetMediaType.image);
   });
 

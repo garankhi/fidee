@@ -1,7 +1,57 @@
 import 'package:fidey_mobile/services/auth_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 void main() {
+  group('googleSignInErrorMessage', () {
+    test('treats plain deliberate cancellation as silent', () {
+      expect(
+        googleSignInErrorMessage(
+          const GoogleSignInException(code: GoogleSignInExceptionCode.canceled),
+        ),
+        isNull,
+      );
+    });
+
+    test('maps account reauthentication failure to retry guidance', () {
+      expect(
+        googleSignInErrorMessage(
+          const GoogleSignInException(
+            code: GoogleSignInExceptionCode.canceled,
+            description: '[16] Account reauth failed',
+          ),
+        ),
+        contains('thử lại'),
+      );
+    });
+
+    test('maps client configuration separately', () {
+      expect(
+        googleSignInErrorMessage(
+          const GoogleSignInException(
+            code: GoogleSignInExceptionCode.clientConfigurationError,
+            description: 'OAuth client mismatch',
+          ),
+        ),
+        contains('cấu hình Google'),
+      );
+    });
+
+    test('maps interrupted, unavailable, and unknown errors safely', () {
+      for (final code in [
+        GoogleSignInExceptionCode.interrupted,
+        GoogleSignInExceptionCode.uiUnavailable,
+        GoogleSignInExceptionCode.unknownError,
+        GoogleSignInExceptionCode.userMismatch,
+      ]) {
+        expect(
+          googleSignInErrorMessage(GoogleSignInException(code: code)),
+          contains('thử lại'),
+        );
+      }
+    });
+  });
+
   group('profileUpdateErrorMessage', () {
     test('includes status and message from API Gateway style body', () {
       expect(

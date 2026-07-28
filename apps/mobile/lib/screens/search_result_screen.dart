@@ -8,11 +8,7 @@ class SearchResultScreen extends ConsumerStatefulWidget {
   final String? initialQuery;
   final String? initialVibe;
 
-  const SearchResultScreen({
-    super.key,
-    this.initialQuery,
-    this.initialVibe,
-  });
+  const SearchResultScreen({super.key, this.initialQuery, this.initialVibe});
 
   @override
   ConsumerState<SearchResultScreen> createState() => _SearchResultScreenState();
@@ -28,9 +24,13 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
 
     Future.microtask(() {
       if (widget.initialVibe != null) {
-        ref.read(dashboardControllerProvider.notifier).selectVibe(widget.initialVibe!);
+        ref
+            .read(dashboardControllerProvider.notifier)
+            .selectVibe(widget.initialVibe!);
       } else if (widget.initialQuery != null) {
-        ref.read(dashboardControllerProvider.notifier).search(query: widget.initialQuery!);
+        ref
+            .read(dashboardControllerProvider.notifier)
+            .search(query: widget.initialQuery!);
       }
     });
   }
@@ -53,46 +53,45 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              ref.read(dashboardControllerProvider.notifier).clearSearch();
-              Navigator.pop(context);
-            },
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            ref.read(dashboardControllerProvider.notifier).clearSearch();
+            Navigator.pop(context);
+          },
+        ),
+        title: Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey[300]!),
           ),
-          title: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: TextField(
-              controller: _searchController,
-              onSubmitted: _submitSearch,
-              textInputAction: TextInputAction.search,
-              style: const TextStyle(color: Colors.black, fontSize: 13),
-              textAlignVertical: TextAlignVertical.center,
-              decoration: const InputDecoration(
-                hintText: 'Tìm nhà hàng, quán ăn..',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                border: InputBorder.none,
-                isCollapsed: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: TextField(
+            controller: _searchController,
+            onSubmitted: _submitSearch,
+            textInputAction: TextInputAction.search,
+            style: const TextStyle(color: Colors.black, fontSize: 13),
+            textAlignVertical: TextAlignVertical.center,
+            decoration: const InputDecoration(
+              hintText: 'Tìm nhà hàng, quán ăn..',
+              hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+              border: InputBorder.none,
+              isCollapsed: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
               ),
             ),
           ),
         ),
+      ),
       body: SafeArea(
         child: Column(
-          children: [
-            Expanded(
-              child: _buildSearchResults(dashboardState),
-            ),
-          ],
+          children: [Expanded(child: _buildSearchResults(dashboardState))],
         ),
       ),
     );
@@ -121,13 +120,15 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
             child: TextButton.icon(
               onPressed: state.isLoadingMore
                   ? null
-                  : () => ref.read(dashboardControllerProvider.notifier).loadMore(),
+                  : () => ref
+                        .read(dashboardControllerProvider.notifier)
+                        .loadMore(),
               icon: state.isLoadingMore
                   ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.expand_more),
               label: const Text('Xem thêm'),
             ),
@@ -140,10 +141,7 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
   }
 
   Widget _buildSearchPlaceRow(DashboardPlace place) {
-    final tags = <String>[
-      place.category,
-      ...place.vibes.take(2),
-    ];
+    final tags = <String>[place.category, ...place.vibes.take(2)];
     return InkWell(
       onTap: () => Navigator.push(
         context,
@@ -189,7 +187,7 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
                   const SizedBox(height: 5),
                   Text(
                     '★ ${place.rating.toStringAsFixed(1)} · '
-                        '${place.distanceKm.toStringAsFixed(1)} km',
+                    '${place.distanceKm.toStringAsFixed(1)} km',
                     style: const TextStyle(
                       color: Color(0xFF6E7E91),
                       fontSize: 12,
@@ -203,24 +201,24 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
                     children: tags
                         .map(
                           (tag) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFECEF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          tag,
-                          style: const TextStyle(
-                            color: Color(0xFFEF4050),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFECEF),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tag,
+                              style: const TextStyle(
+                                color: Color(0xFFEF4050),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    )
+                        )
                         .toList(),
                   ),
                 ],

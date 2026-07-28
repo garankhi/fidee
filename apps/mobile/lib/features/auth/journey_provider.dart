@@ -45,16 +45,18 @@ class JourneyState {
 
   List<JourneyEntry> get visibleEntries {
     final now = DateTime.now();
-    return selectedEntries.where((entry) {
-      final created = entry.createdDate;
-      if (created == null || period == JourneyPeriod.all) return true;
-      final cutoff = switch (period) {
-        JourneyPeriod.week => now.subtract(const Duration(days: 7)),
-        JourneyPeriod.month => now.subtract(const Duration(days: 30)),
-        JourneyPeriod.all => now,
-      };
-      return created.isAfter(cutoff);
-    }).toList(growable: false);
+    return selectedEntries
+        .where((entry) {
+          final created = entry.createdDate;
+          if (created == null || period == JourneyPeriod.all) return true;
+          final cutoff = switch (period) {
+            JourneyPeriod.week => now.subtract(const Duration(days: 7)),
+            JourneyPeriod.month => now.subtract(const Duration(days: 30)),
+            JourneyPeriod.all => now,
+          };
+          return created.isAfter(cutoff);
+        })
+        .toList(growable: false);
   }
 
   JourneyState copyWith({
@@ -78,7 +80,9 @@ class JourneyState {
       period: period ?? this.period,
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : errorMessage ?? this.errorMessage,
     );
   }
 }
@@ -161,10 +165,7 @@ class JourneyController extends AutoDisposeNotifier<JourneyState> {
           ...state.hasMore,
           requestedType: page.hasMore,
         },
-        loadedTypes: <JourneyEntryType>{
-          ...state.loadedTypes,
-          requestedType,
-        },
+        loadedTypes: <JourneyEntryType>{...state.loadedTypes, requestedType},
         isLoading: false,
         isLoadingMore: false,
         clearErrorMessage: true,
@@ -180,10 +181,7 @@ class JourneyController extends AutoDisposeNotifier<JourneyState> {
     }
   }
 
-  Future<JourneyPage> _fetchPage(
-    JourneyEntryType type, {
-    String? cursor,
-  }) {
+  Future<JourneyPage> _fetchPage(JourneyEntryType type, {String? cursor}) {
     return switch (type) {
       JourneyEntryType.checkin => _service.fetchCheckins(cursor: cursor),
       JourneyEntryType.review => _service.fetchReviews(cursor: cursor),

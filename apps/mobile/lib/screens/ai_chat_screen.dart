@@ -151,11 +151,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
       context,
       listen: false,
     ).read(authServiceProvider);
-    return AiSearchService(authService).search(
-      prompt: prompt,
-      history: history,
-      contextPlaces: contextPlaces,
-    );
+    return AiSearchService(
+      authService,
+    ).search(prompt: prompt, history: history, contextPlaces: contextPlaces);
   }
 
   void _openPlace(AiPlaceResult place) {
@@ -428,10 +426,7 @@ class _ChatMessageView extends StatelessWidget {
   final _ChatMessage message;
   final ValueChanged<AiPlaceResult> onPlaceTap;
 
-  const _ChatMessageView({
-    required this.message,
-    required this.onPlaceTap,
-  });
+  const _ChatMessageView({required this.message, required this.onPlaceTap});
 
   @override
   Widget build(BuildContext context) {

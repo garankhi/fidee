@@ -1,7 +1,12 @@
 param(
-  [string]$StackName = 'Fidee-prod',
+  [Parameter(Mandatory = $true)]
+  [ValidatePattern('^Fidee-(dev|prod)$')]
+  [string]$StackName,
+  [switch]$AllowDevBackendForProductionRelease,
   [string]$BuildName = '1.0.0',
-  [int]$BuildNumber = 1,
+  [Parameter(Mandatory = $true)]
+  [int]$BuildNumber,
+  [string]$Region = 'ap-southeast-1',
   [string]$GoongMaptilesKey = $env:GOONG_MAPTILES_KEY,
   [string]$GoongApiKey = $env:GOONG_API_KEY,
   [string]$GoongStyleUrl = $env:GOONG_STYLE_URL,
@@ -11,6 +16,13 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if (
+  $StackName -eq 'Fidee-dev' -and
+  -not $AllowDevBackendForProductionRelease.IsPresent
+) {
+  throw 'Refusing a Play production build against Fidee-dev without explicit override.'
+}
 
 if ([string]::IsNullOrWhiteSpace($GoongStyleUrl)) {
   $GoongStyleUrl = 'https://tiles.goong.io/assets/goong_map_web.json'
@@ -57,6 +69,7 @@ try {
   Write-Host "Reading CloudFormation outputs from $StackName..."
   $outputsJson = & aws cloudformation describe-stacks `
     --stack-name $StackName `
+    --region $Region `
     --query 'Stacks[0].Outputs' `
     --output json
 
@@ -84,6 +97,7 @@ try {
   Add-DartDefine 'API_BASE_URL' $apiBaseUrl
   Add-DartDefine 'COGNITO_USER_POOL_ID' (Get-StackOutput 'UserPoolId')
   Add-DartDefine 'COGNITO_CLIENT_ID' (Get-StackOutput 'UserPoolClientId')
+  Add-DartDefine 'GOOGLE_WEB_CLIENT_ID' (Get-StackOutput 'GoogleWebClientId')
   Add-DartDefine 'APPSYNC_GRAPHQL_URL' $appSyncGraphqlUrl
   Add-DartDefine 'APPSYNC_REALTIME_URL' $appSyncRealtimeUrl
   Add-DartDefine 'GOONG_MAPTILES_KEY' $GoongMaptilesKey

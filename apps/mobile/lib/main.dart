@@ -23,14 +23,6 @@ Future<void> main() async {
   if (!kReleaseMode) {
     await dotenv.load(fileName: 'assets/env/mobile.env', isOptional: true);
   }
-  // MVP publish: RevenueCat/payment is intentionally disabled.
-  // try {
-  //   await const RevenueCatService().configure();
-  // } catch (error) {
-  //   if (kDebugMode) {
-  //     debugPrint('RevenueCat is not configured for this runtime: $error');
-  //   }
-  // }
   runApp(const ProviderScope(child: FideeApp()));
 }
 

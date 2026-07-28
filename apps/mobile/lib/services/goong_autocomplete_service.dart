@@ -16,11 +16,9 @@ class GoongAutocompleteService {
   final String apiKey;
   final http.Client _client;
 
-  GoongAutocompleteService({
-    String? apiKey,
-    http.Client? client,
-  }) : apiKey = apiKey ?? Config.goongApiKey,
-       _client = client ?? http.Client();
+  GoongAutocompleteService({String? apiKey, http.Client? client})
+    : apiKey = apiKey ?? Config.goongApiKey,
+      _client = client ?? http.Client();
 
   Future<List<Suggestion>> fetchSuggestions({
     required String query,
@@ -62,12 +60,9 @@ class GoongAutocompleteService {
     if (apiKey.trim().isEmpty || placeId.trim().isEmpty) return null;
 
     try {
-      final uri = Uri.parse(_placeDetailUrl).replace(
-        queryParameters: {
-          'place_id': placeId,
-          'api_key': apiKey,
-        },
-      );
+      final uri = Uri.parse(
+        _placeDetailUrl,
+      ).replace(queryParameters: {'place_id': placeId, 'api_key': apiKey});
       final response = await _client.get(uri).timeout(_requestTimeout);
       if (response.statusCode != 200) return null;
 

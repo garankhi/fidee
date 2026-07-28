@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'pro_plan_picker_sheet.dart';
 
+Future<bool> showPremiumUpgradeSheet(BuildContext context) async {
+  final upgraded = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const PremiumUpgradeSheet(),
+  );
+  return upgraded == true;
+}
+
 class PremiumUpgradeSheet extends StatelessWidget {
   const PremiumUpgradeSheet({super.key});
 
@@ -97,8 +107,8 @@ class PremiumUpgradeSheet extends StatelessWidget {
                   ),
                   _buildFeatureItem(
                     '🖼️',
-                    'Video từ thư viện',
-                    'Gửi video hợp lệ từ thư viện của bạn',
+                    'Ảnh & video từ thư viện',
+                    'Gửi ảnh và video hợp lệ từ thư viện của bạn',
                   ),
                 ],
               ),

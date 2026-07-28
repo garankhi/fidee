@@ -32,7 +32,9 @@ export async function setUserPlan(
   tableName = process.env.USER_PROFILES_TABLE,
   client: DynamoDBDocumentClient = dynamoClient,
 ): Promise<void> {
-  if (!tableName) return;
+  if (!tableName) {
+    throw new Error('USER_PROFILES_TABLE is required');
+  }
 
   await client.send(
     new UpdateCommand({

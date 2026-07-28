@@ -123,9 +123,7 @@ void main() {
     );
     expect(saveButton.onPressed, isNotNull);
   });
-  testWidgets('submits Họ as firstName and Tên as lastName', (
-    tester,
-  ) async {
+  testWidgets('submits Họ as firstName and Tên as lastName', (tester) async {
     String? savedFirstName;
     String? savedLastName;
 

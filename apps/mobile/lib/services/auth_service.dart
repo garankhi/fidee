@@ -129,6 +129,30 @@ Map<String, dynamic> decodeResponseObject(String responseBody) {
 }
 
 @visibleForTesting
+String? googleSignInErrorMessage(GoogleSignInException error) {
+  final description = error.description?.toLowerCase() ?? '';
+  if (error.code == GoogleSignInExceptionCode.canceled) {
+    if (description.contains('reauth') || description.contains('[16]')) {
+      return 'Google cần xác thực lại tài khoản. Vui lòng thử lại.';
+    }
+    return null;
+  }
+
+  switch (error.code) {
+    case GoogleSignInExceptionCode.clientConfigurationError:
+    case GoogleSignInExceptionCode.providerConfigurationError:
+      return 'Không thể đăng nhập do cấu hình Google chưa hợp lệ.';
+    case GoogleSignInExceptionCode.interrupted:
+    case GoogleSignInExceptionCode.uiUnavailable:
+    case GoogleSignInExceptionCode.unknownError:
+    case GoogleSignInExceptionCode.userMismatch:
+      return 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.';
+    case GoogleSignInExceptionCode.canceled:
+      return null;
+  }
+}
+
+@visibleForTesting
 String profileUpdateErrorMessage(int statusCode, String responseBody) {
   final prefix = 'Cập nhật profile thất bại (HTTP $statusCode)';
   final trimmedBody = responseBody.trim();
@@ -298,8 +322,6 @@ class AuthService {
             _preferredUsername = value;
           } else if (name == 'picture') {
             _avatarUrl = value;
-          } else if (name == 'custom:tier') {
-            _tier = value == 'pro' ? UserTier.pro : UserTier.free;
           }
         }
       }
@@ -462,8 +484,7 @@ class AuthService {
 
     try {
       await GoogleSignIn.instance.initialize(
-        serverClientId:
-            '255813663531-rd534l11ckmgrobpo4imj2kdnshpq3ap.apps.googleusercontent.com',
+        serverClientId: Config.googleWebClientId,
       );
 
       final googleUser = await GoogleSignIn.instance.authenticate();
@@ -558,13 +579,23 @@ class AuthService {
           );
         }
       }
+    } on GoogleSignInException catch (error) {
+      if (kDebugMode) {
+        debugPrint('DEBUG [AuthService] Google login code=${error.code.name}');
+      }
+      return AuthResult(
+        success: false,
+        errorMessage: googleSignInErrorMessage(error),
+      );
     } on CognitoClientException catch (e) {
       return AuthResult(
         success: false,
         errorMessage: e.message ?? 'Lỗi kết nối đến dịch vụ AWS Cognito',
       );
     } catch (e) {
-      debugPrint('DEBUG [AuthService] Google login error: $e');
+      if (kDebugMode) {
+        debugPrint('DEBUG [AuthService] Google login failed');
+      }
       return const AuthResult(
         success: false,
         errorMessage: 'Lỗi hệ thống khi đăng nhập bằng Google',
@@ -765,14 +796,14 @@ class AuthService {
     return result;
   }
 
-  Future<void> fetchProfileDetails() async {
+  Future<bool> fetchProfileDetails() async {
     final token = await getToken();
-    if (token == null) return;
+    if (token == null) return false;
 
     try {
       const url = '${Config.apiBaseUrl}/profile';
       debugPrint('DEBUG [AuthService] GET $url');
-      final response = await http.get(
+      final response = await _profileHttpClient.get(
         Uri.parse(url),
         headers: {'Authorization': token},
       );
@@ -780,16 +811,18 @@ class AuthService {
         'DEBUG [AuthService] GET /profile statusCode: ${response.statusCode}',
       );
       debugPrint('DEBUG [AuthService] GET /profile body: ${response.body}');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final details = ProfileDetails.fromJson(data);
-        debugPrint(
-          'DEBUG [AuthService] Parsed Profile: firstName=${details.firstName}, lastName=${details.lastName}, username=${details.preferredUsername}',
-        );
-        _applyProfileDetails(details);
-      }
+      if (response.statusCode != 200) return false;
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final details = ProfileDetails.fromJson(data);
+      debugPrint(
+        'DEBUG [AuthService] Parsed Profile: firstName=${details.firstName}, lastName=${details.lastName}, username=${details.preferredUsername}',
+      );
+      _applyProfileDetails(details);
+      return true;
     } catch (e) {
       debugPrint('DEBUG [AuthService] GET /profile Error: $e');
+      return false;
     }
   }
 

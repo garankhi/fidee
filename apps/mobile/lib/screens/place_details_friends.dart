@@ -1382,10 +1382,7 @@ class _PlaceDetailsFriendsState extends ConsumerState<PlaceDetailsFriends> {
     if (allReviews.isEmpty) {
       return Column(
         children: [
-          _buildSectionHeader(
-            'Mọi người nói gì về quán này?',
-            onViewAll: null,
-          ),
+          _buildSectionHeader('Mọi người nói gì về quán này?', onViewAll: null),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
