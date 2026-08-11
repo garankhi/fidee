@@ -342,7 +342,8 @@ describe('FideeStack', () => {
           Variables: Match.objectLike({
             REVENUECAT_PROJECT_ID: 'proj_test',
             REVENUECAT_PRO_ENTITLEMENT_ID: 'entl_test',
-            REVENUECAT_SERVER_SECRET_ARN: Match.anyValue(),
+            REVENUECAT_SERVER_SECRET_ARN:
+              'fidee-dev-revenuecat-server',
             REVENUECAT_TIMEOUT_MS: '5000',
           }),
         },

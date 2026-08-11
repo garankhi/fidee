@@ -102,10 +102,10 @@ void main() {
     expect(find.byIcon(Icons.edit), findsOneWidget);
   });
 
-  testWidgets('pro profile opens Customer Center from plan action', (
+  testWidgets('pro profile opens an active plan management sheet', (
     tester,
   ) async {
-    var opened = false;
+    var customerCenterOpened = false;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -113,15 +113,63 @@ void main() {
           friendsControllerProvider.overrideWith(_EmptyFriendsController.new),
         ],
         child: MaterialApp(
-          home: ProfileScreen(presentCustomerCenter: () async => opened = true),
+          home: ProfileScreen(
+            presentCustomerCenter: () async => customerCenterOpened = true,
+          ),
         ),
       ),
     );
     await tester.pump();
 
     await tester.tap(find.text('Quản lý gói'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gói FIDEY Pro của bạn đang hoạt động'), findsOneWidget);
+    expect(
+      find.text('Bạn đang sử dụng đầy đủ các quyền lợi Pro.'),
+      findsOneWidget,
+    );
+    expect(find.text('50 lượt AI Search mỗi ngày'), findsOneWidget);
+    expect(find.text('Video check-in tối đa 3 giây'), findsOneWidget);
+    expect(find.text('Gửi ảnh và video hợp lệ từ thư viện'), findsOneWidget);
+    expect(find.text('Quản lý thanh toán'), findsOneWidget);
+    expect(customerCenterOpened, isFalse);
+
+    await tester.tap(find.text('Quản lý thanh toán'));
+    await tester.pumpAndSettle();
+    expect(customerCenterOpened, isTrue);
+  });
+
+  testWidgets('keeps active Pro UI visible when Customer Center fails', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_HydratedAuthController.new),
+          friendsControllerProvider.overrideWith(_EmptyFriendsController.new),
+        ],
+        child: MaterialApp(
+          home: ProfileScreen(
+            presentCustomerCenter: () async => throw Exception('unavailable'),
+          ),
+        ),
+      ),
+    );
     await tester.pump();
-    expect(opened, isTrue);
+
+    await tester.tap(find.text('Quản lý gói'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Quản lý thanh toán'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gói FIDEY Pro của bạn đang hoạt động'), findsOneWidget);
+    expect(
+      find.text(
+        'Chưa mở được trang thanh toán. Gói Pro của bạn vẫn hoạt động.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows pending friend request banner on profile', (tester) async {

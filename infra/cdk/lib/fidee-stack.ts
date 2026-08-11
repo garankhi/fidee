@@ -1162,8 +1162,11 @@ export class FideeStack extends cdk.Stack {
         REVENUECAT_PROJECT_ID: props.revenueCatProjectId,
         REVENUECAT_PRO_ENTITLEMENT_ID:
           props.revenueCatProEntitlementId,
+        // `fromSecretNameV2` exposes a partial ARN that does not match
+        // the complete ARN allowed by `grantRead`. GetSecretValue accepts the
+        // secret name as its SecretId and then authorizes the resolved ARN.
         REVENUECAT_SERVER_SECRET_ARN:
-          revenueCatServerSecret.secretArn,
+          revenueCatServerSecret.secretName,
         REVENUECAT_TIMEOUT_MS: String(props.revenueCatTimeoutMs),
       },
       bundling: {

@@ -23,6 +23,214 @@ Future<void> presentRevenueCatCustomerCenter() {
   return RevenueCatUI.presentCustomerCenter();
 }
 
+Future<void> showProManagementSheet(
+  BuildContext context, {
+  required Future<void> Function() presentCustomerCenter,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) =>
+        _ProManagementSheet(presentCustomerCenter: presentCustomerCenter),
+  );
+}
+
+class _ProManagementSheet extends StatefulWidget {
+  final Future<void> Function() presentCustomerCenter;
+
+  const _ProManagementSheet({required this.presentCustomerCenter});
+
+  @override
+  State<_ProManagementSheet> createState() => _ProManagementSheetState();
+}
+
+class _ProManagementSheetState extends State<_ProManagementSheet> {
+  bool _isOpeningBilling = false;
+  String? _errorMessage;
+
+  Future<void> _openBilling() async {
+    if (_isOpeningBilling) return;
+
+    setState(() {
+      _isOpeningBilling = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await widget.presentCustomerCenter();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage =
+            'Chưa mở được trang thanh toán. Gói Pro của bạn vẫn hoạt động.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isOpeningBilling = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF252020),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0x3DFFFFFF),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEF4050), Color(0xFFFF7382)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.workspace_premium, color: Colors.white, size: 38),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Gói FIDEY Pro của bạn đang hoạt động',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Bạn đang sử dụng đầy đủ các quyền lợi Pro.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            const _ProBenefitRow(
+              icon: Icons.auto_awesome,
+              text: '50 lượt AI Search mỗi ngày',
+            ),
+            const SizedBox(height: 12),
+            const _ProBenefitRow(
+              icon: Icons.videocam_outlined,
+              text: 'Video check-in tối đa 3 giây',
+            ),
+            const SizedBox(height: 12),
+            const _ProBenefitRow(
+              icon: Icons.photo_library_outlined,
+              text: 'Gửi ảnh và video hợp lệ từ thư viện',
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0x33EF484F),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Color(0xFFFFA3A8),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _isOpeningBilling ? null : _openBilling,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF484F),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Text(
+                _isOpeningBilling ? 'Đang mở…' : 'Quản lý thanh toán',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProBenefitRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _ProBenefitRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: const BoxDecoration(
+            color: Color(0x66FFD2D2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.white, size: 19),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class ProfileScreen extends ConsumerStatefulWidget {
   final Future<void> Function()? presentCustomerCenter;
 
@@ -147,16 +355,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       return;
     }
 
-    try {
-      await (widget.presentCustomerCenter ?? presentRevenueCatCustomerCenter)();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không mở được trang quản lý gói. Vui lòng thử lại.'),
-        ),
-      );
-    }
+    await showProManagementSheet(
+      context,
+      presentCustomerCenter:
+          widget.presentCustomerCenter ?? presentRevenueCatCustomerCenter,
+    );
   }
 
   Future<AuthResult> _updateProfileInfo({

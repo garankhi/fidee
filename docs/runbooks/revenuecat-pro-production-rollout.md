@@ -45,7 +45,7 @@ Verify without printing or placing secret values in shell history:
 - Production purchase lifecycle events are enabled.
 - RevenueCat Customer Center is configured for the Android app before exposing `Quản lý gói`.
 - AWS secret `fidee-{stage}-revenuecat-server` contains the server-side v2 key and webhook authorization value.
-- Lambda environment variables contain only the secret ARN and non-secret identifiers, never raw keys.
+- Lambda environment variables contain only the deterministic secret name and non-secret identifiers, never raw keys. Do not pass the partial ARN returned by `Secret.fromSecretNameV2`; `GetSecretValue` must receive the secret name so the IAM wildcard matches the resolved complete ARN.
 
 Required local environment identifiers before CDK synth/diff:
 
